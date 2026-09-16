@@ -15,7 +15,7 @@ import type { useEditorUiState } from "../state/useEditorUiState";
 import type { useProjectState } from "../state/useProjectState";
 import type { useTimelineState } from "../state/useTimelineState";
 import { CropEditorDialog } from "./CropEditorDialog";
-import EditorDashboard from "./EditorDashboard";
+
 import { EditorDialogs } from "./EditorDialogs";
 import { EditorHeader } from "./EditorHeader";
 import { EditorPreviewPanel } from "./EditorPreviewPanel";

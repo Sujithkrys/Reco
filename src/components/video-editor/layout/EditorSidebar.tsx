@@ -16,7 +16,7 @@ import type { useI18n } from "@/contexts/I18nContext";
 import ExtensionManager from "../ExtensionManager";
 import { SettingsPanel } from "../SettingsPanel";
 import type { EditorEffectSection } from "../types";
-import type { ProjectLibraryEntry } from "../../ProjectBrowserDialog";
+import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
 import EditorDashboard from "./EditorDashboard";
 
 type Props = {
