@@ -13,7 +13,7 @@ if (typeof window !== "undefined" && !(window as any).electronAPI) {
 			if (typeof prop === "string" && prop.startsWith("on")) {
 				return () => () => {};
 			}
-			return async () => null;
+			return async () => ({});
 		}
 	});
 }
