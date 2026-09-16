@@ -101,26 +101,70 @@ export const webElectronAPI: Record<string, Function> = {
 		project: null,
 		path: null,
 	}),
-	openProjectFileAtPath: async (_path: string) => ({
-		success: false,
-		canceled: false,
-		message: "Projects are stored in browser memory in the web version.",
-		project: null,
-		path: null,
-	}),
+	openProjectFileAtPath: async (_path: string) => {
+		try {
+			const projectJson = localStorage.getItem(`reco_project_${_path}`);
+			if (!projectJson) throw new Error("Project not found");
+			const project = JSON.parse(projectJson);
+			return { success: true, project, path: _path };
+		} catch (e: any) {
+			return { success: false, message: e.message, path: null };
+		}
+	},
 	saveProjectFile: async (
 		_path: string,
 		_data: unknown,
 		_opts?: unknown
-	) => ({
-		success: true,
-		path: _path,
-	}),
-	getProjectLibrary: async () => ({
-		success: true,
-		library: [],
-	}),
-	deleteProjectFile: async (_path: string) => ({ success: true }),
+	) => {
+		try {
+			localStorage.setItem(`reco_project_${_path}`, JSON.stringify(_data));
+			
+			// Update library entry
+			const libraryStr = localStorage.getItem("reco_library") || "[]";
+			const library: any[] = JSON.parse(libraryStr);
+			const existingIndex = library.findIndex(p => p.path === _path);
+			
+			const entry = {
+				path: _path,
+				name: (_data as any).name || _path,
+				updatedAt: Date.now(),
+				thumbnailPath: null,
+				isCurrent: false,
+				isInProjectsDirectory: true
+			};
+
+			if (existingIndex >= 0) {
+				library[existingIndex] = entry;
+			} else {
+				library.unshift(entry);
+			}
+			localStorage.setItem("reco_library", JSON.stringify(library));
+			
+			return { success: true, path: _path };
+		} catch {
+			return { success: false, path: null };
+		}
+	},
+	getProjectLibrary: async () => {
+		try {
+			const libraryStr = localStorage.getItem("reco_library") || "[]";
+			return { success: true, library: JSON.parse(libraryStr) };
+		} catch {
+			return { success: true, library: [] };
+		}
+	},
+	deleteProjectFile: async (_path: string) => {
+		try {
+			localStorage.removeItem(`reco_project_${_path}`);
+			const libraryStr = localStorage.getItem("reco_library") || "[]";
+			let library: any[] = JSON.parse(libraryStr);
+			library = library.filter(p => p.path !== _path);
+			localStorage.setItem("reco_library", JSON.stringify(library));
+			return { success: true };
+		} catch {
+			return { success: false };
+		}
+	},
 	getProjectThumbnail: async (_path: string) => ({
 		success: false,
 		data: null,

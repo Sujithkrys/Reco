@@ -15,6 +15,7 @@ import type { useEditorUiState } from "../state/useEditorUiState";
 import type { useProjectState } from "../state/useProjectState";
 import type { useTimelineState } from "../state/useTimelineState";
 import { CropEditorDialog } from "./CropEditorDialog";
+import EditorDashboard from "./EditorDashboard";
 import { EditorDialogs } from "./EditorDialogs";
 import { EditorHeader } from "./EditorHeader";
 import { EditorPreviewPanel } from "./EditorPreviewPanel";
@@ -127,30 +128,15 @@ export function EditorShell(props: Props) {
 		);
 	if (project.error)
 		return (
-			<div className="flex h-screen items-center justify-center bg-background">
-				<div className="flex flex-col items-center gap-4 max-w-md text-center">
-					<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/5 border border-foreground/10">
-						<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/60">
-							<polygon points="23 7 16 12 23 17 23 7" />
-							<rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-						</svg>
-					</div>
-					<div>
-						<h2 className="text-lg font-semibold text-foreground mb-1">Welcome to Reco</h2>
-						<p className="text-sm text-foreground/60">Import a video file to start editing</p>
-					</div>
-					<button
-						ref={ui.projectBrowserFallbackTriggerRef}
-						type="button"
-						onClick={openActions.handleImportMediaOrProject}
-						className="rounded-[8px] bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-500 hover:shadow-blue-500/30 active:scale-[0.98]"
-					>
-						Import Video
-					</button>
-				</div>
+			<>
+				<EditorDashboard
+					entries={project.projectLibraryEntries}
+					onOpenProject={openActions.handleOpenProjectFromLibrary}
+					onImportFile={openActions.handleImportMediaOrProject}
+				/>
 				{editorDialogs}
 				<Toaster className="pointer-events-auto" />
-			</div>
+			</>
 		);
 
 	return (
