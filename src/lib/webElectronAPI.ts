@@ -7,6 +7,8 @@
  * File System Access API, IndexedDB, Web MediaRecorder, etc.).
  */
 
+import { supabase } from "./supabase";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -103,63 +105,68 @@ export const webElectronAPI: Record<string, Function> = {
 	}),
 	openProjectFileAtPath: async (_path: string) => {
 		try {
-			const projectJson = localStorage.getItem(`reco_project_${_path}`);
-			if (!projectJson) throw new Error("Project not found");
-			const project = JSON.parse(projectJson);
-			return { success: true, project, path: _path };
+			const { data: projectRecord, error } = await supabase
+				.from("projects")
+				.select("data")
+				.eq("id", _path)
+				.single();
+			if (error || !projectRecord) throw new Error("Project not found");
+			return { success: true, project: projectRecord.data, path: _path };
 		} catch (e: any) {
 			return { success: false, message: e.message, path: null };
 		}
 	},
 	saveProjectFile: async (
-		_path: string,
-		_data: unknown,
-		_opts?: unknown
+		projectData: any,
+		fileNameBase?: string,
+		targetPath?: string,
+		thumbnail?: string
 	) => {
 		try {
-			localStorage.setItem(`reco_project_${_path}`, JSON.stringify(_data));
+			const projectId = targetPath || crypto.randomUUID();
 			
-			// Update library entry
-			const libraryStr = localStorage.getItem("reco_library") || "[]";
-			const library: any[] = JSON.parse(libraryStr);
-			const existingIndex = library.findIndex(p => p.path === _path);
-			
-			const entry = {
-				path: _path,
-				name: (_data as any).name || _path,
-				updatedAt: Date.now(),
-				thumbnailPath: null,
-				isCurrent: false,
-				isInProjectsDirectory: true
-			};
+			const { error } = await supabase.from("projects").upsert({
+				id: projectId,
+				name: fileNameBase || "Untitled Project",
+				data: projectData,
+				thumbnail_path: thumbnail || null,
+				updated_at: new Date().toISOString()
+			});
 
-			if (existingIndex >= 0) {
-				library[existingIndex] = entry;
-			} else {
-				library.unshift(entry);
-			}
-			localStorage.setItem("reco_library", JSON.stringify(library));
+			if (error) throw error;
 			
-			return { success: true, path: _path };
-		} catch {
-			return { success: false, path: null };
+			return { success: true, path: projectId };
+		} catch (e: any) {
+			console.error(e);
+			return { success: false, path: null, message: e.message };
 		}
 	},
 	getProjectLibrary: async () => {
 		try {
-			const libraryStr = localStorage.getItem("reco_library") || "[]";
-			return { success: true, library: JSON.parse(libraryStr) };
-		} catch {
+			const { data: projects, error } = await supabase
+				.from("projects")
+				.select("id, name, updated_at, thumbnail_path")
+				.order("updated_at", { ascending: false });
+				
+			if (error) throw error;
+			
+			const library = projects.map(p => ({
+				path: p.id,
+				name: p.name,
+				updatedAt: new Date(p.updated_at).getTime(),
+				thumbnailPath: p.thumbnail_path,
+				isCurrent: false,
+				isInProjectsDirectory: true
+			}));
+			return { success: true, library };
+		} catch (e: any) {
+			console.error(e);
 			return { success: true, library: [] };
 		}
 	},
 	deleteProjectFile: async (_path: string) => {
 		try {
-			localStorage.removeItem(`reco_project_${_path}`);
-			const libraryStr = localStorage.getItem("reco_library") || "[]";
-			let library: any[] = JSON.parse(libraryStr);
-			library = library.filter(p => p.path !== _path);
-			localStorage.setItem("reco_library", JSON.stringify(library));
+			await supabase.from("projects").delete().eq("id", _path);
 			return { success: true };
 		} catch {
 			return { success: false };
