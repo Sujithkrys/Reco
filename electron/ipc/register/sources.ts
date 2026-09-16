@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { app, BrowserWindow, desktopCapturer, ipcMain, systemPreferences } from "electron";
 import { reassertHudOverlayMousePassthrough } from "../../windows";
-import { ALLOW_RECORDLY_WINDOW_CAPTURE } from "../constants";
+import { ALLOW_RECO_WINDOW_CAPTURE } from "../constants";
 import {
 	getNativeMacWindowSources,
 	resolveLinuxWindowBounds,
@@ -158,7 +158,7 @@ export function registerSourceHandlers({
 		const ownWindowNames = new Set(
 			[
 				app.getName(),
-				"Recordly",
+				"Reco",
 				...BrowserWindow.getAllWindows().flatMap((win) => {
 					const title = win.getTitle().trim();
 					return title ? [title] : [];
@@ -226,7 +226,7 @@ export function registerSourceHandlers({
 						return true;
 					}
 
-					if (ALLOW_RECORDLY_WINDOW_CAPTURE && normalizedName.includes("recordly")) {
+					if (ALLOW_RECO_WINDOW_CAPTURE && normalizedName.includes("reco")) {
 						return true;
 					}
 
@@ -274,7 +274,7 @@ export function registerSourceHandlers({
 					const normalizedAppName = normalizeDesktopSourceName(source.appName ?? "");
 
 					if (
-						!ALLOW_RECORDLY_WINDOW_CAPTURE &&
+						!ALLOW_RECO_WINDOW_CAPTURE &&
 						normalizedAppName &&
 						normalizedAppName === ownAppName
 					) {
@@ -282,9 +282,9 @@ export function registerSourceHandlers({
 					}
 
 					if (
-						ALLOW_RECORDLY_WINDOW_CAPTURE &&
-						(normalizedAppName === "recordly" ||
-							normalizedWindowName?.includes("recordly"))
+						ALLOW_RECO_WINDOW_CAPTURE &&
+						(normalizedAppName === "reco" ||
+							normalizedWindowName?.includes("reco"))
 					) {
 						return true;
 					}
@@ -343,7 +343,7 @@ export function registerSourceHandlers({
 						return true;
 					}
 
-					if (ALLOW_RECORDLY_WINDOW_CAPTURE && normalizedName.includes("recordly")) {
+					if (ALLOW_RECO_WINDOW_CAPTURE && normalizedName.includes("reco")) {
 						return true;
 					}
 

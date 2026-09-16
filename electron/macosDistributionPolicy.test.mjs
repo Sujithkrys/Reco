@@ -10,9 +10,9 @@ import {
 } from "../scripts/macos-distribution-policy.mjs";
 
 const validCodeSigningDetails = `
-Identifier=dev.recordly.app
+Identifier=dev.reco.app
 CodeDirectory v=20500 size=123 flags=0x10000(runtime) hashes=3+7 location=embedded
-Authority=Developer ID Application: Recordly Developer (A1B2C3D4E5)
+Authority=Developer ID Application: Reco Developer (A1B2C3D4E5)
 Authority=Developer ID Certification Authority
 Authority=Apple Root CA
 Timestamp=Aug 9, 2026 at 10:00:00
@@ -126,14 +126,14 @@ describe("macOS distribution architecture policy", () => {
 		expect(
 			expectedMachOArchitecture("app/electron/native/bin/darwin-x64/helper", "arm64"),
 		).toBe("x86_64");
-		expect(expectedMachOArchitecture("Recordly.app/Contents/MacOS/Recordly", "x64")).toBe(
+		expect(expectedMachOArchitecture("Reco.app/Contents/MacOS/Reco", "x64")).toBe(
 			"x86_64",
 		);
 	});
 
 	it("reports a binary that lacks the required architecture", () => {
 		expect(
-			collectArchitectureErrors("Recordly.app/Contents/MacOS/Recordly", "arm64", "x64"),
-		).toEqual(["Recordly.app/Contents/MacOS/Recordly does not contain x86_64 (found: arm64)"]);
+			collectArchitectureErrors("Reco.app/Contents/MacOS/Reco", "arm64", "x64"),
+		).toEqual(["Reco.app/Contents/MacOS/Reco does not contain x86_64 (found: arm64)"]);
 	});
 });

@@ -1,15 +1,15 @@
 {
-	"name": "recordly",
-	"productName": "Recordly",
+	"name": "reco",
+	"productName": "Reco",
 	"description": "A free, creator-focused screen recorder with auto-zoom, cursor effects, backgrounds, annotations, and more - built for polished videos out of the box.",
 	"author": "webadderall",
-	"homepage": "https://github.com/webadderallorg/Recordly",
+	"homepage": "https://github.com/webadderallorg/Reco",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/webadderallorg/Recordly.git"
+		"url": "https://github.com/webadderallorg/Reco.git"
 	},
 	"bugs": {
-		"url": "https://github.com/webadderallorg/Recordly/issues"
+		"url": "https://github.com/webadderallorg/Reco/issues"
 	},
 	"private": true,
 	"version": "1.4.0",
