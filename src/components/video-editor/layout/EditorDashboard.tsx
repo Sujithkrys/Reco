@@ -1,6 +1,5 @@
-import React from "react";
-import { toFileUrl } from "../../projectPersistence";
-import type { ProjectLibraryEntry } from "../../ProjectBrowserDialog";
+import { toFileUrl } from "../projectPersistence";
+import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
 
 type EditorDashboardProps = {
 	entries: ProjectLibraryEntry[];
