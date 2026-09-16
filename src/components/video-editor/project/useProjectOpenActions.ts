@@ -77,6 +77,7 @@ export function useProjectOpenActions({
 				return;
 			}
 			project.setProjectBrowserOpen(false);
+			project.setError(null);
 			await refreshProjectLibrary();
 			toast.success(`Project loaded from ${result.path}`);
 		},
@@ -102,6 +103,7 @@ export function useProjectOpenActions({
 				return;
 			}
 			project.setProjectBrowserOpen(false);
+			project.setError(null);
 			await refreshProjectLibrary();
 			toast.success(result.path ? `Project loaded from ${result.path}` : "Project loaded");
 			return;
@@ -138,6 +140,7 @@ export function useProjectOpenActions({
 		}));
 		applySessionPresentation(null);
 		project.setProjectBrowserOpen(false);
+		project.setError(null);
 		await refreshProjectLibrary();
 		toast.success("Media imported");
 	}, [
