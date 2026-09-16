@@ -29,7 +29,7 @@
 	}
 
 	:root {
-		--app-font-sans: "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+		--app-font-sans: "Inter", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
 		--brand-accent: #2563eb;
 		--brand-accent-rgb: 37, 99, 235;
 		--background: 0 0% 100%;
