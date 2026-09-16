@@ -32,7 +32,6 @@ let currentRecordingSession: {
 	webcamPath?: string;
 	timeOffsetMs?: number;
 } | null = null;
-let currentProjectPath: string | null = null;
 
 // ---------------------------------------------------------------------------
 // electronAPI implementation
