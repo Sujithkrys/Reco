@@ -128,15 +128,24 @@ export function EditorShell(props: Props) {
 	if (project.error)
 		return (
 			<div className="flex h-screen items-center justify-center bg-background">
-				<div className="flex flex-col items-center gap-3">
-					<div className="text-destructive">{project.error}</div>
+				<div className="flex flex-col items-center gap-4 max-w-md text-center">
+					<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/5 border border-foreground/10">
+						<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/60">
+							<polygon points="23 7 16 12 23 17 23 7" />
+							<rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+						</svg>
+					</div>
+					<div>
+						<h2 className="text-lg font-semibold text-foreground mb-1">Welcome to Reco</h2>
+						<p className="text-sm text-foreground/60">Import a video file to start editing</p>
+					</div>
 					<button
 						ref={ui.projectBrowserFallbackTriggerRef}
 						type="button"
-						onClick={openActions.handleOpenProjectBrowser}
-						className="rounded-[5px] bg-neutral-800 px-3 py-1.5 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(0,0,0,0.18)] transition-colors hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-white/90"
+						onClick={openActions.handleImportMediaOrProject}
+						className="rounded-[8px] bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-500 hover:shadow-blue-500/30 active:scale-[0.98]"
 					>
-						Open Projects
+						Import Video
 					</button>
 				</div>
 				{editorDialogs}
