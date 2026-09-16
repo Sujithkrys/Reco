@@ -10,6 +10,23 @@ document.documentElement.dataset.platform = /mac/i.test(navigator.platform) ? "m
 if (typeof window !== "undefined" && !(window as any).electronAPI) {
 	(window as any).electronAPI = new Proxy({}, {
 		get(_target, prop) {
+			if (prop === "getProjectLibrary") return async () => ({ success: true, library: [] });
+			if (prop === "openVideoFilePicker") return async () => {
+				return new Promise((resolve) => {
+					const input = document.createElement("input");
+					input.type = "file";
+					input.accept = "video/*";
+					input.onchange = (e) => {
+						const file = (e.target as HTMLInputElement).files?.[0];
+						if (!file) {
+							resolve({ canceled: true });
+							return;
+						}
+						resolve({ success: true, path: URL.createObjectURL(file), kind: "media" });
+					};
+					input.click();
+				});
+			};
 			if (typeof prop === "string" && prop.startsWith("on")) {
 				return () => () => {};
 			}
