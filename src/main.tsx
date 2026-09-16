@@ -9,7 +9,7 @@ document.documentElement.dataset.platform = /mac/i.test(navigator.platform) ? "m
 
 if (typeof window !== "undefined" && !(window as any).electronAPI) {
 	(window as any).electronAPI = new Proxy({}, {
-		get(target, prop) {
+		get(_target, prop) {
 			if (typeof prop === "string" && prop.startsWith("on")) {
 				return () => () => {};
 			}
