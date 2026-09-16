@@ -21,7 +21,7 @@ const EditorWindow = lazy(() => import("./components/video-editor/EditorWindow")
 
 export default function App() {
 	const [windowType] = useState(
-		() => new URLSearchParams(window.location.search).get("windowType") || "",
+		() => new URLSearchParams(window.location.search).get("windowType") || "editor",
 	);
 	const { t } = useI18n();
 	const appIconSrc = "/app-icons/reco-128.png";
