@@ -7,6 +7,17 @@ import "./index.css";
 
 document.documentElement.dataset.platform = /mac/i.test(navigator.platform) ? "macos" : "other";
 
+if (typeof window !== "undefined" && !(window as any).electronAPI) {
+	(window as any).electronAPI = new Proxy({}, {
+		get(target, prop) {
+			if (typeof prop === "string" && prop.startsWith("on")) {
+				return () => () => {};
+			}
+			return async () => null;
+		}
+	});
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<ThemeProvider>
