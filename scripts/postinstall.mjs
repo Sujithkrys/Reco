@@ -1,5 +1,10 @@
 import { spawnSync } from "node:child_process";
 
+if (process.env.VERCEL) {
+	console.log("[postinstall] Skipping native builds on Vercel.");
+	process.exit(0);
+}
+
 const npmExecPath = process.env.npm_execpath;
 const hasNpmExecPath = typeof npmExecPath === "string" && npmExecPath.length > 0;
 const npmInvoker = hasNpmExecPath
