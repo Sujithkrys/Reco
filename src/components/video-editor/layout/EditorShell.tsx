@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 import { EditorAnnouncementBanner } from "@/components/announcements/EditorAnnouncementBanner";
 import { Toaster } from "@/components/ui/sonner";
 import type { useI18n } from "@/contexts/I18nContext";
@@ -118,6 +118,12 @@ export function EditorShell(props: Props) {
 			setNativeCaptureUnavailableModalOpen={ui.setNativeCaptureUnavailableModalOpen}
 		/>
 	);
+	useEffect(() => {
+		if (project.videoPath && ui.activeEffectSection === "dashboard") {
+			ui.setActiveEffectSection("scene");
+		}
+	}, [project.videoPath, ui.activeEffectSection, ui.setActiveEffectSection]);
+
 	if (project.loading)
 		return (
 			<div className="flex h-screen items-center justify-center bg-background">
@@ -125,18 +131,6 @@ export function EditorShell(props: Props) {
 				{editorDialogs}
 				<Toaster className="pointer-events-auto" />
 			</div>
-		);
-	if (project.error)
-		return (
-			<>
-				<EditorDashboard
-					entries={project.projectLibraryEntries}
-					onOpenProject={openActions.handleOpenProjectFromLibrary}
-					onImportFile={openActions.handleImportMediaOrProject}
-				/>
-				{editorDialogs}
-				<Toaster className="pointer-events-auto" />
-			</>
 		);
 
 	return (
@@ -181,6 +175,9 @@ export function EditorShell(props: Props) {
 						activeSection={ui.activeEffectSection}
 						setActiveSection={ui.setActiveEffectSection}
 						settingsPanelProps={settingsPanelProps}
+						entries={project.projectLibraryEntries}
+						onOpenProject={openActions.handleOpenProjectFromLibrary}
+						onImportFile={openActions.handleImportMediaOrProject}
 					/>
 					<EditorPreviewPanel
 						t={t}

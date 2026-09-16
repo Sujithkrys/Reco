@@ -3,6 +3,7 @@ import {
 	ClosedCaptioning,
 	Cursor,
 	Gear,
+	House,
 	PuzzlePiece,
 	Sparkle,
 	UserCircle,
@@ -15,17 +16,31 @@ import type { useI18n } from "@/contexts/I18nContext";
 import ExtensionManager from "../ExtensionManager";
 import { SettingsPanel } from "../SettingsPanel";
 import type { EditorEffectSection } from "../types";
+import type { ProjectLibraryEntry } from "../../ProjectBrowserDialog";
+import EditorDashboard from "./EditorDashboard";
 
 type Props = {
 	t: ReturnType<typeof useI18n>["t"];
 	activeSection: EditorEffectSection;
 	setActiveSection: Dispatch<SetStateAction<EditorEffectSection>>;
 	settingsPanelProps: ComponentProps<typeof SettingsPanel>;
+	entries: ProjectLibraryEntry[];
+	onOpenProject: (projectPath: string) => void;
+	onImportFile: () => void;
 };
 
-export function EditorSidebar({ t, activeSection, setActiveSection, settingsPanelProps }: Props) {
+export function EditorSidebar({
+	t,
+	activeSection,
+	setActiveSection,
+	settingsPanelProps,
+	entries,
+	onOpenProject,
+	onImportFile,
+}: Props) {
 	const sections = useMemo(
 		() => [
+			{ id: "dashboard" as const, label: t("settings.sections.dashboard", "Home"), icon: House },
 			{ id: "scene" as const, label: t("settings.sections.scene", "Scene"), icon: Sparkle },
 			{ id: "cursor" as const, label: t("settings.sections.cursor", "Cursor"), icon: Cursor },
 			{ id: "webcam" as const, label: t("settings.sections.webcam", "Webcam"), icon: Camera },
@@ -113,7 +128,13 @@ export function EditorSidebar({ t, activeSection, setActiveSection, settingsPane
 					</motion.button>
 				</div>
 			</div>
-			{activeSection === "extensions" ? (
+			{activeSection === "dashboard" ? (
+				<EditorDashboard
+					entries={entries}
+					onOpenProject={onOpenProject}
+					onImportFile={onImportFile}
+				/>
+			) : activeSection === "extensions" ? (
 				<ExtensionManager />
 			) : (
 				<SettingsPanel {...settingsPanelProps} />
