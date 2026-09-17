@@ -93,7 +93,8 @@ let currentRecordingSession: {
 // electronAPI implementation
 // ---------------------------------------------------------------------------
 
-export const webElectronAPI: Record<string, Function> = {
+export const webElectronAPI: any = {
+	isWebMode: true,
 	// ── App info ──────────────────────────────────────────────────────────
 	getAppVersion: async () => "1.4.0-web",
 	getPlatform: async () => "web",
