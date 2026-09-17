@@ -26,7 +26,7 @@ async function persistProjectMedia(projectData: any): Promise<any> {
 			const blob = await response.blob();
 			const idbKey = `media_${crypto.randomUUID()}`;
 			await set(idbKey, blob);
-			jsonString = jsonString.replaceAll(blobUrl, `idb://${idbKey}`);
+			jsonString = jsonString.split(blobUrl).join(`idb://${idbKey}`);
 		} catch (err) {
 			console.error(`Failed to persist blob ${blobUrl}:`, err);
 		}
@@ -48,7 +48,7 @@ async function restoreProjectMedia(projectData: any): Promise<any> {
 			const blob = await get(idbKey);
 			if (blob) {
 				const freshBlobUrl = URL.createObjectURL(blob as Blob);
-				jsonString = jsonString.replaceAll(`idb://${idbKey}`, freshBlobUrl);
+				jsonString = jsonString.split(`idb://${idbKey}`).join(freshBlobUrl);
 			} else {
 				console.warn(`Media ${idbKey} not found in IndexedDB.`);
 			}
