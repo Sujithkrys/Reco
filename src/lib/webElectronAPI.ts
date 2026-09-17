@@ -8,6 +8,56 @@
  */
 
 import { supabase } from "./supabase";
+import { set, get } from "idb-keyval";
+
+async function persistProjectMedia(projectData: any): Promise<any> {
+	let jsonString = JSON.stringify(projectData);
+	const blobRegex = /"blob:(https?:\/\/[^"]+)"/g;
+	const blobUrls = new Set<string>();
+	let match;
+	while ((match = blobRegex.exec(jsonString)) !== null) {
+		blobUrls.add(`blob:${match[1]}`);
+	}
+
+	for (const blobUrl of blobUrls) {
+		try {
+			const response = await fetch(blobUrl);
+			if (!response.ok) continue;
+			const blob = await response.blob();
+			const idbKey = `media_${crypto.randomUUID()}`;
+			await set(idbKey, blob);
+			jsonString = jsonString.replaceAll(blobUrl, `idb://${idbKey}`);
+		} catch (err) {
+			console.error(`Failed to persist blob ${blobUrl}:`, err);
+		}
+	}
+	return JSON.parse(jsonString);
+}
+
+async function restoreProjectMedia(projectData: any): Promise<any> {
+	let jsonString = JSON.stringify(projectData);
+	const idbRegex = /"idb:\/\/(media_[a-zA-Z0-9-]+)"/g;
+	const idbKeys = new Set<string>();
+	let match;
+	while ((match = idbRegex.exec(jsonString)) !== null) {
+		idbKeys.add(match[1]);
+	}
+
+	for (const idbKey of idbKeys) {
+		try {
+			const blob = await get(idbKey);
+			if (blob) {
+				const freshBlobUrl = URL.createObjectURL(blob as Blob);
+				jsonString = jsonString.replaceAll(`idb://${idbKey}`, freshBlobUrl);
+			} else {
+				console.warn(`Media ${idbKey} not found in IndexedDB.`);
+			}
+		} catch (err) {
+			console.error(`Failed to restore blob ${idbKey}:`, err);
+		}
+	}
+	return JSON.parse(jsonString);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,11 +157,14 @@ export const webElectronAPI: Record<string, Function> = {
 		try {
 			const { data: projectRecord, error } = await supabase
 				.from("projects")
-				.select("data")
+				.select("editor_state")
 				.eq("id", _path)
 				.single();
 			if (error || !projectRecord) throw new Error("Project not found");
-			return { success: true, project: projectRecord.data, path: _path };
+			
+			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
+			
+			return { success: true, project: restoredData, path: _path };
 		} catch (e: any) {
 			return { success: false, message: e.message, path: null };
 		}
@@ -125,11 +178,14 @@ export const webElectronAPI: Record<string, Function> = {
 		try {
 			const projectId = targetPath || crypto.randomUUID();
 			
+			// Persist all ephemeral blob URLs to IndexedDB
+			const persistedData = await persistProjectMedia(projectData);
+			
 			const { error } = await supabase.from("projects").upsert({
 				id: projectId,
 				name: fileNameBase || "Untitled Project",
-				data: projectData,
-				thumbnail_path: thumbnail || null,
+				editor_state: persistedData,
+				thumbnail_url: thumbnail || null,
 				updated_at: new Date().toISOString()
 			});
 
@@ -145,7 +201,7 @@ export const webElectronAPI: Record<string, Function> = {
 		try {
 			const { data: projects, error } = await supabase
 				.from("projects")
-				.select("id, name, updated_at, thumbnail_path")
+				.select("id, name, updated_at, thumbnail_url")
 				.order("updated_at", { ascending: false });
 				
 			if (error) throw error;
@@ -154,7 +210,7 @@ export const webElectronAPI: Record<string, Function> = {
 				path: p.id,
 				name: p.name,
 				updatedAt: new Date(p.updated_at).getTime(),
-				thumbnailPath: p.thumbnail_path,
+				thumbnailPath: p.thumbnail_url,
 				isCurrent: false,
 				isInProjectsDirectory: true
 			}));
