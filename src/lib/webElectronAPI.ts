@@ -10,6 +10,8 @@
 import { supabase } from "./supabase";
 import { set, get } from "idb-keyval";
 
+export const webBlobMap = new Map<string, Blob | File>();
+
 async function persistProjectMedia(projectData: any): Promise<any> {
 	let jsonString = JSON.stringify(projectData);
 	const blobRegex = /"blob:(https?:\/\/[^"]+)"/g;
@@ -48,6 +50,7 @@ async function restoreProjectMedia(projectData: any): Promise<any> {
 			const blob = await get(idbKey);
 			if (blob) {
 				const freshBlobUrl = URL.createObjectURL(blob as Blob);
+				webBlobMap.set(freshBlobUrl, blob as Blob);
 				jsonString = jsonString.split(`idb://${idbKey}`).join(freshBlobUrl);
 			} else {
 				console.warn(`Media ${idbKey} not found in IndexedDB.`);
@@ -246,6 +249,7 @@ export const webElectronAPI: Record<string, Function> = {
 					return;
 				}
 				const url = URL.createObjectURL(file);
+				webBlobMap.set(url, file);
 				currentVideoPath = url;
 				resolve({
 					success: true,

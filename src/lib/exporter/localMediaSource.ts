@@ -1,4 +1,5 @@
 import { fromFileUrl, toFileUrl } from "@/components/video-editor/projectPersistence";
+import { webBlobMap } from "@/lib/webElectronAPI";
 
 const NOOP = () => undefined;
 const REMOTE_MEDIA_URL_PATTERN = /^(https?:|blob:|data:)/i;
@@ -134,6 +135,10 @@ export async function createFallbackDemuxerSource(resource: string): Promise<str
 	// complete recording through Electron IPC and make memory use scale with file size.
 	if (getLocalFilePath(resource)) {
 		return resolveMediaResourceUrl(resource);
+	}
+
+	if (webBlobMap.has(resource)) {
+		return webBlobMap.get(resource) as File;
 	}
 
 	return createReadableMediaResourceFile(resource);
