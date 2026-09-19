@@ -11,7 +11,6 @@ import {
 import { motion } from "motion/react";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
-import { toast } from "sonner";
 import type { useI18n } from "@/contexts/I18nContext";
 import ExtensionManager from "../ExtensionManager";
 import { SettingsPanel } from "../SettingsPanel";

@@ -305,7 +305,7 @@ export const webElectronAPI: any = {
 		try {
 			const writable = opfsStreams.get(streamId);
 			if (!writable) throw new Error("Stream not found");
-			await writable.write({ type: "write", position, data: chunk });
+			await writable.write({ type: "write", position, data: chunk as unknown as BufferSource });
 			return { success: true };
 		} catch (error) {
 			console.error("OPFS write error:", error);
