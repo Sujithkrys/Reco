@@ -11,7 +11,7 @@ import {
 import { toast } from "sonner";
 import { useNativeScreenRecording } from "@/hooks/useNativeScreenRecording";
 import type { NativeRecordingResult } from "@/hooks/useNativeScreenRecording";
-import { webBlobMap } from "@/lib/webElectronAPI";
+import { cursorTelemetryMap, webBlobMap } from "@/lib/webElectronAPI";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useProjectState } from "../state/useProjectState";
 import { DEFAULT_WEBCAM_TIME_OFFSET_MS } from "../types";
@@ -82,6 +82,9 @@ export function useRecordingActions({
 		(result: NativeRecordingResult) => {
 			const screenUrl = URL.createObjectURL(result.screenBlob);
 			webBlobMap.set(screenUrl, result.screenBlob);
+			if (result.cursorTelemetry.length > 0) {
+				cursorTelemetryMap.set(screenUrl, result.cursorTelemetry);
+			}
 
 			try {
 				videoPlaybackRef.current?.pause();

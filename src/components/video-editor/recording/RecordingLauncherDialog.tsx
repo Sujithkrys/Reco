@@ -50,6 +50,11 @@ export function RecordingLauncherDialog({
 					<Dialog.Description className="mt-1.5 text-sm text-foreground/60">
 						Your browser will ask you to choose a screen, window, or tab to share.
 					</Dialog.Description>
+					<p className="mt-2 rounded-md bg-foreground/[0.04] px-3 py-2 text-[11px] leading-relaxed text-foreground/60">
+						Cursor style, click effects, and sway only work for recordings where
+						you share <span className="font-medium text-foreground/80">this tab</span> —
+						browsers can't see your cursor over other windows or the desktop.
+					</p>
 
 					<div className="mt-5 flex flex-col gap-3">
 						{/* Webcam toggle */}

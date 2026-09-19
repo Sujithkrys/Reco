@@ -1,5 +1,6 @@
 import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { CursorTelemetryPoint } from "@/components/video-editor/types";
 import {
 	getVideoExtensionForMimeType,
 	selectRecordingMimeType,
@@ -21,6 +22,45 @@ export interface NativeRecordingResult {
 	durationMs: number;
 	/** True when the recording ended because the browser's own "Stop sharing" UI was used. */
 	endedBySystem: boolean;
+	/**
+	 * Cursor position/click telemetry captured during the recording, empty
+	 * unless the user shared "This Tab" — browsers expose no API for cursor
+	 * position over content outside the page, so window/screen shares can't
+	 * produce this (the same real cursor is simply visible in the raw video).
+	 */
+	cursorTelemetry: CursorTelemetryPoint[];
+}
+
+const CURSOR_SAMPLE_INTERVAL_MS = 33;
+
+function mapCssCursorToTelemetryType(cssCursor: string): CursorTelemetryPoint["cursorType"] {
+	switch (cssCursor) {
+		case "text":
+			return "text";
+		case "pointer":
+			return "pointer";
+		case "crosshair":
+			return "crosshair";
+		case "grab":
+			return "open-hand";
+		case "grabbing":
+			return "closed-hand";
+		case "not-allowed":
+		case "no-drop":
+			return "not-allowed";
+		case "ew-resize":
+		case "col-resize":
+		case "e-resize":
+		case "w-resize":
+			return "resize-ew";
+		case "ns-resize":
+		case "row-resize":
+		case "n-resize":
+		case "s-resize":
+			return "resize-ns";
+		default:
+			return "arrow";
+	}
 }
 
 function describeGetUserMediaError(error: unknown): string {
@@ -103,6 +143,9 @@ export function useNativeScreenRecording() {
 	const startedAtRef = useRef(0);
 	const mainStartPerfRef = useRef(0);
 	const webcamStartPerfRef = useRef<number | null>(null);
+	const cursorTelemetryRef = useRef<CursorTelemetryPoint[]>([]);
+	const cursorCaptureCleanupRef = useRef<(() => void) | null>(null);
+	const lastCursorSampleAtRef = useRef(0);
 	const endedBySystemRef = useRef(false);
 	const stopRequestedRef = useRef(false);
 	const [lastResult, setLastResult] = useState<NativeRecordingResult | null>(null);
@@ -282,10 +325,96 @@ export function useNativeScreenRecording() {
 					: 0,
 			durationMs,
 			endedBySystem: endedBySystemRef.current,
+			cursorTelemetry: cursorTelemetryRef.current,
 		};
 	}, []);
 
+	// -----------------------------------------------------------------------
+	// Cursor telemetry — only meaningful when the user shares "This Tab":
+	// browsers expose no way to read cursor position over content outside the
+	// page, so window/monitor shares can never produce real samples here.
+	// -----------------------------------------------------------------------
+	const stopCursorCapture = useCallback(() => {
+		cursorCaptureCleanupRef.current?.();
+		cursorCaptureCleanupRef.current = null;
+	}, []);
+
+	const startCursorCapture = useCallback(() => {
+		stopCursorCapture();
+		cursorTelemetryRef.current = [];
+		lastCursorSampleAtRef.current = 0;
+
+		const pushSample = (point: CursorTelemetryPoint) => {
+			cursorTelemetryRef.current.push(point);
+		};
+		const cursorTypeAt = (x: number, y: number): CursorTelemetryPoint["cursorType"] => {
+			const el = document.elementFromPoint(x, y);
+			if (!el) return "arrow";
+			return mapCssCursorToTelemetryType(getComputedStyle(el).cursor);
+		};
+		const normalized = (clientX: number, clientY: number) => ({
+			cx: Math.min(1, Math.max(0, clientX / window.innerWidth)),
+			cy: Math.min(1, Math.max(0, clientY / window.innerHeight)),
+		});
+
+		const handleMove = (event: PointerEvent) => {
+			const now = performance.now();
+			if (now - lastCursorSampleAtRef.current < CURSOR_SAMPLE_INTERVAL_MS) return;
+			lastCursorSampleAtRef.current = now;
+			const { cx, cy } = normalized(event.clientX, event.clientY);
+			pushSample({
+				timeMs: Date.now() - startedAtRef.current,
+				cx,
+				cy,
+				interactionType: "move",
+				cursorType: cursorTypeAt(event.clientX, event.clientY),
+			});
+		};
+		const handleDown = (event: PointerEvent) => {
+			const { cx, cy } = normalized(event.clientX, event.clientY);
+			pushSample({
+				timeMs: Date.now() - startedAtRef.current,
+				cx,
+				cy,
+				interactionType:
+					event.button === 2 ? "right-click" : event.button === 1 ? "middle-click" : "click",
+				cursorType: cursorTypeAt(event.clientX, event.clientY),
+			});
+		};
+		const handleUp = (event: PointerEvent) => {
+			const { cx, cy } = normalized(event.clientX, event.clientY);
+			pushSample({
+				timeMs: Date.now() - startedAtRef.current,
+				cx,
+				cy,
+				interactionType: "mouseup",
+			});
+		};
+		const handleDblClick = (event: MouseEvent) => {
+			const { cx, cy } = normalized(event.clientX, event.clientY);
+			pushSample({
+				timeMs: Date.now() - startedAtRef.current,
+				cx,
+				cy,
+				interactionType: "double-click",
+			});
+		};
+
+		window.addEventListener("pointermove", handleMove, { passive: true });
+		window.addEventListener("pointerdown", handleDown, { passive: true });
+		window.addEventListener("pointerup", handleUp, { passive: true });
+		window.addEventListener("dblclick", handleDblClick, { passive: true });
+
+		cursorCaptureCleanupRef.current = () => {
+			window.removeEventListener("pointermove", handleMove);
+			window.removeEventListener("pointerdown", handleDown);
+			window.removeEventListener("pointerup", handleUp);
+			window.removeEventListener("dblclick", handleDblClick);
+		};
+	}, [stopCursorCapture]);
+
 	const teardownRecordingResources = useCallback(() => {
+		stopCursorCapture();
 		stopStream(screenStreamRef.current);
 		screenStreamRef.current = null;
 		stopStream(webcamStreamRef.current);
@@ -304,7 +433,7 @@ export function useNativeScreenRecording() {
 			window.clearInterval(elapsedIntervalRef.current);
 			elapsedIntervalRef.current = null;
 		}
-	}, [teardownMicLevelMeter]);
+	}, [stopCursorCapture, teardownMicLevelMeter]);
 
 	const performStop = useCallback(() => {
 		if (stopRequestedRef.current) return;
@@ -386,6 +515,13 @@ export function useNativeScreenRecording() {
 		screenStreamRef.current = screenStream;
 
 		const screenVideoTrack = screenStream.getVideoTracks()[0];
+		// "This Tab" is the only share type where in-page pointer events line up
+		// with what's actually being recorded, so that's the only case where
+		// cursor telemetry (and therefore the cursor style/click-effect panel)
+		// can produce real, correctly-positioned data.
+		if (screenVideoTrack.getSettings().displaySurface === "browser") {
+			startCursorCapture();
+		}
 		screenVideoTrack.addEventListener(
 			"ended",
 			() => {
@@ -451,7 +587,7 @@ export function useNativeScreenRecording() {
 		elapsedIntervalRef.current = window.setInterval(() => {
 			setElapsedMs(Date.now() - startedAtRef.current);
 		}, 250);
-	}, [micEnabled, performStop, webcamEnabled]);
+	}, [micEnabled, performStop, startCursorCapture, webcamEnabled]);
 
 	return {
 		phase,

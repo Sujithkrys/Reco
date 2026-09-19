@@ -13,6 +13,15 @@ import { set, get } from "idb-keyval";
 export const webBlobMap = new Map<string, Blob | File>();
 export const opfsStreams = new Map<string, FileSystemWritableFileStream>();
 
+interface WebCursorTelemetryPoint {
+	timeMs: number;
+	cx: number;
+	cy: number;
+	interactionType?: string;
+	cursorType?: string;
+}
+export const cursorTelemetryMap = new Map<string, WebCursorTelemetryPoint[]>();
+
 async function persistProjectMedia(projectData: any): Promise<any> {
 	let jsonString = JSON.stringify(projectData);
 	const blobRegex = /"blob:(https?:\/\/[^"]+)"/g;
@@ -499,10 +508,12 @@ export const webElectronAPI: any = {
 	maximizeWindow: () => {},
 
 	// ── Cursor telemetry ─────────────────────────────────────────────────
-	getCursorTelemetry: async (_path: string) => ({
-		success: false,
-		telemetry: null,
-	}),
+	getCursorTelemetry: async (path: string) => {
+		const samples = cursorTelemetryMap.get(path);
+		return samples && samples.length > 0
+			? { success: true, samples }
+			: { success: false, samples: [] };
+	},
 	getAutoZoomSuggestions: async () => ({
 		success: false,
 		suggestions: [],
