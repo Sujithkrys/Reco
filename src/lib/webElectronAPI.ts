@@ -11,6 +11,7 @@ import { supabase } from "./supabase";
 import { set, get } from "idb-keyval";
 
 export const webBlobMap = new Map<string, Blob | File>();
+export const opfsStreams = new Map<string, FileSystemWritableFileStream>();
 
 async function persistProjectMedia(projectData: any): Promise<any> {
 	let jsonString = JSON.stringify(projectData);
@@ -282,10 +283,52 @@ export const webElectronAPI: any = {
 	},
 
 	// ── Export (browser download) ─────────────────────────────────────────
-	openExportStream: async (_opts: { extension: string }) => ({
-		success: false,
-		message: "Streaming export not supported in web mode.",
-	}),
+	openExportStream: async (opts: { extension: string }) => {
+		try {
+			const root = await navigator.storage.getDirectory();
+			const fileName = `export-${Date.now()}.${opts.extension || "mp4"}`;
+			const fileHandle = await root.getFileHandle(fileName, { create: true });
+			const writable = await fileHandle.createWritable();
+			const streamId = fileName; // use filename as ID
+			opfsStreams.set(streamId, writable);
+			return {
+				success: true,
+				streamId,
+				tempPath: `opfs:/${fileName}`,
+			};
+		} catch (error) {
+			console.error("OPFS open error:", error);
+			return { success: false, message: String(error) };
+		}
+	},
+	writeExportStreamChunk: async (streamId: string, position: number, chunk: Uint8Array) => {
+		try {
+			const writable = opfsStreams.get(streamId);
+			if (!writable) throw new Error("Stream not found");
+			await writable.write({ type: "write", position, data: chunk });
+			return { success: true };
+		} catch (error) {
+			console.error("OPFS write error:", error);
+			return { success: false, message: String(error) };
+		}
+	},
+	closeExportStream: async (streamId: string, opts?: { abort?: boolean }) => {
+		try {
+			const writable = opfsStreams.get(streamId);
+			if (writable) {
+				await writable.close();
+				opfsStreams.delete(streamId);
+			}
+			if (opts?.abort) {
+				const root = await navigator.storage.getDirectory();
+				await root.removeEntry(streamId).catch(() => {});
+			}
+			return { success: true, tempPath: `opfs:/${streamId}` };
+		} catch (error) {
+			console.error("OPFS close error:", error);
+			return { success: false, message: String(error) };
+		}
+	},
 	saveExportedFile: async (blob: Blob, suggestedName?: string) => {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
@@ -311,15 +354,53 @@ export const webElectronAPI: any = {
 	revealInFolder: async (_path: string) => ({
 		success: true,
 	}),
-	discardExportedTemp: async (_path: string) => {
-		// No-op
+	discardExportedTemp: async (path: string) => {
+		if (path.startsWith("opfs:/")) {
+			try {
+				const root = await navigator.storage.getDirectory();
+				const fileName = path.replace("opfs:/", "");
+				await root.removeEntry(fileName);
+			} catch (err) {
+				console.error("OPFS discard error:", err);
+			}
+		}
 	},
-	finalizeExportedVideo: async (_opts: unknown) => ({
-		success: false,
-		canceled: false,
-		message: "Finalize not supported in web mode.",
-		path: null,
-	}),
+	finalizeExportedVideo: async (opts: { tempPath: string; fileName: string }) => {
+		if (opts.tempPath.startsWith("opfs:/")) {
+			try {
+				const root = await navigator.storage.getDirectory();
+				const fileName = opts.tempPath.replace("opfs:/", "");
+				const fileHandle = await root.getFileHandle(fileName);
+				const file = await fileHandle.getFile();
+				
+				// Automatically trigger download
+				const url = URL.createObjectURL(file);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = opts.fileName || "export.mp4";
+				document.body.appendChild(a);
+				a.click();
+				setTimeout(() => {
+					document.body.removeChild(a);
+					URL.revokeObjectURL(url);
+				}, 100);
+
+				// Cleanup the OPFS file to save space
+				await root.removeEntry(fileName).catch(() => {});
+				
+				return { success: true, canceled: false, path: opts.fileName };
+			} catch (err) {
+				console.error("OPFS finalize error:", err);
+				return { success: false, canceled: false, message: String(err) };
+			}
+		}
+		return {
+			success: false,
+			canceled: false,
+			message: "Finalize not supported in web mode for non-OPFS paths.",
+			path: null,
+		};
+	},
 	saveExportedVideo: async (
 		buffer: ArrayBuffer,
 		fileName?: string,

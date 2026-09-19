@@ -71,7 +71,6 @@ export type MuxerFinalizeResult =
 function shouldUseStreamTarget(): boolean {
 	return (
 		typeof window !== "undefined" &&
-		!(window.electronAPI as any)?.isWebMode &&
 		typeof window.electronAPI?.openExportStream === "function" &&
 		typeof window.electronAPI?.writeExportStreamChunk === "function" &&
 		typeof window.electronAPI?.closeExportStream === "function"
