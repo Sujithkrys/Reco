@@ -338,7 +338,6 @@ export const webElectronAPI: any = {
 		a.click();
 		setTimeout(() => {
 			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
 		}, 100);
 		return { success: true };
 	},
@@ -380,13 +379,10 @@ export const webElectronAPI: any = {
 				a.download = opts.fileName || "export.mp4";
 				document.body.appendChild(a);
 				a.click();
-				setTimeout(() => {
-					document.body.removeChild(a);
-					URL.revokeObjectURL(url);
-				}, 100);
-
-				// Cleanup the OPFS file to save space
-				await root.removeEntry(fileName).catch(() => {});
+				
+				// We intentionally DO NOT revoke the URL or remove the OPFS entry here.
+				// The browser download manager needs time to stream the file. 
+				// The OPFS will act as a temporary cache and old exports can be cleaned up later if needed.
 				
 				return { success: true, canceled: false, path: opts.fileName };
 			} catch (err) {
@@ -414,9 +410,10 @@ export const webElectronAPI: any = {
 			a.download = fileName || "export.mp4";
 			document.body.appendChild(a);
 			a.click();
+			
+			// We DO NOT revoke the URL immediately so the download has time to complete
 			setTimeout(() => {
 				document.body.removeChild(a);
-				URL.revokeObjectURL(url);
 			}, 100);
 			return { success: true, path: fileName || "export.mp4" };
 		} catch {
