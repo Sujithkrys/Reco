@@ -1,2 +1,22 @@
 /// <reference types="vite/client" />
-/// <reference types="../electron/electron-env" />
+
+interface CursorTelemetryPoint {
+	x: number;
+	y: number;
+	t: number;
+}
+interface ProcessedDesktopSource {
+	id: string;
+	name: string;
+	thumbnail: string;
+}
+interface RendererExportHardwareInfo {
+	gpu?: string;
+}
+
+declare global {
+	interface Window {
+		electronAPI: any;
+		isElectron?: boolean;
+	}
+}
