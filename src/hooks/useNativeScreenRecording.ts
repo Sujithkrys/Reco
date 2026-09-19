@@ -1,3 +1,4 @@
+import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	getVideoExtensionForMimeType,
@@ -39,6 +40,23 @@ function describeGetUserMediaError(error: unknown): string {
 
 function stopStream(stream: MediaStream | null) {
 	stream?.getTracks().forEach((track) => track.stop());
+}
+
+/**
+ * MediaRecorder-produced webm/matroska files don't carry duration metadata,
+ * so `video.duration` reads back as `Infinity` — which the editor's
+ * duration-driven timeline/render code can't handle. Patch it in for any
+ * webm/matroska output; other containers (e.g. real mp4) already have it.
+ */
+async function fixRecordingBlobDuration(blob: Blob, durationMs: number): Promise<Blob> {
+	if (!/webm|matroska/i.test(blob.type) || !Number.isFinite(durationMs) || durationMs <= 0) {
+		return blob;
+	}
+	try {
+		return await fixWebmDuration(blob, durationMs, { logger: false });
+	} catch {
+		return blob;
+	}
 }
 
 export function isNativeScreenRecordingSupported(): boolean {
@@ -239,13 +257,19 @@ export function useNativeScreenRecording() {
 		};
 	}, [teardownMicLevelMeter]);
 
-	const finalize = useCallback((durationMs: number): NativeRecordingResult => {
+	const finalize = useCallback(async (durationMs: number): Promise<NativeRecordingResult> => {
 		const screenMimeType = mainRecorderRef.current?.mimeType || "video/webm";
 		const webcamMimeType = webcamRecorderRef.current?.mimeType || null;
-		const screenBlob = new Blob(mainChunksRef.current, { type: screenMimeType });
-		const webcamBlob = webcamChunksRef.current.length
+		const rawScreenBlob = new Blob(mainChunksRef.current, { type: screenMimeType });
+		const rawWebcamBlob = webcamChunksRef.current.length
 			? new Blob(webcamChunksRef.current, { type: webcamMimeType ?? "video/webm" })
 			: null;
+
+		const screenBlob = await fixRecordingBlobDuration(rawScreenBlob, durationMs);
+		const webcamBlob = rawWebcamBlob
+			? await fixRecordingBlobDuration(rawWebcamBlob, durationMs)
+			: null;
+
 		return {
 			screenBlob,
 			screenMimeType,
@@ -300,15 +324,16 @@ export function useNativeScreenRecording() {
 				recorder.stop();
 			});
 
-		void Promise.all([stopOne(mainRecorder), stopOne(webcamRecorder)]).then(() => {
-			const result = finalize(durationMs);
-			teardownRecordingResources();
-			mainRecorderRef.current = null;
-			webcamRecorderRef.current = null;
-			stopRequestedRef.current = false;
-			setPhase("idle");
-			setLastResult(result);
-		});
+		void Promise.all([stopOne(mainRecorder), stopOne(webcamRecorder)])
+			.then(() => finalize(durationMs))
+			.then((result) => {
+				teardownRecordingResources();
+				mainRecorderRef.current = null;
+				webcamRecorderRef.current = null;
+				stopRequestedRef.current = false;
+				setPhase("idle");
+				setLastResult(result);
+			});
 	}, [finalize, teardownRecordingResources]);
 
 	/** Triggers a stop; the finished recording arrives via `lastResult`. */
