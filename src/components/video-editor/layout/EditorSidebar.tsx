@@ -18,6 +18,9 @@ import { SettingsPanel } from "../SettingsPanel";
 import type { EditorEffectSection } from "../types";
 import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
 import EditorDashboard from "./EditorDashboard";
+import { useAuth } from "@/lib/auth";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 type Props = {
 	t: ReturnType<typeof useI18n>["t"];
@@ -38,6 +41,7 @@ export function EditorSidebar({
 	onOpenProject,
 	onImportFile,
 }: Props) {
+	const { user, openAuthModal, signOut } = useAuth();
 	const sections = useMemo(
 		() => [
 			{ id: "dashboard" as const, label: t("settings.sections.dashboard", "Home"), icon: House },
@@ -113,19 +117,48 @@ export function EditorSidebar({
 					);
 				})}
 				<div className="mt-auto flex flex-col items-center gap-0.5 pt-3">
-					<motion.button
-						type="button"
-						onClick={() =>
-							toast.info(t("editor.account.comingSoon", "Account coming soon"))
-						}
-						title={t("editor.account.title", "Account")}
-						className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground/55 outline-none transition hover:text-foreground focus:outline-none focus-visible:outline-none"
-						whileHover={{ opacity: 1 }}
-						initial={{ opacity: 0.55 }}
-					>
-						<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
-						<UserCircle className="relative z-10 h-[22px] w-[22px]" />
-					</motion.button>
+					{user ? (
+						<Popover>
+							<PopoverTrigger asChild>
+								<motion.button
+									type="button"
+									title={t("editor.account.title", "Account")}
+									className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground outline-none transition focus:outline-none focus-visible:outline-none"
+									whileHover={{ opacity: 1 }}
+									initial={{ opacity: 0.9 }}
+								>
+									<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
+									<UserCircle className="relative z-10 h-[22px] w-[22px]" weight="fill" />
+								</motion.button>
+							</PopoverTrigger>
+							<PopoverContent className="w-56 bg-editor-dialog p-2 border-foreground/10 text-foreground" side="right" align="end">
+								<div className="flex flex-col gap-2">
+									<div className="px-2 py-1.5 text-sm font-medium opacity-80 truncate">
+										{user.email}
+									</div>
+									<div className="h-px bg-foreground/10 my-1" />
+									<button
+										onClick={() => signOut()}
+										className="w-full text-left px-2 py-1.5 text-sm rounded-md text-red-500 hover:bg-red-500/10 transition-colors"
+									>
+										Sign out
+									</button>
+								</div>
+							</PopoverContent>
+						</Popover>
+					) : (
+						<motion.button
+							type="button"
+							onClick={openAuthModal}
+							title={t("editor.account.title", "Account")}
+							className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground/55 outline-none transition hover:text-foreground focus:outline-none focus-visible:outline-none"
+							whileHover={{ opacity: 1 }}
+							initial={{ opacity: 0.55 }}
+						>
+							<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
+							<UserCircle className="relative z-10 h-[22px] w-[22px]" />
+						</motion.button>
+					)}
 				</div>
 			</div>
 			{activeSection === "dashboard" ? (

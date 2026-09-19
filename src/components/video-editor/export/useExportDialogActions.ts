@@ -1,6 +1,7 @@
 import { type RefObject, useCallback } from "react";
 import { toast } from "sonner";
 import type { ExportSettings } from "@/lib/exporter";
+import { useAuth } from "@/lib/auth";
 import { resolveExportStartSettings } from "../exportStartSettings";
 import type { VideoPlaybackRef } from "../VideoPlayback";
 import type { useExportSession } from "./useExportSession";
@@ -28,6 +29,8 @@ export function useExportDialogActions({
 	handleExport,
 	showExportSuccessToast,
 }: UseExportDialogActionsInput) {
+	const { requireAuth } = useAuth();
+	
 	const handleOpenExportDropdown = useCallback(() => {
 		if (!videoPath) {
 			toast.error("No video loaded");
@@ -76,11 +79,13 @@ export function useExportDialogActions({
 			gifSizePreset: settings.gifSizePreset,
 		});
 
-		session.setExportError(null);
-		session.setExportedFilePath(undefined);
-		session.setShowExportDropdown(true);
-		handleExport(resolvedSettings);
-	}, [videoPath, videoPlaybackRef, hasCaptionsForSidecar, settings, session, handleExport]);
+		requireAuth(() => {
+			session.setExportError(null);
+			session.setExportedFilePath(undefined);
+			session.setShowExportDropdown(true);
+			handleExport(resolvedSettings);
+		});
+	}, [videoPath, videoPlaybackRef, hasCaptionsForSidecar, settings, session, handleExport, requireAuth]);
 
 	const handleCancelExport = useCallback(() => {
 		if (!session.isExporting) return;

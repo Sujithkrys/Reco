@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import { I18nProvider } from "./contexts/I18nContext.tsx";
 import { ThemeProvider } from "./contexts/ThemeContext.tsx";
+import { AuthProvider } from "./lib/auth.tsx";
 import { installWebElectronAPI } from "./lib/webElectronAPI.ts";
 import "./index.css";
 
@@ -15,7 +16,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<ThemeProvider>
 			<I18nProvider>
-				<App />
+				<AuthProvider>
+					<App />
+				</AuthProvider>
 			</I18nProvider>
 		</ThemeProvider>
 	</React.StrictMode>,

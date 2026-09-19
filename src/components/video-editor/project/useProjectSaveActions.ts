@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { createProjectData, type EditorProjectData } from "../projectPersistence";
 import type { useProjectState } from "../state/useProjectState";
 import { cloneStructured, getErrorMessage } from "../videoEditorUtils";
+import { useAuth } from "@/lib/auth";
 
 const PROJECT_AUTOSAVE_DELAY_MS = 1_000;
 
@@ -57,6 +58,7 @@ export function useProjectSaveActions({
 		setIsSavingProjectName,
 		setProjectBrowserOpen,
 	} = project;
+	const { requireAuth } = useAuth();
 	const autosaveTimeoutRef = useRef<number | null>(null);
 	const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 	const clearPendingAutosave = useCallback(() => {
@@ -73,79 +75,96 @@ export function useProjectSaveActions({
 
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean, options?: SaveProjectOptions) => {
-			clearPendingAutosave();
-			return queueSave(async () => {
-				if (!currentSourcePath) {
-					if (!options?.silent) toast.error("No video loaded");
-					return false;
-				}
-
-				const captureThumbnail = options?.captureThumbnail ?? true;
-				const refreshLibrary = options?.refreshLibraryAfterSave ?? true;
-				const remount = options?.remountPreviewAfterSave ?? true;
-				try {
-					const projectData =
-						currentProjectSnapshot?.videoPath === currentSourcePath
-							? currentProjectSnapshot
-							: createProjectData(
-									currentSourcePath,
-									currentPersistedEditorState,
-									lastSavedSnapshot?.projectId ?? null,
-								);
-					const fileNameBase =
-						currentSourcePath
-							.split(/[\\/]/)
-							.pop()
-							?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
-					let targetPath = forceSaveAs ? undefined : (currentProjectPath ?? undefined);
-
-					if (!forceSaveAs && !targetPath) {
-						const activeProject = await window.electronAPI.loadCurrentProjectFile();
-						if (activeProject.success && activeProject.path) {
-							targetPath = activeProject.path;
-							setCurrentProjectPath(activeProject.path);
+			return new Promise<boolean>((resolve) => {
+				requireAuth(() => {
+					clearPendingAutosave();
+					queueSave(async () => {
+						if (!currentSourcePath) {
+							if (!options?.silent) toast.error("No video loaded");
+							resolve(false);
+							return false;
 						}
-					}
-					if (forceSaveAs || !targetPath) {
-						if (options?.silent) return false;
-						return await openProjectSaveDialog(projectDisplayName || fileNameBase);
-					}
 
-					const thumbnail = captureThumbnail
-						? await captureProjectThumbnail()
-						: undefined;
-					const result = await window.electronAPI.saveProjectFile(
-						projectData,
-						fileNameBase,
-						targetPath,
-						thumbnail,
-					);
-					if (result.canceled) {
-						if (!options?.silent) toast.info("Project save canceled");
-						return false;
-					}
-					if (!result.success) {
-						if (!options?.silent)
-							toast.error(result.message || "Failed to save project");
-						return false;
-					}
+						const captureThumbnail = options?.captureThumbnail ?? true;
+						const refreshLibrary = options?.refreshLibraryAfterSave ?? true;
+						const remount = options?.remountPreviewAfterSave ?? true;
+						try {
+							const projectData =
+								currentProjectSnapshot?.videoPath === currentSourcePath
+									? currentProjectSnapshot
+									: createProjectData(
+											currentSourcePath,
+											currentPersistedEditorState,
+											lastSavedSnapshot?.projectId ?? null,
+										);
+							const fileNameBase =
+								currentSourcePath
+									.split(/[\\/]/)
+									.pop()
+									?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
+							let targetPath = forceSaveAs ? undefined : (currentProjectPath ?? undefined);
 
-					if (result.path) setCurrentProjectPath(result.path);
-					setLastSavedSnapshot(
-						cloneStructured(
-							createProjectData(
-								projectData.videoPath,
-								projectData.editor,
-								result.projectId ?? projectData.projectId ?? null,
-							),
-						),
-					);
-					if (refreshLibrary) await refreshProjectLibrary();
-					if (!options?.silent) toast.success(`Project saved to ${result.path}`);
-					return true;
-				} finally {
-					if (remount) remountPreview();
-				}
+							if (!forceSaveAs && !targetPath) {
+								const activeProject = await window.electronAPI.loadCurrentProjectFile();
+								if (activeProject.success && activeProject.path) {
+									targetPath = activeProject.path;
+									setCurrentProjectPath(activeProject.path);
+								}
+							}
+							if (forceSaveAs || !targetPath) {
+								if (options?.silent) {
+									resolve(false);
+									return false;
+								}
+								const didSave = await openProjectSaveDialog(projectDisplayName || fileNameBase);
+								resolve(didSave);
+								return didSave;
+							}
+
+							const thumbnail = captureThumbnail
+								? await captureProjectThumbnail()
+								: undefined;
+							const result = await window.electronAPI.saveProjectFile(
+								projectData,
+								fileNameBase,
+								targetPath,
+								thumbnail,
+							);
+							if (result.canceled) {
+								if (!options?.silent) toast.info("Project save canceled");
+								resolve(false);
+								return false;
+							}
+							if (!result.success) {
+								if (!options?.silent)
+									toast.error(result.message || "Failed to save project");
+								resolve(false);
+								return false;
+							}
+
+							if (result.path) setCurrentProjectPath(result.path);
+							setLastSavedSnapshot(
+								cloneStructured(
+									createProjectData(
+										projectData.videoPath,
+										projectData.editor,
+										result.projectId ?? projectData.projectId ?? null,
+									),
+								),
+							);
+							if (refreshLibrary) await refreshProjectLibrary();
+							if (!options?.silent) toast.success(`Project saved to ${result.path}`);
+							resolve(true);
+							return true;
+						} catch (err) {
+							console.error("Save project error:", err);
+							resolve(false);
+							return false;
+						} finally {
+							if (remount) remountPreview();
+						}
+					});
+				});
 			});
 		},
 		[
@@ -154,15 +173,16 @@ export function useProjectSaveActions({
 			currentSourcePath,
 			currentProjectSnapshot,
 			currentPersistedEditorState,
+			lastSavedSnapshot?.projectId,
 			currentProjectPath,
-			lastSavedSnapshot,
 			setCurrentProjectPath,
-			setLastSavedSnapshot,
 			openProjectSaveDialog,
 			projectDisplayName,
 			captureProjectThumbnail,
+			setLastSavedSnapshot,
 			refreshProjectLibrary,
 			remountPreview,
+			requireAuth,
 		],
 	);
 
