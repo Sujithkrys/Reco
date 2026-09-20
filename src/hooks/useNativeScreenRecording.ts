@@ -145,6 +145,7 @@ export function useNativeScreenRecording() {
 	const webcamStartPerfRef = useRef<number | null>(null);
 	const cursorTelemetryRef = useRef<CursorTelemetryPoint[]>([]);
 	const cursorCaptureCleanupRef = useRef<(() => void) | null>(null);
+	const hideCursorStyleRef = useRef<HTMLStyleElement | null>(null);
 	const lastCursorSampleAtRef = useRef(0);
 	const endedBySystemRef = useRef(false);
 	const stopRequestedRef = useRef(false);
@@ -337,12 +338,24 @@ export function useNativeScreenRecording() {
 	const stopCursorCapture = useCallback(() => {
 		cursorCaptureCleanupRef.current?.();
 		cursorCaptureCleanupRef.current = null;
+		hideCursorStyleRef.current?.remove();
+		hideCursorStyleRef.current = null;
 	}, []);
 
 	const startCursorCapture = useCallback(() => {
 		stopCursorCapture();
 		cursorTelemetryRef.current = [];
 		lastCursorSampleAtRef.current = 0;
+
+		// The real OS cursor is otherwise baked into the raw captured pixels
+		// alongside our stylized overlay, producing a visible double cursor.
+		// Since we're the ones being recorded (this only runs for "This Tab"
+		// shares), we can hide it at the page level instead — the stylized
+		// overlay becomes the only cursor visible in the recording.
+		const style = document.createElement("style");
+		style.textContent = "*{cursor:none!important}";
+		document.head.appendChild(style);
+		hideCursorStyleRef.current = style;
 
 		const pushSample = (point: CursorTelemetryPoint) => {
 			cursorTelemetryRef.current.push(point);
