@@ -33,15 +33,14 @@ export function useEditorGlobalInteractions({
 			const primaryModifier = isMac ? event.metaKey : event.ctrlKey;
 			const key = event.key.toLowerCase();
 
-			if (primaryModifier && !event.altKey && key === "z") {
+			if (matchesShortcut(event, shortcuts.undo, isMac)) {
 				if (!editable) {
 					event.preventDefault();
-					if (event.shiftKey) handleRedo();
-					else handleUndo();
+					handleUndo();
 				}
 				return;
 			}
-			if (!isMac && event.ctrlKey && !event.metaKey && !event.altKey && key === "y") {
+			if (matchesShortcut(event, shortcuts.redo, isMac)) {
 				if (!editable) {
 					event.preventDefault();
 					handleRedo();

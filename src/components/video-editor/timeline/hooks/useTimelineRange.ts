@@ -110,10 +110,39 @@ export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineR
 		[clampedRange.end, clampedRange.start, panTimelineRange, timelineContainerRef, totalMs],
 	);
 
+	const zoomTimeline = useCallback(
+		(factor: number) => {
+			if (totalMs <= 0) return;
+			setRange((previous) => {
+				const currentSpan = Math.max(1, previous.end - previous.start);
+				const newSpan = Math.max(1, currentSpan * factor);
+				const center = previous.start + currentSpan / 2;
+				let nextStart = center - newSpan / 2;
+				let nextEnd = center + newSpan / 2;
+				if (nextStart < 0) {
+					nextEnd -= nextStart;
+					nextStart = 0;
+				}
+				if (nextEnd > totalMs) {
+					nextStart -= nextEnd - totalMs;
+					nextEnd = totalMs;
+				}
+				nextStart = Math.max(0, nextStart);
+				return { start: nextStart, end: nextEnd };
+			});
+		},
+		[totalMs],
+	);
+
+	const zoomTimelineIn = useCallback(() => zoomTimeline(0.8), [zoomTimeline]);
+	const zoomTimelineOut = useCallback(() => zoomTimeline(1.25), [zoomTimeline]);
+
 	return {
 		range,
 		setRange,
 		clampedRange,
 		handleTimelineWheel,
+		zoomTimelineIn,
+		zoomTimelineOut,
 	};
 }

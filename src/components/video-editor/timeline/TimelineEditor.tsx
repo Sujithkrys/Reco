@@ -192,7 +192,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 
 		const timelineContainerRef = useRef<HTMLDivElement>(null);
 		const isTimelineFocusedRef = useRef(false);
-		const { setRange, clampedRange, handleTimelineWheel } = useTimelineRange({
+		const { setRange, clampedRange, handleTimelineWheel, zoomTimelineIn, zoomTimelineOut } = useTimelineRange({
 			totalMs,
 			timelineContainerRef,
 		});
@@ -400,6 +400,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			isMac,
 			keyShortcuts,
 			isTimelineFocusedRef,
+			zoomTimelineIn,
+			zoomTimelineOut,
 		});
 
 		if (!videoDuration || videoDuration === 0) {

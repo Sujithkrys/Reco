@@ -9,6 +9,8 @@ interface UseTimelineKeyboardShortcutsParams {
 	isTimelineFocusedRef: RefObject<boolean>;
 	hasAnyZoomBlocks: boolean;
 	activateSelectAllZooms: () => void;
+	zoomTimelineIn: () => void;
+	zoomTimelineOut: () => void;
 	annotationCount: number;
 	selectedKeyframeId: string | null;
 	selectedZoomId: string | null;
@@ -36,6 +38,8 @@ export function useTimelineKeyboardShortcuts({
 	isTimelineFocusedRef,
 	hasAnyZoomBlocks,
 	activateSelectAllZooms,
+	zoomTimelineIn,
+	zoomTimelineOut,
 	annotationCount,
 	selectedKeyframeId,
 	selectedZoomId,
@@ -95,6 +99,15 @@ export function useTimelineKeyboardShortcuts({
 				handleAddAnnotation();
 			}
 
+			if (matchesShortcut(e, keyShortcuts.zoomIn, isMac)) {
+				e.preventDefault();
+				zoomTimelineIn();
+			}
+			if (matchesShortcut(e, keyShortcuts.zoomOut, isMac)) {
+				e.preventDefault();
+				zoomTimelineOut();
+			}
+
 			if (e.key === "Tab" && annotationCount > 0) {
 				if (cycleAnnotationsAtCurrentTime(e.shiftKey)) {
 					e.preventDefault();
@@ -138,6 +151,8 @@ export function useTimelineKeyboardShortcuts({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [
 		activateSelectAllZooms,
+		zoomTimelineIn,
+		zoomTimelineOut,
 		addKeyframe,
 		annotationCount,
 		cycleAnnotationsAtCurrentTime,

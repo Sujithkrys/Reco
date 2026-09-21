@@ -70,6 +70,8 @@ interface UseTimelineEditorRuntimeParams {
 	isMac: boolean;
 	keyShortcuts: TimelineShortcutBindings;
 	isTimelineFocusedRef: RefObject<boolean>;
+	zoomTimelineIn: () => void;
+	zoomTimelineOut: () => void;
 }
 
 export function useTimelineEditorRuntime({
@@ -120,6 +122,8 @@ export function useTimelineEditorRuntime({
 	isMac,
 	keyShortcuts,
 	isTimelineFocusedRef,
+	zoomTimelineIn,
+	zoomTimelineOut,
 }: UseTimelineEditorRuntimeParams) {
 	const {
 		keyframes,
@@ -266,6 +270,8 @@ export function useTimelineEditorRuntime({
 		isTimelineFocusedRef,
 		hasAnyZoomBlocks,
 		activateSelectAllZooms,
+		zoomTimelineIn,
+		zoomTimelineOut,
 		annotationCount: annotationRegions.length,
 		selectedKeyframeId,
 		selectedZoomId,
