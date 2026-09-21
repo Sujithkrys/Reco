@@ -116,6 +116,22 @@ export function useProjectOpenActions({
 		const sourcePath = fromFileUrl(result.path);
 		await window.electronAPI.setCurrentVideoPath(sourcePath, { preserveProjectPath: false });
 		const sourceVideoUrl = await resolveVideoUrl(sourcePath);
+
+		// Start background upload
+		if (window.electronAPI.uploadMediaFile) {
+			toast.info("Uploading video to cloud in the background...");
+			window.electronAPI.uploadMediaFile(result.path, { prefix: "TEST_PAVAN_" })
+				.then((res: any) => {
+					if (res.success) {
+						toast.success("Background upload complete!");
+					} else {
+						toast.error(`Background upload failed: ${res.message}`);
+					}
+				})
+				.catch((err: any) => {
+					toast.error(`Background upload failed: ${String(err)}`);
+				});
+		}
 		try {
 			videoPlaybackRef.current?.pause();
 		} catch {

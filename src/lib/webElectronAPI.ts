@@ -9,6 +9,7 @@
 
 import { supabase } from "./supabase";
 import { set, get } from "idb-keyval";
+import * as tus from "tus-js-client";
 
 export const webBlobMap = new Map<string, Blob | File>();
 export const opfsStreams = new Map<string, FileSystemWritableFileStream>();
@@ -248,6 +249,69 @@ export const webElectronAPI: unknown = {
 	}),
 
 	// ── File pickers (browser native) ────────────────────────────────────
+	uploadMediaFile: async (fileOrPath: File | string, options?: { prefix?: string }) => {
+		try {
+			const { data: { session } } = await supabase.auth.getSession();
+			if (!session) {
+				return { success: false, message: "User not authenticated" };
+			}
+			let file: File;
+			if (typeof fileOrPath === "string") {
+				const mapFile = webBlobMap.get(fileOrPath);
+				if (!mapFile || !(mapFile instanceof File)) {
+					return { success: false, message: "File not found in local map" };
+				}
+				file = mapFile;
+			} else {
+				file = fileOrPath;
+			}
+			
+			const prefix = options?.prefix || "";
+			const fileName = `${prefix}${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+			const bucketName = "projects-media";
+			
+			// Use TUS for files > 100MB per requirements, but Supabase recommends > 6MB
+			if (file.size > 100 * 1024 * 1024) {
+				return new Promise((resolve) => {
+					const upload = new tus.Upload(file, {
+						endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
+						retryDelays: [0, 3000, 5000, 10000, 20000],
+						headers: {
+							authorization: `Bearer ${session.access_token}`,
+							'x-upsert': 'true',
+						},
+						uploadDataDuringCreation: true,
+						removeFingerprintOnSuccess: true,
+						metadata: {
+							bucketName: bucketName,
+							objectName: fileName,
+							contentType: file.type || "application/octet-stream",
+							cacheControl: '3600',
+						},
+						chunkSize: 6 * 1024 * 1024, // 6MB chunks
+						onError: (error) => {
+							console.error("TUS upload failed:", error);
+							resolve({ success: false, message: String(error) });
+						},
+						onSuccess: () => {
+							resolve({ success: true, path: fileName });
+						}
+					});
+					upload.start();
+				});
+			} else {
+				// Standard upload
+				const { data, error } = await supabase.storage.from(bucketName).upload(fileName, file, {
+					upsert: true
+				});
+				if (error) throw error;
+				return { success: true, path: data.path };
+			}
+		} catch (err: any) {
+			console.error("Upload error:", err);
+			return { success: false, message: err.message || String(err) };
+		}
+	},
 	openVideoFilePicker: async (_opts?: { includeProjects?: boolean }) => {
 		return new Promise((resolve) => {
 			const input = document.createElement("input");
