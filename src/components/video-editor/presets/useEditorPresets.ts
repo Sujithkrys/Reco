@@ -124,11 +124,28 @@ export function useEditorPresets({
 			}
 			setEditorPresets(nextPresets);
 			setActivePresetId(nextPreset.id);
-			toast.success(
-				t("editor.presets.toasts.saved", 'Saved preset "{{name}}"', {
-					name: normalizedName,
-				}),
-			);
+
+			const excludedMid = currentSnapshot._excludedMidTimelineElements ?? 0;
+			const excludedAssets = currentSnapshot._excludedCustomAssets ?? 0;
+			
+			if (excludedMid > 0 || excludedAssets > 0) {
+				const parts = [];
+				if (excludedMid > 0) parts.push(`${excludedMid} mid-timeline element${excludedMid === 1 ? "" : "s"}`);
+				if (excludedAssets > 0) parts.push(`${excludedAssets} custom asset${excludedAssets === 1 ? "" : "s"}`);
+				toast.warning(
+					t("editor.presets.toasts.savedWithExclusions", `Template saved. ${parts.join(" and ")} were not included — only start/end content and styling are captured.`, {
+						name: normalizedName,
+					}),
+					{ duration: 5000 }
+				);
+			} else {
+				toast.success(
+					t("editor.presets.toasts.saved", 'Saved preset "{{name}}"', {
+						name: normalizedName,
+					}),
+				);
+			}
+
 			return true;
 		},
 		[currentSnapshot, editorPresets, setActivePresetId, setEditorPresets, t],

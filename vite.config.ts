@@ -15,14 +15,6 @@ export default defineConfig({
 	},
 	optimizeDeps: {
 		entries: ["index.html"],
-		exclude: [
-			"react-icons/bs",
-			"react-icons/fa",
-			"react-icons/fa6",
-			"react-icons/fi",
-			"react-icons/md",
-			"react-icons/rx",
-		],
 	},
 	build: {
 		target: "esnext",

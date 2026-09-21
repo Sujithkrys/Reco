@@ -9,6 +9,12 @@ import {
 	type ProjectEditorState,
 	stripPersistedDevMotionBlurSettings,
 } from "./projectPersistence";
+import type { 
+	ClipRegion, 
+	ZoomRegion, 
+	AnnotationRegion, 
+	AudioRegion 
+} from "./types";
 
 type PersistedEditorControls = Pick<
 	ProjectEditorState,
@@ -67,13 +73,42 @@ type PresetAutoCaptionSettings = ProjectEditorState["autoCaptionSettings"];
 type PresetCropRegion = ProjectEditorState["cropRegion"];
 type PresetWebcamSettings = Omit<ProjectEditorState["webcam"], "sourcePath">;
 
+export type TemplateAnchor = 
+	| { reference: "start"; offsetMs: number }
+	| { reference: "end"; offsetMs: number };
+
+export interface TemplateClipRegion extends Omit<ClipRegion, "startMs" | "endMs" | "sourceStartMs"> {
+	anchor: TemplateAnchor;
+	durationMs: number;
+	sourceOffsetMs?: number;
+}
+
+export interface TemplateZoomRegion extends Omit<ZoomRegion, "startMs" | "endMs"> {
+	anchor: TemplateAnchor;
+	durationMs: number;
+}
+
+export interface TemplateAnnotationRegion extends Omit<AnnotationRegion, "startMs" | "endMs"> {
+	anchor: TemplateAnchor;
+	durationMs: number;
+}
+
+export interface TemplateAudioRegion extends Omit<AudioRegion, "startMs" | "endMs"> {
+	anchor: TemplateAnchor;
+	durationMs: number;
+}
+
 export interface EditorPresetSnapshot extends Omit<PersistedEditorControls, "webcam"> {
 	borderRadiusUnit: "percent";
 	cropRegion: PresetCropRegion;
 	webcam: PresetWebcamSettings;
 	autoCaptionSettings: PresetAutoCaptionSettings;
-	whisperExecutablePath: string | null;
-	whisperModelPath: string | null;
+	templateClips: TemplateClipRegion[];
+	templateZooms: TemplateZoomRegion[];
+	templateAnnotations: TemplateAnnotationRegion[];
+	templateAudios: TemplateAudioRegion[];
+	_excludedMidTimelineElements?: number;
+	_excludedCustomAssets?: number;
 }
 
 export interface EditorPreset {
@@ -222,11 +257,10 @@ function normalizeEditorPresetSnapshot(candidate: unknown): EditorPresetSnapshot
 		webcam,
 		cropRegion: normalizedCropRegion,
 		autoCaptionSettings: normalizePresetAutoCaptionSettings(raw.autoCaptionSettings),
-		whisperExecutablePath:
-			normalizeNullablePath(raw.whisperExecutablePath) ??
-			normalizedPreferences.whisperExecutablePath,
-		whisperModelPath:
-			normalizeNullablePath(raw.whisperModelPath) ?? normalizedPreferences.whisperModelPath,
+		templateClips: Array.isArray(raw.templateClips) ? raw.templateClips : [],
+		templateZooms: Array.isArray(raw.templateZooms) ? raw.templateZooms : [],
+		templateAnnotations: Array.isArray(raw.templateAnnotations) ? raw.templateAnnotations : [],
+		templateAudios: Array.isArray(raw.templateAudios) ? raw.templateAudios : [],
 	};
 }
 

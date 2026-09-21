@@ -13,10 +13,8 @@ type Input = {
 	exportSettings: ReturnType<typeof useExportSettings>;
 	aspectRatio: AspectRatio;
 	setAspectRatio: Dispatch<SetStateAction<AspectRatio>>;
-	whisperExecutablePath: string | null;
-	setWhisperExecutablePath: Dispatch<SetStateAction<string | null>>;
-	whisperModelPath: string | null;
-	setWhisperModelPath: Dispatch<SetStateAction<string | null>>;
+	sourceDurationMs: number;
+	timelineDurationMs: number;
 };
 
 export function useVideoEditorPresets({
@@ -26,10 +24,8 @@ export function useVideoEditorPresets({
 	exportSettings,
 	aspectRatio,
 	setAspectRatio,
-	whisperExecutablePath,
-	setWhisperExecutablePath,
-	whisperModelPath,
-	setWhisperModelPath,
+	sourceDurationMs,
+	timelineDurationMs,
 }: Input) {
 	const [editorPresets, setEditorPresets] = useState(() => loadEditorPresets());
 	const [activeEditorPresetId, setActiveEditorPresetId] = useState<string | null>(null);
@@ -37,67 +33,140 @@ export function useVideoEditorPresets({
 	const [presetNameDraft, setPresetNameDraft] = useState("");
 
 	const currentSnapshot = useMemo<EditorPresetSnapshot>(
-		() => ({
-			wallpaper: appearance.wallpaper,
-			shadowIntensity: appearance.shadowIntensity,
-			backgroundBlur: appearance.backgroundBlur,
-			zoomMotionBlur: appearance.zoomMotionBlur,
-			zoomMotionBlurTuning: { ...appearance.zoomMotionBlurTuning },
-			connectZooms: appearance.connectZooms,
-			zoomInDurationMs: appearance.zoomInDurationMs,
-			zoomInOverlapMs: appearance.zoomInOverlapMs,
-			zoomOutDurationMs: appearance.zoomOutDurationMs,
-			connectedZoomGapMs: appearance.connectedZoomGapMs,
-			connectedZoomDurationMs: appearance.connectedZoomDurationMs,
-			zoomInEasing: appearance.zoomInEasing,
-			zoomOutEasing: appearance.zoomOutEasing,
-			connectedZoomEasing: appearance.connectedZoomEasing,
-			showCursor: appearance.showCursor,
-			loopCursor: appearance.loopCursor,
-			cursorStyle: appearance.cursorStyle,
-			cursorSize: appearance.cursorSize,
-			cursorSmoothing: appearance.cursorSmoothing,
-			cursorSpringStiffnessMultiplier: appearance.cursorSpringStiffnessMultiplier,
-			cursorSpringDampingMultiplier: appearance.cursorSpringDampingMultiplier,
-			cursorSpringMassMultiplier: appearance.cursorSpringMassMultiplier,
-			cameraSpringStiffnessMultiplier: appearance.cameraSpringStiffnessMultiplier,
-			cameraSpringDampingMultiplier: appearance.cameraSpringDampingMultiplier,
-			cameraSpringMassMultiplier: appearance.cameraSpringMassMultiplier,
-			cursorMotionBlur: appearance.cursorMotionBlur,
-			cursorClickEffect: appearance.cursorClickEffect,
-			cursorClickEffectColor: appearance.cursorClickEffectColor,
-			cursorClickEffectScale: appearance.cursorClickEffectScale,
-			cursorClickEffectOpacity: appearance.cursorClickEffectOpacity,
-			cursorClickEffectDurationMs: appearance.cursorClickEffectDurationMs,
-			cursorClickBounce: appearance.cursorClickBounce,
-			cursorClickBounceDuration: appearance.cursorClickBounceDuration,
-			cursorSway: appearance.cursorSway,
-			borderRadius: appearance.borderRadius,
-			borderRadiusUnit: "percent",
-			padding: { ...appearance.padding },
-			cropRegion: { ...appearance.cropRegion },
-			webcam: (({ sourcePath: _sourcePath, ...settings }) => settings)(appearance.webcam),
-			aspectRatio,
-			exportEncodingMode: exportSettings.exportEncodingMode,
-			exportBackendPreference: exportSettings.exportBackendPreference,
-			exportPipelineModel: exportSettings.exportPipelineModel,
-			exportQuality: exportSettings.exportQuality,
-			mp4FrameRate: exportSettings.mp4FrameRate,
-			exportFormat: exportSettings.exportFormat,
-			gifFrameRate: exportSettings.gifFrameRate,
-			gifLoop: exportSettings.gifLoop,
-			gifSizePreset: exportSettings.gifSizePreset,
-			autoCaptionSettings: { ...timeline.autoCaptionSettings },
-			whisperExecutablePath,
-			whisperModelPath,
-		}),
+		() => {
+			let _excludedMidTimelineElements = 0;
+			let _excludedCustomAssets = 0;
+			
+			const templateClips: EditorPresetSnapshot["templateClips"] = [];
+			for (const region of timeline.clipRegions) {
+				if (region.startMs === 0) {
+					const { startMs, endMs, sourceStartMs, ...rest } = region;
+					templateClips.push({ ...rest, anchor: { reference: "start", offsetMs: 0 }, durationMs: endMs - startMs, sourceOffsetMs: sourceStartMs !== undefined ? sourceStartMs : undefined });
+				} else if (region.endMs === timelineDurationMs) {
+					const { startMs, endMs, sourceStartMs, ...rest } = region;
+					templateClips.push({ ...rest, anchor: { reference: "end", offsetMs: startMs - timelineDurationMs }, durationMs: endMs - startMs, sourceOffsetMs: sourceStartMs !== undefined ? sourceStartMs - sourceDurationMs : undefined });
+				} else {
+					_excludedMidTimelineElements++;
+				}
+			}
+
+			const templateZooms: EditorPresetSnapshot["templateZooms"] = [];
+			for (const region of timeline.zoomRegions) {
+				if (region.startMs === 0) {
+					const { startMs, endMs, ...rest } = region;
+					templateZooms.push({ ...rest, anchor: { reference: "start", offsetMs: 0 }, durationMs: endMs - startMs });
+				} else if (region.endMs === timelineDurationMs) {
+					const { startMs, endMs, ...rest } = region;
+					templateZooms.push({ ...rest, anchor: { reference: "end", offsetMs: startMs - timelineDurationMs }, durationMs: endMs - startMs });
+				} else {
+					_excludedMidTimelineElements++;
+				}
+			}
+
+			const templateAnnotations: EditorPresetSnapshot["templateAnnotations"] = [];
+			for (const region of timeline.annotationRegions) {
+				if (region.type === "image" && region.imageContent?.startsWith("blob:")) {
+					_excludedCustomAssets++;
+					continue;
+				}
+				if (region.startMs === 0) {
+					const { startMs, endMs, ...rest } = region;
+					templateAnnotations.push({ ...rest, anchor: { reference: "start", offsetMs: 0 }, durationMs: endMs - startMs });
+				} else if (region.endMs === timelineDurationMs) {
+					const { startMs, endMs, ...rest } = region;
+					templateAnnotations.push({ ...rest, anchor: { reference: "end", offsetMs: startMs - timelineDurationMs }, durationMs: endMs - startMs });
+				} else {
+					_excludedMidTimelineElements++;
+				}
+			}
+
+			const templateAudios: EditorPresetSnapshot["templateAudios"] = [];
+			for (const region of timeline.audioRegions) {
+				if (region.audioPath.startsWith("blob:") || region.audioPath.startsWith("opfs:/")) {
+					_excludedCustomAssets++;
+					continue;
+				}
+				if (region.startMs === 0) {
+					const { startMs, endMs, ...rest } = region;
+					templateAudios.push({ ...rest, anchor: { reference: "start", offsetMs: 0 }, durationMs: endMs - startMs });
+				} else if (region.endMs === timelineDurationMs) {
+					const { startMs, endMs, ...rest } = region;
+					templateAudios.push({ ...rest, anchor: { reference: "end", offsetMs: startMs - timelineDurationMs }, durationMs: endMs - startMs });
+				} else {
+					_excludedMidTimelineElements++;
+				}
+			}
+
+			return {
+				wallpaper: appearance.wallpaper,
+				shadowIntensity: appearance.shadowIntensity,
+				backgroundBlur: appearance.backgroundBlur,
+				zoomMotionBlur: appearance.zoomMotionBlur,
+				zoomMotionBlurTuning: { ...appearance.zoomMotionBlurTuning },
+				connectZooms: appearance.connectZooms,
+				zoomInDurationMs: appearance.zoomInDurationMs,
+				zoomInOverlapMs: appearance.zoomInOverlapMs,
+				zoomOutDurationMs: appearance.zoomOutDurationMs,
+				connectedZoomGapMs: appearance.connectedZoomGapMs,
+				connectedZoomDurationMs: appearance.connectedZoomDurationMs,
+				zoomInEasing: appearance.zoomInEasing,
+				zoomOutEasing: appearance.zoomOutEasing,
+				connectedZoomEasing: appearance.connectedZoomEasing,
+				showCursor: appearance.showCursor,
+				loopCursor: appearance.loopCursor,
+				cursorStyle: appearance.cursorStyle,
+				cursorSize: appearance.cursorSize,
+				cursorSmoothing: appearance.cursorSmoothing,
+				cursorSpringStiffnessMultiplier: appearance.cursorSpringStiffnessMultiplier,
+				cursorSpringDampingMultiplier: appearance.cursorSpringDampingMultiplier,
+				cursorSpringMassMultiplier: appearance.cursorSpringMassMultiplier,
+				cameraSpringStiffnessMultiplier: appearance.cameraSpringStiffnessMultiplier,
+				cameraSpringDampingMultiplier: appearance.cameraSpringDampingMultiplier,
+				cameraSpringMassMultiplier: appearance.cameraSpringMassMultiplier,
+				cursorMotionBlur: appearance.cursorMotionBlur,
+				cursorClickEffect: appearance.cursorClickEffect,
+				cursorClickEffectColor: appearance.cursorClickEffectColor,
+				cursorClickEffectScale: appearance.cursorClickEffectScale,
+				cursorClickEffectOpacity: appearance.cursorClickEffectOpacity,
+				cursorClickEffectDurationMs: appearance.cursorClickEffectDurationMs,
+				cursorClickBounce: appearance.cursorClickBounce,
+				cursorClickBounceDuration: appearance.cursorClickBounceDuration,
+				cursorSway: appearance.cursorSway,
+				borderRadius: appearance.borderRadius,
+				borderRadiusUnit: "percent",
+				padding: { ...appearance.padding },
+				cropRegion: { ...appearance.cropRegion },
+				webcam: (({ sourcePath: _sourcePath, ...settings }) => settings)(appearance.webcam),
+				aspectRatio,
+				exportEncodingMode: exportSettings.exportEncodingMode,
+				exportBackendPreference: exportSettings.exportBackendPreference,
+				exportPipelineModel: exportSettings.exportPipelineModel,
+				exportQuality: exportSettings.exportQuality,
+				mp4FrameRate: exportSettings.mp4FrameRate,
+				exportFormat: exportSettings.exportFormat,
+				gifFrameRate: exportSettings.gifFrameRate,
+				gifLoop: exportSettings.gifLoop,
+				gifSizePreset: exportSettings.gifSizePreset,
+				autoCaptionSettings: { ...timeline.autoCaptionSettings },
+				templateClips,
+				templateZooms,
+				templateAnnotations,
+				templateAudios,
+				_excludedMidTimelineElements,
+				_excludedCustomAssets,
+			};
+		},
 		[
 			appearance,
 			timeline.autoCaptionSettings,
+			timeline.clipRegions,
+			timeline.zoomRegions,
+			timeline.annotationRegions,
+			timeline.audioRegions,
 			exportSettings,
 			aspectRatio,
-			whisperExecutablePath,
-			whisperModelPath,
+			timelineDurationMs,
+			sourceDurationMs,
 		],
 	);
 
@@ -155,16 +224,65 @@ export function useVideoEditorPresets({
 			exportSettings.setGifLoop(snapshot.gifLoop);
 			exportSettings.setGifSizePreset(snapshot.gifSizePreset);
 			timeline.setAutoCaptionSettings({ ...snapshot.autoCaptionSettings });
-			setWhisperExecutablePath(snapshot.whisperExecutablePath);
-			setWhisperModelPath(snapshot.whisperModelPath);
+
+			if (snapshot.templateClips?.length > 0) {
+				timeline.setClipRegions(snapshot.templateClips.map((t) => {
+					const { anchor, durationMs, sourceOffsetMs, ...rest } = t;
+					let startMs = anchor.reference === "start" ? anchor.offsetMs : timelineDurationMs + anchor.offsetMs;
+					let endMs = startMs + durationMs;
+					// Note: on very short videos, clamped start/end anchored regions may overlap or fully cover the timeline. This is a known limitation.
+					if (startMs < 0) startMs = 0;
+					if (endMs > timelineDurationMs) endMs = timelineDurationMs;
+					const sourceStartMs = sourceOffsetMs !== undefined 
+						? (anchor.reference === "start" ? sourceOffsetMs : sourceDurationMs + sourceOffsetMs) 
+						: undefined;
+					return { ...rest, startMs, endMs, sourceStartMs };
+				}));
+			}
+
+			if (snapshot.templateZooms?.length > 0) {
+				timeline.setZoomRegions(snapshot.templateZooms.map((t) => {
+					const { anchor, durationMs, ...rest } = t;
+					let startMs = anchor.reference === "start" ? anchor.offsetMs : timelineDurationMs + anchor.offsetMs;
+					let endMs = startMs + durationMs;
+					// Note: on very short videos, clamped start/end anchored regions may overlap or fully cover the timeline. This is a known limitation.
+					if (startMs < 0) startMs = 0;
+					if (endMs > timelineDurationMs) endMs = timelineDurationMs;
+					return { ...rest, startMs, endMs };
+				}));
+			}
+
+			if (snapshot.templateAnnotations?.length > 0) {
+				timeline.setAnnotationRegions(snapshot.templateAnnotations.map((t) => {
+					const { anchor, durationMs, ...rest } = t;
+					let startMs = anchor.reference === "start" ? anchor.offsetMs : timelineDurationMs + anchor.offsetMs;
+					let endMs = startMs + durationMs;
+					// Note: on very short videos, clamped start/end anchored regions may overlap or fully cover the timeline. This is a known limitation.
+					if (startMs < 0) startMs = 0;
+					if (endMs > timelineDurationMs) endMs = timelineDurationMs;
+					return { ...rest, startMs, endMs };
+				}));
+			}
+
+			if (snapshot.templateAudios?.length > 0) {
+				timeline.setAudioRegions(snapshot.templateAudios.map((t) => {
+					const { anchor, durationMs, ...rest } = t;
+					let startMs = anchor.reference === "start" ? anchor.offsetMs : timelineDurationMs + anchor.offsetMs;
+					let endMs = startMs + durationMs;
+					// Note: on very short videos, clamped start/end anchored regions may overlap or fully cover the timeline. This is a known limitation.
+					if (startMs < 0) startMs = 0;
+					if (endMs > timelineDurationMs) endMs = timelineDurationMs;
+					return { ...rest, startMs, endMs };
+				}));
+			}
 		},
 		[
 			appearance,
 			exportSettings,
 			timeline,
 			setAspectRatio,
-			setWhisperExecutablePath,
-			setWhisperModelPath,
+			timelineDurationMs,
+			sourceDurationMs,
 		],
 	);
 

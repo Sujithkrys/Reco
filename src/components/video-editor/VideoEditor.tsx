@@ -12,6 +12,7 @@ import { useTimelineEditingController } from "./hooks/useTimelineEditingControll
 import { EditorShell } from "./layout/EditorShell";
 import { useEditorSettingsPanelProps } from "./layout/useEditorSettingsPanelProps";
 import { useVideoEditorPresets } from "./presets/useVideoEditorPresets";
+import { getTimelineDurationMs } from "./types";
 import { useEditorProjectController } from "./project/useEditorProjectController";
 import { useProjectLibraryController } from "./project/useProjectLibraryController";
 import { getDevOpenRecordingConfig, getSmokeExportConfig } from "./smokeExportConfig";
@@ -137,6 +138,9 @@ export default function VideoEditor() {
 		}
 	}, []);
 
+	const sourceDurationMs = ui.duration * 1000;
+	const timelineDurationMs = getTimelineDurationMs(timeline.clipRegions, sourceDurationMs);
+
 	const presets = useVideoEditorPresets({
 		t,
 		appearance,
@@ -144,10 +148,8 @@ export default function VideoEditor() {
 		exportSettings,
 		aspectRatio,
 		setAspectRatio,
-		whisperExecutablePath,
-		setWhisperExecutablePath,
-		whisperModelPath,
-		setWhisperModelPath,
+		sourceDurationMs,
+		timelineDurationMs,
 	});
 	const { refreshProjectLibrary, captureProjectThumbnail } = useProjectLibraryController({
 		project,
