@@ -155,7 +155,6 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	const webcamStartPerfRef = useRef<number | null>(null);
 	const cursorTelemetryRef = useRef<CursorTelemetryPoint[]>([]);
 	const cursorCaptureCleanupRef = useRef<(() => void) | null>(null);
-	const hideCursorStyleRef = useRef<HTMLStyleElement | null>(null);
 	const lastCursorSampleAtRef = useRef(0);
 	const endedBySystemRef = useRef(false);
 	const stopRequestedRef = useRef(false);
@@ -348,24 +347,12 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	const stopCursorCapture = useCallback(() => {
 		cursorCaptureCleanupRef.current?.();
 		cursorCaptureCleanupRef.current = null;
-		hideCursorStyleRef.current?.remove();
-		hideCursorStyleRef.current = null;
 	}, []);
 
 	const startCursorCapture = useCallback(() => {
 		stopCursorCapture();
 		cursorTelemetryRef.current = [];
 		lastCursorSampleAtRef.current = 0;
-
-		// The real OS cursor is otherwise baked into the raw captured pixels
-		// alongside our stylized overlay, producing a visible double cursor.
-		// Since we're the ones being recorded (this only runs for "This Tab"
-		// shares), we can hide it at the page level instead — the stylized
-		// overlay becomes the only cursor visible in the recording.
-		const style = document.createElement("style");
-		style.textContent = "*{cursor:none!important}";
-		document.head.appendChild(style);
-		hideCursorStyleRef.current = style;
 
 		const pushSample = (point: CursorTelemetryPoint) => {
 			cursorTelemetryRef.current.push(point);
@@ -526,8 +513,13 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 
 		let screenStream: MediaStream;
 		try {
+			// `cursor: "never"` stops the browser compositing the real OS cursor
+			// into the captured pixels at all (a CSS-level `cursor:none` on the
+			// page does NOT achieve this — the capture composites the cursor
+			// independently of page styling). We restore it below for shares
+			// where we have no telemetry to replace it with.
 			screenStream = await navigator.mediaDevices.getDisplayMedia({
-				video: { frameRate: 30 },
+				video: { frameRate: 30, cursor: "never" } as MediaTrackConstraints,
 				audio: true,
 			});
 		} catch (err) {
@@ -544,6 +536,14 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		// can produce real, correctly-positioned data.
 		if (screenVideoTrack.getSettings().displaySurface === "browser") {
 			startCursorCapture();
+		} else {
+			// No telemetry will exist to drive a stylized cursor here, so put
+			// the real one back rather than leaving the recording cursor-less.
+			// Not all browsers allow changing `cursor` after capture starts —
+			// if this is unsupported it just silently stays hidden.
+			void screenVideoTrack
+				.applyConstraints({ cursor: "always" } as MediaTrackConstraints)
+				.catch(() => undefined);
 		}
 		screenVideoTrack.addEventListener(
 			"ended",
