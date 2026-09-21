@@ -48,8 +48,10 @@ export function useRecordingActions({
 	resetSourceScopedEditorState,
 	applySessionPresentation,
 }: UseRecordingActionsInput) {
-	const recorder = useNativeScreenRecording();
 	const [launcherOpen, setLauncherOpen] = useState(false);
+	// Only probe for camera/mic devices while the launcher is actually open —
+	// see useNativeScreenRecording's `enabled` param for why this matters.
+	const recorder = useNativeScreenRecording(launcherOpen);
 	const previousPhaseRef = useRef(recorder.phase);
 
 	// Close the launcher dialog automatically once the share picker resolves

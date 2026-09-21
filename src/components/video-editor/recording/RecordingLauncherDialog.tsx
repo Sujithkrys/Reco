@@ -67,11 +67,15 @@ export function RecordingLauncherDialog({
 								<Switch
 									checked={recorder.webcamEnabled}
 									onCheckedChange={recorder.setWebcamEnabled}
-									disabled={starting || recorder.videoDevices.devices.length === 0}
+									disabled={
+										starting ||
+										(!recorder.videoDevices.isLoading &&
+											recorder.videoDevices.devices.length === 0)
+									}
 									aria-label="Enable webcam"
 								/>
 							</div>
-							{recorder.videoDevices.devices.length === 0 ? (
+							{!recorder.videoDevices.isLoading && recorder.videoDevices.devices.length === 0 ? (
 								<p className="mt-2 text-xs text-amber-500/90">
 									No camera was detected on this device.
 								</p>
@@ -105,11 +109,14 @@ export function RecordingLauncherDialog({
 								<Switch
 									checked={recorder.micEnabled}
 									onCheckedChange={recorder.setMicEnabled}
-									disabled={starting || recorder.micDevices.devices.length === 0}
+									disabled={
+										starting ||
+										(!recorder.micDevices.isLoading && recorder.micDevices.devices.length === 0)
+									}
 									aria-label="Enable microphone"
 								/>
 							</div>
-							{recorder.micDevices.devices.length === 0 ? (
+							{!recorder.micDevices.isLoading && recorder.micDevices.devices.length === 0 ? (
 								<p className="mt-2 text-xs text-amber-500/90">
 									No microphone was detected on this device.
 								</p>

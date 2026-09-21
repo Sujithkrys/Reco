@@ -109,7 +109,17 @@ export function isNativeScreenRecordingSupported(): boolean {
 	);
 }
 
-export function useNativeScreenRecording() {
+/**
+ * @param enabled Only probe for camera/mic devices (and their labels, which
+ * itself requires a permission prompt) while this is true — e.g. while the
+ * recording launcher dialog is actually open. Doing this unconditionally at
+ * mount time fires a camera/mic permission attempt the moment the editor
+ * loads, before the user has expressed any intent to record; if that silent
+ * background attempt resolves (denied, ignored, ...) before the user ever
+ * opens the dialog, a later toggle click sees an already-settled "no" with
+ * no new prompt — which looks exactly like "the toggle does nothing."
+ */
+export function useNativeScreenRecording(enabled: boolean = true) {
 	const [phase, setPhase] = useState<RecordingPhase>("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [elapsedMs, setElapsedMs] = useState(0);
@@ -121,8 +131,8 @@ export function useNativeScreenRecording() {
 	const [micError, setMicError] = useState<string | null>(null);
 	const [micLevel, setMicLevel] = useState(0);
 
-	const videoDevices = useVideoDevices(true);
-	const micDevices = useMicrophoneDevices(true);
+	const videoDevices = useVideoDevices(enabled);
+	const micDevices = useMicrophoneDevices(enabled);
 
 	const webcamStreamRef = useRef<MediaStream | null>(null);
 	const micStreamRef = useRef<MediaStream | null>(null);
