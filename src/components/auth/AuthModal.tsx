@@ -43,7 +43,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 				});
 				if (error) throw error;
 			}
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error("Auth error:", err);
 			// Translate common supabase errors
 			let msg = err.message || "An unexpected error occurred.";

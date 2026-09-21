@@ -22,7 +22,7 @@ interface WebCursorTelemetryPoint {
 }
 export const cursorTelemetryMap = new Map<string, WebCursorTelemetryPoint[]>();
 
-async function persistProjectMedia(projectData: any): Promise<any> {
+async function persistProjectMedia(projectData: unknown): Promise<unknown> {
 	let jsonString = JSON.stringify(projectData);
 	const blobRegex = /"blob:(https?:\/\/[^"]+)"/g;
 	const blobUrls = new Set<string>();
@@ -46,7 +46,7 @@ async function persistProjectMedia(projectData: any): Promise<any> {
 	return JSON.parse(jsonString);
 }
 
-async function restoreProjectMedia(projectData: any): Promise<any> {
+async function restoreProjectMedia(projectData: unknown): Promise<unknown> {
 	let jsonString = JSON.stringify(projectData);
 	const idbRegex = /"idb:\/\/(media_[a-zA-Z0-9-]+)"/g;
 	const idbKeys = new Set<string>();
@@ -103,7 +103,7 @@ let currentRecordingSession: {
 // electronAPI implementation
 // ---------------------------------------------------------------------------
 
-export const webElectronAPI: any = {
+export const webElectronAPI: unknown = {
 	isWebMode: true,
 	// ── App info ──────────────────────────────────────────────────────────
 	getAppVersion: async () => "1.4.0-web",
@@ -179,12 +179,12 @@ export const webElectronAPI: any = {
 			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
 			
 			return { success: true, project: restoredData, path: _path };
-		} catch (e: any) {
+		} catch (e: unknown) {
 			return { success: false, message: e.message, path: null };
 		}
 	},
 	saveProjectFile: async (
-		projectData: any,
+		projectData: unknown,
 		fileNameBase?: string,
 		targetPath?: string,
 		thumbnail?: string
@@ -206,7 +206,7 @@ export const webElectronAPI: any = {
 			if (error) throw error;
 			
 			return { success: true, path: projectId };
-		} catch (e: any) {
+		} catch (e: unknown) {
 			console.error(e);
 			return { success: false, path: null, message: e.message };
 		}
@@ -229,7 +229,7 @@ export const webElectronAPI: any = {
 				isInProjectsDirectory: true
 			}));
 			return { success: true, library };
-		} catch (e: any) {
+		} catch (e: unknown) {
 			console.error(e);
 			return { success: true, library: [] };
 		}
@@ -330,7 +330,7 @@ export const webElectronAPI: any = {
 			}
 			if (opts?.abort) {
 				const root = await navigator.storage.getDirectory();
-				await root.removeEntry(streamId).catch(() => {});
+				await root.removeEntry(streamId).catch(() => { /* noop */ });
 			}
 			return { success: true, tempPath: `opfs:/${streamId}` };
 		} catch (error) {
@@ -440,7 +440,7 @@ export const webElectronAPI: any = {
 		success: false,
 		tempPath: null,
 	}),
-	nativeVideoExportCancel: async () => {},
+	nativeVideoExportCancel: async () => { /* noop */ },
 	nativeStaticLayoutExport: async () => ({
 		success: false,
 		message: "Native export not available.",
@@ -461,7 +461,7 @@ export const webElectronAPI: any = {
 	// ── Screen recording stubs ───────────────────────────────────────────
 	getSources: async () => [],
 	getSelectedSource: async () => null,
-	selectSource: async () => {},
+	selectSource: async () => { /* noop */ },
 	getScreenRecordingPermissionStatus: async () => ({
 		success: true,
 		status: "granted",
@@ -474,8 +474,8 @@ export const webElectronAPI: any = {
 		success: true,
 		trusted: true,
 	}),
-	openScreenRecordingPreferences: async () => {},
-	openAccessibilityPreferences: async () => {},
+	openScreenRecordingPreferences: async () => { /* noop */ },
+	openAccessibilityPreferences: async () => { /* noop */ },
 	startNativeScreenRecording: async () => ({ success: false }),
 	stopNativeScreenRecording: async () => ({
 		success: false,
@@ -497,15 +497,15 @@ export const webElectronAPI: any = {
 	}),
 
 	// ── Window management stubs ──────────────────────────────────────────
-	switchToEditor: async () => {},
-	hudOverlayClose: () => {},
-	hudOverlaySetIgnoreMouse: (_ignore: boolean) => {},
+	switchToEditor: async () => { /* noop */ },
+	hudOverlayClose: () => { /* noop */ },
+	hudOverlaySetIgnoreMouse: (_ignore: boolean) => { /* noop */ },
 	openExternalUrl: async (url: string) => {
 		window.open(url, "_blank", "noopener,noreferrer");
 	},
-	closeWindow: () => {},
-	minimizeWindow: () => {},
-	maximizeWindow: () => {},
+	closeWindow: () => { /* noop */ },
+	minimizeWindow: () => { /* noop */ },
+	maximizeWindow: () => { /* noop */ },
 
 	// ── Cursor telemetry ─────────────────────────────────────────────────
 	getCursorTelemetry: async (path: string) => {
@@ -531,7 +531,7 @@ export const webElectronAPI: any = {
 	downloadWhisperModel: async () => ({
 		success: false,
 	}),
-	cancelWhisperModelDownload: async () => {},
+	cancelWhisperModelDownload: async () => { /* noop */ },
 	generateCaptions: async () => ({
 		success: false,
 		captions: [],
@@ -571,16 +571,16 @@ export const webElectronAPI: any = {
 	}),
 
 	// ── Menu IPC listeners (no-op on web) ────────────────────────────────
-	onMenuLoadProject: () => () => {},
-	onMenuSaveProject: () => () => {},
-	onMenuSaveProjectAs: () => () => {},
-	onRecordingSessionChanged: () => () => {},
-	onNativeStaticLayoutExportProgress: () => () => {},
-	onWhisperModelDownloadProgress: () => () => {},
-	onCaptionGenerationProgress: () => () => {},
-	onUpdateAvailable: () => () => {},
-	onUpdateDownloaded: () => () => {},
-	onDeepLink: () => () => {},
+	onMenuLoadProject: () => () => { /* noop */ },
+	onMenuSaveProject: () => () => { /* noop */ },
+	onMenuSaveProjectAs: () => () => { /* noop */ },
+	onRecordingSessionChanged: () => () => { /* noop */ },
+	onNativeStaticLayoutExportProgress: () => () => { /* noop */ },
+	onWhisperModelDownloadProgress: () => () => { /* noop */ },
+	onCaptionGenerationProgress: () => () => { /* noop */ },
+	onUpdateAvailable: () => () => { /* noop */ },
+	onUpdateDownloaded: () => () => { /* noop */ },
+	onDeepLink: () => () => { /* noop */ },
 };
 
 // ---------------------------------------------------------------------------
@@ -589,19 +589,19 @@ export const webElectronAPI: any = {
 
 export function installWebElectronAPI() {
 	if (typeof window === "undefined") return;
-	if ((window as any).__electronAPIIsNative) return; // real Electron – don't override
+	if ((window as unknown as any).__electronAPIIsNative) return; // real Electron – don't override
 
-	const handler: ProxyHandler<Record<string, Function>> = {
+	const handler: ProxyHandler<Record<string, (...args: unknown[]) => unknown>> = {
 		get(target, prop) {
 			if (typeof prop === "symbol") return undefined;
 			if (prop in target) return target[prop];
 			// Fallback for any method we haven't explicitly listed:
 			// "on*" listeners return a no-op unsubscribe, everything else
 			// returns an async empty-object to avoid null-reference crashes.
-			if (prop.startsWith("on")) return () => () => {};
+			if (prop.startsWith("on")) return () => () => { /* noop */ };
 			return async () => ({});
 		},
 	};
 
-	(window as any).electronAPI = new Proxy(webElectronAPI, handler);
+	(window as unknown as any).electronAPI = new Proxy(webElectronAPI, handler);
 }
