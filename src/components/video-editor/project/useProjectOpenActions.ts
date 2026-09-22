@@ -21,6 +21,7 @@ type UseProjectOpenActionsInput = {
 	videoPlaybackRef: RefObject<VideoPlaybackRef | null>;
 	pendingFreshRecordingAutoZoomPathRef: MutableRefObject<string | null>;
 	hasUnsavedChanges: boolean;
+	setViewMode: Set<"dashboard" | "editor">;
 	setIsPlaying: Set<boolean>;
 	setCurrentTime: Set<number>;
 	setDuration: Set<number>;
@@ -40,6 +41,7 @@ export function useProjectOpenActions({
 	videoPlaybackRef,
 	pendingFreshRecordingAutoZoomPathRef,
 	hasUnsavedChanges,
+	setViewMode,
 	setIsPlaying,
 	setCurrentTime,
 	setDuration,
@@ -78,6 +80,7 @@ export function useProjectOpenActions({
 			}
 			project.setProjectBrowserOpen(false);
 			project.setError(null);
+			setViewMode("editor");
 			await refreshProjectLibrary();
 			toast.success(`Project loaded from ${result.path}`);
 		},
@@ -104,6 +107,7 @@ export function useProjectOpenActions({
 			}
 			project.setProjectBrowserOpen(false);
 			project.setError(null);
+			setViewMode("editor");
 			await refreshProjectLibrary();
 			toast.success(result.path ? `Project loaded from ${result.path}` : "Project loaded");
 			return;
@@ -157,6 +161,7 @@ export function useProjectOpenActions({
 		applySessionPresentation(null);
 		project.setProjectBrowserOpen(false);
 		project.setError(null);
+		setViewMode("editor");
 		await refreshProjectLibrary();
 		toast.success("Media imported");
 	}, [
@@ -164,6 +169,7 @@ export function useProjectOpenActions({
 		applyLoadedProject,
 		project,
 		appearance,
+		setViewMode,
 		videoPlaybackRef,
 		setIsPlaying,
 		setCurrentTime,

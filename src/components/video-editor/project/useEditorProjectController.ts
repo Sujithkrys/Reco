@@ -39,6 +39,7 @@ type Input = {
 	currentTime: number;
 	setCurrentTime: Dispatch<SetStateAction<number>>;
 	setIsPlaying: Dispatch<SetStateAction<boolean>>;
+	setViewMode: Dispatch<SetStateAction<"dashboard" | "editor">>;
 	setDuration: Dispatch<SetStateAction<number>>;
 	whisperExecutablePath: string | null;
 	setWhisperExecutablePath: Dispatch<SetStateAction<string | null>>;
@@ -204,6 +205,7 @@ export function useEditorProjectController(input: Input) {
 		videoPlaybackRef: input.videoPlaybackRef,
 		pendingFreshRecordingAutoZoomPathRef: input.pendingFreshRecordingAutoZoomPathRef,
 		hasUnsavedChanges,
+		setViewMode: input.setViewMode,
 		setIsPlaying: input.setIsPlaying,
 		setCurrentTime: input.setCurrentTime,
 		setDuration: input.setDuration,

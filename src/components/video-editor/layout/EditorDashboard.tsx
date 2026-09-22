@@ -4,13 +4,11 @@ import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
 type EditorDashboardProps = {
 	entries: ProjectLibraryEntry[];
 	onOpenProject: (projectPath: string) => void;
-	onImportFile: () => void;
 };
 
 export default function EditorDashboard({
 	entries,
 	onOpenProject,
-	onImportFile,
 }: EditorDashboardProps) {
 	// Show up to 12 most recent projects
 	const recentProjects = entries.slice(0, 12);

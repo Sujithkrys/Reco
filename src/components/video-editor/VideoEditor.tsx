@@ -9,7 +9,8 @@ import { useExportDimensions } from "./export/useExportDimensions";
 import { useExportSession } from "./export/useExportSession";
 import { useExportSettings } from "./export/useExportSettings";
 import { useTimelineEditingController } from "./hooks/useTimelineEditingController";
-import { EditorShell } from "./layout/EditorShell";
+import { DashboardLayout } from "./layout/DashboardLayout";
+import { EditorLayout } from "./layout/EditorLayout";
 import { useEditorSettingsPanelProps } from "./layout/useEditorSettingsPanelProps";
 import { useVideoEditorPresets } from "./presets/useVideoEditorPresets";
 import { getTimelineDurationMs } from "./types";
@@ -217,6 +218,7 @@ export default function VideoEditor() {
 		currentTime,
 		setCurrentTime,
 		setIsPlaying,
+		setViewMode,
 		setDuration,
 		whisperExecutablePath,
 		setWhisperExecutablePath,
@@ -367,28 +369,32 @@ export default function VideoEditor() {
 		handleUploadWebcam,
 		handleClearWebcam,
 	});
-	return (
-		<EditorShell
-			t={t}
-			project={project}
-			appearance={appearance}
-			timeline={timeline}
-			ui={ui}
-			presets={presets}
-			projectController={projectController}
-			editing={editing}
-			exportController={exportController}
-			exportSettings={exportSettings}
-			exportSession={exportSession}
-			exportDimensions={exportDimensions}
-			settingsPanelProps={settingsPanelProps}
-			headerLeftControlsPaddingClass={headerLeftControlsPaddingClass}
-			hasCaptionsForSidecar={hasCaptionsForSidecar}
-			nvidiaCudaExportAvailable={nvidiaCudaExportAvailable}
-			experimentalNvidiaCudaExport={experimentalNvidiaCudaExport}
-			setExperimentalNvidiaCudaExport={setExperimentalNvidiaCudaExport}
-			effectiveShowCursor={effectiveShowCursor}
-			previewAspectRatioValue={previewAspectRatioValue}
-		/>
-	);
+	const commonProps = {
+		t,
+		project,
+		appearance,
+		timeline,
+		ui,
+		presets,
+		projectController,
+		editing,
+		exportController,
+		exportSettings,
+		exportSession,
+		exportDimensions,
+		settingsPanelProps,
+		headerLeftControlsPaddingClass,
+		hasCaptionsForSidecar,
+		nvidiaCudaExportAvailable,
+		experimentalNvidiaCudaExport,
+		setExperimentalNvidiaCudaExport,
+		effectiveShowCursor,
+		previewAspectRatioValue,
+	};
+
+	if (ui.viewMode === "dashboard") {
+		return <DashboardLayout {...commonProps} />;
+	}
+
+	return <EditorLayout {...commonProps} />;
 }

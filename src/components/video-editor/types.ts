@@ -108,6 +108,9 @@ export function normalizeCursorClickEffectColor(
 
 export type EditorEffectSection =
 	| "dashboard"
+	| "brandkit"
+	| "translation"
+	| "mcp"
 	| "scene"
 	| "cursor"
 	| "captions"
