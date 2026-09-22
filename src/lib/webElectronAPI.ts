@@ -191,6 +191,11 @@ export const webElectronAPI: unknown = {
 		thumbnail?: string
 	) => {
 		try {
+			const { data: { session } } = await supabase.auth.getSession();
+			if (!session) {
+				return { success: false, path: null, message: "User not authenticated" };
+			}
+
 			const projectId = targetPath || crypto.randomUUID();
 			
 			// Persist all ephemeral blob URLs to IndexedDB
@@ -198,6 +203,7 @@ export const webElectronAPI: unknown = {
 			
 			const { error } = await supabase.from("projects").upsert({
 				id: projectId,
+				user_id: session.user.id,
 				name: fileNameBase || "Untitled Project",
 				editor_state: persistedData,
 				thumbnail_url: thumbnail || null,
