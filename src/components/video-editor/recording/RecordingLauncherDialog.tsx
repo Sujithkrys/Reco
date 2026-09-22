@@ -67,11 +67,7 @@ export function RecordingLauncherDialog({
 								<Switch
 									checked={recorder.webcamEnabled}
 									onCheckedChange={recorder.setWebcamEnabled}
-									disabled={
-										starting ||
-										(!recorder.videoDevices.isLoading &&
-											recorder.videoDevices.devices.length === 0)
-									}
+									disabled={starting}
 									aria-label="Enable webcam"
 								/>
 							</div>
@@ -109,10 +105,7 @@ export function RecordingLauncherDialog({
 								<Switch
 									checked={recorder.micEnabled}
 									onCheckedChange={recorder.setMicEnabled}
-									disabled={
-										starting ||
-										(!recorder.micDevices.isLoading && recorder.micDevices.devices.length === 0)
-									}
+									disabled={starting}
 									aria-label="Enable microphone"
 								/>
 							</div>
