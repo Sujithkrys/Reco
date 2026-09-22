@@ -5,6 +5,7 @@ import {
 	Palette,
 	Translate,
 	TerminalWindow,
+	Folder,
 } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { type ComponentProps, useMemo } from "react";
@@ -42,6 +43,7 @@ function DashboardSidebar({
 	const sections = useMemo(
 		() => [
 			{ id: "dashboard" as const, label: t("settings.sections.dashboard", "Home"), icon: House },
+			{ id: "projects" as const, label: t("settings.sections.projects", "Projects"), icon: Folder },
 			{ id: "brandkit" as const, label: t("settings.sections.brandkit", "Brand kit"), icon: Palette },
 			{ id: "translation" as const, label: t("settings.sections.translation", "Translation"), icon: Translate },
 			{ id: "mcp" as const, label: t("settings.sections.mcp", "MCP"), icon: TerminalWindow },
@@ -188,7 +190,7 @@ export function DashboardLayout({
 	const { activeEffectSection, setActiveEffectSection } = ui;
 
 	// Ensure we only have valid dashboard sections
-	const safeActiveSection = ["dashboard", "brandkit", "translation", "mcp", "settings"].includes(activeEffectSection)
+	const safeActiveSection = ["dashboard", "projects", "brandkit", "translation", "mcp", "settings"].includes(activeEffectSection)
 		? activeEffectSection
 		: "dashboard";
 
@@ -233,8 +235,9 @@ export function DashboardLayout({
 					onRecordScreen={() => {}}
 				/>
 				<div className="flex-1 overflow-hidden rounded-xl border border-foreground/10 bg-editor-panel shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
-					{safeActiveSection === "dashboard" ? (
+					{safeActiveSection === "dashboard" || safeActiveSection === "projects" ? (
 						<EditorDashboard
+							mode={safeActiveSection}
 							entries={project.projectLibraryEntries}
 							onOpenProject={openActions.handleOpenProjectFromLibrary}
 							onNewProject={openActions.handleCreateNewProject}

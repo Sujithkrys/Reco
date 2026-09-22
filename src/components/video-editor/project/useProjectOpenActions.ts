@@ -92,8 +92,8 @@ export function useProjectOpenActions({
 		],
 	);
 
-	const handleImportMediaOrProject = useCallback(async () => {
-		if (!(await confirmReplaceSourceWithUnsavedChanges("import a file"))) return;
+	const doImportMediaOrProject = useCallback(async (opts?: { preserveProject?: boolean, skipUnsavedPrompt?: boolean }) => {
+		if (!opts?.skipUnsavedPrompt && !(await confirmReplaceSourceWithUnsavedChanges("import a file"))) return;
 		const result = await window.electronAPI.openVideoFilePicker({ includeProjects: true });
 		if (result.canceled) return;
 		if (!result.success) {
@@ -146,7 +146,9 @@ export function useProjectOpenActions({
 		setDuration(0);
 		project.setVideoSourcePath(sourcePath);
 		project.setVideoPath(sourceVideoUrl);
-		project.setCurrentProjectPath(null);
+		if (!opts?.preserveProject) {
+			project.setCurrentProjectPath(null);
+		}
 		project.setLastSavedSnapshot(null);
 		resetSourceScopedEditorState();
 		pendingFreshRecordingAutoZoomPathRef.current = appearance.autoApplyFreshRecordingAutoZooms
@@ -180,6 +182,8 @@ export function useProjectOpenActions({
 		refreshProjectLibrary,
 	]);
 
+	const handleImportMediaOrProject = useCallback(() => doImportMediaOrProject(), [doImportMediaOrProject]);
+
 	const handleOpenProjectBrowser = useCallback(() => {
 		if (project.projectBrowserOpen) {
 			project.setProjectBrowserOpen(false);
@@ -202,21 +206,35 @@ export function useProjectOpenActions({
 		};
 	}, [handleOpenProjectBrowser, handleSaveProject, handleSaveProjectAs]);
 
-	const handleCreateNewProject = useCallback(async () => {
+	const handleCreateNewProject = useCallback(async (postAction?: "upload" | "record") => {
 		if (!(await confirmReplaceSourceWithUnsavedChanges("create a new project"))) return;
 
 		const emptyProjectData = createProjectData("", {});
 		const result = await window.electronAPI.saveProjectFile(emptyProjectData, "Untitled Project");
 
-		if (result.canceled) return;
+		if (result.canceled) return null;
 		if (!result.success || !result.path) {
 			toast.error(result.message || "Failed to create project");
-			return;
+			return null;
 		}
 
 		// Since we just created it, we can open it
 		await handleOpenProjectFromLibrary(result.path);
-	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary]);
+		
+		if (postAction === "upload") {
+			// Trigger import, bypassing unsaved prompt and keeping the new project ID
+			await doImportMediaOrProject({ preserveProject: true, skipUnsavedPrompt: true });
+		} else if (postAction === "record") {
+			// TODO: trigger screen capture when goal 2 is merged
+			// For now, this is handled gracefully by being a no-op since startNativeScreenRecording returns success: false
+			const captureRes = await window.electronAPI.startNativeScreenRecording();
+			if (!captureRes.success) {
+				toast.error(captureRes.message || "Screen recording is not available.");
+			}
+		}
+
+		return result.path;
+	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary, doImportMediaOrProject]);
 
 	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject };
 }
