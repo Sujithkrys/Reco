@@ -1,14 +1,17 @@
+import { Plus } from "@phosphor-icons/react";
 import { toFileUrl } from "../projectPersistence";
 import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
 
 type EditorDashboardProps = {
 	entries: ProjectLibraryEntry[];
 	onOpenProject: (projectPath: string) => void;
+	onNewProject: () => void;
 };
 
 export default function EditorDashboard({
 	entries,
 	onOpenProject,
+	onNewProject,
 }: EditorDashboardProps) {
 	// Show up to 12 most recent projects
 	const recentProjects = entries.slice(0, 12);
@@ -17,12 +20,22 @@ export default function EditorDashboard({
 		<div className="flex h-full w-full flex-col overflow-y-auto bg-editor-panel text-foreground">
 			<div className="flex flex-col gap-6 p-5">
 				<header className="flex flex-col gap-3">
-					<h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-					<p className="text-sm text-foreground/60">
-						Start a new project or open an existing one.
-					</p>
-					
-
+					<div className="flex items-center justify-between">
+						<div>
+							<h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+							<p className="text-sm text-foreground/60">
+								Start a new project or open an existing one.
+							</p>
+						</div>
+						<button 
+							type="button"
+							onClick={onNewProject} 
+							className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+						>
+							<Plus weight="bold" />
+							New Recording
+						</button>
+					</div>
 				</header>
 
 				{recentProjects.length > 0 ? (

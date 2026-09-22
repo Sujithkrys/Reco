@@ -237,6 +237,7 @@ export function DashboardLayout({
 						<EditorDashboard
 							entries={project.projectLibraryEntries}
 							onOpenProject={openActions.handleOpenProjectFromLibrary}
+							onNewProject={openActions.handleCreateNewProject}
 						/>
 					) : safeActiveSection === "brandkit" ? (
 						<ComingSoonPlaceholder title="Brand kit" />

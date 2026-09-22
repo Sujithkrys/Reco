@@ -7,7 +7,7 @@ import {
 	useEffect,
 } from "react";
 import { toast } from "sonner";
-import { fromFileUrl, resolveVideoUrl } from "../projectPersistence";
+import { fromFileUrl, resolveVideoUrl, createProjectData } from "../projectPersistence";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useProjectState } from "../state/useProjectState";
 import { DEFAULT_WEBCAM_TIME_OFFSET_MS } from "../types";
@@ -202,5 +202,21 @@ export function useProjectOpenActions({
 		};
 	}, [handleOpenProjectBrowser, handleSaveProject, handleSaveProjectAs]);
 
-	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser };
+	const handleCreateNewProject = useCallback(async () => {
+		if (!(await confirmReplaceSourceWithUnsavedChanges("create a new project"))) return;
+
+		const emptyProjectData = createProjectData("", {});
+		const result = await window.electronAPI.saveProjectFile(emptyProjectData, "Untitled Project");
+
+		if (result.canceled) return;
+		if (!result.success || !result.path) {
+			toast.error(result.message || "Failed to create project");
+			return;
+		}
+
+		// Since we just created it, we can open it
+		await handleOpenProjectFromLibrary(result.path);
+	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary]);
+
+	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject };
 }
