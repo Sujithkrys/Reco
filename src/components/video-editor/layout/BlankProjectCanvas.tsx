@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 
 type BlankProjectCanvasProps = {
 	onImportVideo: () => void;
+	onRecordScreen: () => void;
 };
 
-export function BlankProjectCanvas({ onImportVideo }: BlankProjectCanvasProps) {
+export function BlankProjectCanvas({ onImportVideo, onRecordScreen }: BlankProjectCanvasProps) {
 	return (
 		<div className="flex h-full w-full flex-col items-center justify-center p-8 bg-editor-panel rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] border border-foreground/10">
 			<div className="flex flex-col items-center justify-center max-w-md text-center p-10 border-2 border-dashed border-foreground/20 rounded-2xl bg-editor-bg">
@@ -31,9 +32,8 @@ export function BlankProjectCanvas({ onImportVideo }: BlankProjectCanvasProps) {
 					
 					<Button
 						variant="outline"
-						disabled
-						title="Coming soon"
-						className="flex items-center justify-center gap-2 h-10 px-6 rounded-lg font-medium opacity-50 cursor-not-allowed border-foreground/10 hover:bg-transparent"
+						onClick={onRecordScreen}
+						className="flex items-center justify-center gap-2 h-10 px-6 rounded-lg font-medium border-foreground/10 hover:bg-transparent"
 					>
 						<VideoCamera weight="bold" className="h-4 w-4" />
 						Record Screen

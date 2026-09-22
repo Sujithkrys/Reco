@@ -186,7 +186,7 @@ export function DashboardLayout({
 	projectController,
 	settingsPanelProps,
 }: Props) {
-	const { openActions, saveActions, lifecycle } = projectController;
+	const { openActions, saveActions, lifecycle, recordingActions } = projectController;
 	const { activeEffectSection, setActiveEffectSection } = ui;
 
 	// Ensure we only have valid dashboard sections
@@ -232,7 +232,7 @@ export function DashboardLayout({
 					setActiveSection={setActiveEffectSection}
 					settingsPanelProps={settingsPanelProps}
 					onImportFile={openActions.handleImportMediaOrProject}
-					onRecordScreen={() => {}}
+					onRecordScreen={recordingActions.openLauncher}
 				/>
 				<div className="flex-1 overflow-hidden rounded-xl border border-foreground/10 bg-editor-panel shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
 					{safeActiveSection === "dashboard" || safeActiveSection === "projects" ? (
@@ -241,6 +241,7 @@ export function DashboardLayout({
 							entries={project.projectLibraryEntries}
 							onOpenProject={openActions.handleOpenProjectFromLibrary}
 							onNewProject={openActions.handleCreateNewProject}
+							onRecordScreen={recordingActions.openLauncher}
 						/>
 					) : safeActiveSection === "brandkit" ? (
 						<ComingSoonPlaceholder title="Brand kit" />

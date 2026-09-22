@@ -12,7 +12,8 @@ type EditorDashboardProps = {
 	mode: "dashboard" | "projects";
 	entries: ProjectLibraryEntry[];
 	onOpenProject: (projectPath: string) => void;
-	onNewProject: (postAction?: "upload" | "record") => void;
+	onNewProject: (postAction?: "upload" | "record") => Promise<string | null>;
+	onRecordScreen: () => void;
 };
 
 export default function EditorDashboard({
@@ -20,6 +21,7 @@ export default function EditorDashboard({
 	entries,
 	onOpenProject,
 	onNewProject,
+	onRecordScreen,
 }: EditorDashboardProps) {
 	// Show up to 4 most recent projects for dashboard, all for projects list
 	const displayProjects = mode === "dashboard" ? entries.slice(0, 4) : entries;
@@ -61,9 +63,13 @@ export default function EditorDashboard({
 									</DropdownMenuItem>
 									
 									<DropdownMenuItem 
-										disabled
-										title="Coming soon"
-										className="flex items-center gap-2 cursor-not-allowed opacity-50"
+										onClick={async () => {
+											const path = await onNewProject();
+											if (path) {
+												onRecordScreen();
+											}
+										}}
+										className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
 									>
 										<VideoCamera className="h-4 w-4" />
 										<span>Record screen</span>
