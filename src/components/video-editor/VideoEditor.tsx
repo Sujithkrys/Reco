@@ -92,6 +92,7 @@ export default function VideoEditor() {
 		pendingFreshRecordingAutoSuggestTelemetryCountRef,
 		timelineRef,
 		applySessionPresentation,
+		setViewMode,
 	} = ui;
 	const effectiveShowCursor = sessionShowCursorOverride ?? showCursor;
 	const headerLeftControlsPaddingClass = appPlatform === "darwin" ? "pl-[76px]" : "";
