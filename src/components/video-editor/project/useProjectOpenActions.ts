@@ -183,6 +183,8 @@ export function useProjectOpenActions({
 	]);
 
 	const handleImportMediaOrProject = useCallback(() => doImportMediaOrProject(), [doImportMediaOrProject]);
+	
+	const handleImportVideoForCurrentProject = useCallback(() => doImportMediaOrProject({ preserveProject: true, skipUnsavedPrompt: true }), [doImportMediaOrProject]);
 
 	const handleOpenProjectBrowser = useCallback(() => {
 		if (project.projectBrowserOpen) {
@@ -236,5 +238,5 @@ export function useProjectOpenActions({
 		return result.path;
 	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary, doImportMediaOrProject]);
 
-	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject };
+	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject, handleImportVideoForCurrentProject };
 }

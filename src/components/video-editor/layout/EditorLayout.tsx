@@ -23,6 +23,7 @@ import { EditorDialogs } from "./EditorDialogs";
 import { EditorHeader } from "./EditorHeader";
 import { EditorPreviewPanel } from "./EditorPreviewPanel";
 import { EditorTimelinePanel } from "./EditorTimelinePanel";
+import { BlankProjectCanvas } from "./BlankProjectCanvas";
 
 type EditorRailProps = {
 	t: ReturnType<typeof useI18n>["t"];
@@ -267,61 +268,67 @@ export function EditorLayout(props: Props) {
 						setActiveSection={ui.setActiveEffectSection}
 						onBack={() => ui.setViewMode("dashboard")}
 					/>
-					<EditorPreviewPanel
-						t={t}
-						videoPath={project.videoPath}
-						previewVersion={ui.previewVersion}
-						aspectRatio={ui.aspectRatio}
-						setAspectRatio={ui.setAspectRatio}
-						previewAspectRatioValue={previewAspectRatioValue}
-						videoPlaybackRef={ui.videoPlaybackRef}
+					{project.videoPath ? (
+						<EditorPreviewPanel
+							t={t}
+							videoPath={project.videoPath}
+							previewVersion={ui.previewVersion}
+							aspectRatio={ui.aspectRatio}
+							setAspectRatio={ui.setAspectRatio}
+							previewAspectRatioValue={previewAspectRatioValue}
+							videoPlaybackRef={ui.videoPlaybackRef}
+							timelineRef={ui.timelineRef}
+							currentTime={ui.currentTime}
+							isPlaying={ui.isPlaying}
+							previewVolume={ui.previewVolume}
+							setPreviewVolume={ui.setPreviewVolume}
+							suspendRendering={exportStatus.shouldSuspendPreviewRendering}
+							appearance={appearance}
+							timeline={timeline}
+							audio={audio}
+							projection={projection}
+							playback={playback}
+							zoomCommands={zoomCommands}
+							annotationCommands={annotationCommands}
+							effectiveCursorTelemetry={cursor.effectiveCursorTelemetry}
+							effectiveShowCursor={effectiveShowCursor}
+							isCropped={ui.isCropped}
+							handleOpenCropEditor={ui.handleOpenCropEditor}
+							handleSaveAutoCaptionEdit={autoCaption.handleSaveAutoCaptionEdit}
+							handleSelectAnnotation={handleSelectAnnotation}
+							setDuration={ui.setDuration}
+							setIsPreviewReady={ui.setIsPreviewReady}
+							setCurrentTime={ui.setCurrentTime}
+							setIsPlaying={ui.setIsPlaying}
+							setError={project.setError}
+						/>
+					) : (
+						<BlankProjectCanvas onImportVideo={openActions.handleImportVideoForCurrentProject} />
+					)}
+				</div>
+				{project.videoPath ? (
+					<EditorTimelinePanel
 						timelineRef={ui.timelineRef}
-						currentTime={ui.currentTime}
-						isPlaying={ui.isPlaying}
-						previewVolume={ui.previewVolume}
-						setPreviewVolume={ui.setPreviewVolume}
-						suspendRendering={exportStatus.shouldSuspendPreviewRendering}
-						appearance={appearance}
 						timeline={timeline}
-						audio={audio}
 						projection={projection}
 						playback={playback}
+						audio={audio}
 						zoomCommands={zoomCommands}
+						clipCommands={clipCommands}
+						audioCommands={audioCommands}
+						captionCommands={captionCommands}
 						annotationCommands={annotationCommands}
-						effectiveCursorTelemetry={cursor.effectiveCursorTelemetry}
-						effectiveShowCursor={effectiveShowCursor}
-						isCropped={ui.isCropped}
-						handleOpenCropEditor={ui.handleOpenCropEditor}
-						handleSaveAutoCaptionEdit={autoCaption.handleSaveAutoCaptionEdit}
+						videoPath={project.videoPath}
+						videoSourcePath={project.videoSourcePath}
+						cursorTelemetrySourcePath={timeline.cursorTelemetrySourcePath}
+						normalizedCursorTelemetry={cursor.normalizedCursorTelemetry}
+						autoSuggestZoomsTrigger={ui.autoSuggestZoomsTrigger}
+						handleAutoSuggestZoomsConsumed={handleAutoSuggestZoomsConsumed}
+						disableSuggestedZooms={!appearance.autoApplyFreshRecordingAutoZooms}
+						currentTime={ui.currentTime}
 						handleSelectAnnotation={handleSelectAnnotation}
-						setDuration={ui.setDuration}
-						setIsPreviewReady={ui.setIsPreviewReady}
-						setCurrentTime={ui.setCurrentTime}
-						setIsPlaying={ui.setIsPlaying}
-						setError={project.setError}
 					/>
-				</div>
-				<EditorTimelinePanel
-					timelineRef={ui.timelineRef}
-					timeline={timeline}
-					projection={projection}
-					playback={playback}
-					audio={audio}
-					zoomCommands={zoomCommands}
-					clipCommands={clipCommands}
-					audioCommands={audioCommands}
-					captionCommands={captionCommands}
-					annotationCommands={annotationCommands}
-					videoPath={project.videoPath}
-					videoSourcePath={project.videoSourcePath}
-					cursorTelemetrySourcePath={timeline.cursorTelemetrySourcePath}
-					normalizedCursorTelemetry={cursor.normalizedCursorTelemetry}
-					autoSuggestZoomsTrigger={ui.autoSuggestZoomsTrigger}
-					handleAutoSuggestZoomsConsumed={handleAutoSuggestZoomsConsumed}
-					disableSuggestedZooms={!appearance.autoApplyFreshRecordingAutoZooms}
-					currentTime={ui.currentTime}
-					handleSelectAnnotation={handleSelectAnnotation}
-				/>
+				) : null}
 			</div>
 			{editorDialogs}
 			<CropEditorDialog
