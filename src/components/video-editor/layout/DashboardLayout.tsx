@@ -71,7 +71,6 @@ function DashboardSidebar({
 			<div className="flex flex-1 flex-col gap-4 overflow-y-auto mt-2">
 				{menuGroups.map((group, groupIndex) => (
 					<div key={groupIndex} className="flex flex-col gap-1">
-						{groupIndex > 0 && <div className="h-px bg-foreground/10 border-t border-dashed border-transparent my-1 mx-3" />}
 						{group.map((section) => {
 							const isActive = activeSection === section.id;
 							return (
@@ -103,7 +102,6 @@ function DashboardSidebar({
 			</div>
 
 			<div className="mt-auto flex flex-col gap-1 pt-4">
-				<div className="h-px bg-foreground/10 border-t border-dashed border-transparent my-1 mx-3" />
 				<button
 					type="button"
 					onClick={() => setActiveSection("settings" as EditorEffectSection)}
