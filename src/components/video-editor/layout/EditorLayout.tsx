@@ -49,7 +49,7 @@ function EditorRail({ t, activeSection, setActiveSection, onBack }: EditorRailPr
 			<motion.button
 				type="button"
 				onClick={onBack}
-				title={t("editor.back", "Back to Dashboard")}
+				title={t("editor.back", "Back to Projects")}
 				className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none mb-2"
 				whileHover={{ opacity: 1 }}
 				initial={{ opacity: 0.55 }}
@@ -266,7 +266,10 @@ export function EditorLayout(props: Props) {
 						t={t}
 						activeSection={safeActiveSection}
 						setActiveSection={ui.setActiveEffectSection}
-						onBack={() => ui.setViewMode("dashboard")}
+						onBack={() => {
+							ui.setActiveEffectSection("projects");
+							ui.setViewMode("dashboard");
+						}}
 					/>
 					{project.videoPath ? (
 						<EditorPreviewPanel
@@ -303,7 +306,10 @@ export function EditorLayout(props: Props) {
 							setError={project.setError}
 						/>
 					) : (
-						<BlankProjectCanvas onImportVideo={openActions.handleImportVideoForCurrentProject} />
+						<BlankProjectCanvas 
+							onImportVideo={openActions.handleImportVideoForCurrentProject} 
+							onRecordScreen={recordingActions.openLauncher} 
+						/>
 					)}
 				</div>
 				{project.videoPath ? (

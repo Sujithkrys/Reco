@@ -107,6 +107,7 @@ export function normalizeCursorClickEffectColor(
 }
 
 export type EditorEffectSection =
+	| "projects"
 	| "dashboard"
 	| "brandkit"
 	| "translation"
@@ -422,7 +423,7 @@ export function trimsToClips(trims: TrimRegion[], totalDurationMs: number): Clip
 	return clips;
 }
 
-export type AnnotationType = "text" | "image" | "figure" | "blur";
+export type AnnotationType = "text" | "image" | "figure" | "shape" | "blur";
 export const BLUR_ANNOTATION_STRENGTH = 20;
 export const BASE_PREVIEW_WIDTH = 1920;
 export const BASE_PREVIEW_HEIGHT = 1080;
@@ -441,6 +442,18 @@ export interface FigureData {
 	arrowDirection: ArrowDirection;
 	color: string;
 	strokeWidth: number;
+}
+
+export type ShapeKind = "rectangle" | "ellipse";
+
+export interface ShapeData {
+	kind: ShapeKind;
+	/** Fill colour, or "transparent" for outline-only shapes. */
+	fillColor: string;
+	strokeColor: string;
+	strokeWidth: number;
+	/** Corner rounding in px; only meaningful for rectangles. */
+	cornerRadius: number;
 }
 
 export interface AnnotationPosition {
@@ -487,6 +500,7 @@ export interface AnnotationRegion {
 	zIndex: number;
 	trackIndex?: number;
 	figureData?: FigureData;
+	shapeData?: ShapeData;
 	blurIntensity?: number;
 	blurColor?: string;
 }
@@ -517,6 +531,14 @@ export const DEFAULT_FIGURE_DATA: FigureData = {
 	arrowDirection: "right",
 	color: "#2563EB",
 	strokeWidth: 4,
+};
+
+export const DEFAULT_SHAPE_DATA: ShapeData = {
+	kind: "rectangle",
+	fillColor: "#2563EB",
+	strokeColor: "#ffffff",
+	strokeWidth: 0,
+	cornerRadius: 12,
 };
 
 export interface CropRegion {

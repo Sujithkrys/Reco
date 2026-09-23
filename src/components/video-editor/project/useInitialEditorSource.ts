@@ -13,6 +13,7 @@ type SessionPresentation = {
 };
 
 type Input = {
+	setViewMode: (mode: "dashboard" | "editor") => void;
 	project: ReturnType<typeof useProjectState>;
 	appearance: ReturnType<typeof useAppearanceState>;
 	timeline: ReturnType<typeof useTimelineState>;
@@ -26,6 +27,7 @@ type Input = {
 };
 
 export function useInitialEditorSource({
+	setViewMode,
 	project,
 	appearance,
 	timeline,
@@ -91,6 +93,9 @@ export function useInitialEditorSource({
 					const sourceUrl = await resolveVideoUrl(sourcePath);
 					project.setVideoSourcePath(sourcePath);
 					project.setVideoPath(sourceUrl);
+					// A restored source means there is something to edit — show the editor,
+					// otherwise a reload leaves the user on Projects with a loaded video.
+					setViewMode("editor");
 					project.setCurrentProjectPath(null);
 					project.setLastSavedSnapshot(null);
 					resetSourceScopedEditorState();
@@ -127,6 +132,9 @@ export function useInitialEditorSource({
 					const sourceUrl = await resolveVideoUrl(sourcePath);
 					project.setVideoSourcePath(sourcePath);
 					project.setVideoPath(sourceUrl);
+					// A restored source means there is something to edit — show the editor,
+					// otherwise a reload leaves the user on Projects with a loaded video.
+					setViewMode("editor");
 					project.setCurrentProjectPath(null);
 					project.setLastSavedSnapshot(null);
 					resetSourceScopedEditorState();
@@ -160,6 +168,9 @@ export function useInitialEditorSource({
 					const sourceUrl = await resolveVideoUrl(sourcePath);
 					project.setVideoSourcePath(sourcePath);
 					project.setVideoPath(sourceUrl);
+					// A restored source means there is something to edit — show the editor,
+					// otherwise a reload leaves the user on Projects with a loaded video.
+					setViewMode("editor");
 					project.setCurrentProjectPath(null);
 					project.setLastSavedSnapshot(null);
 					resetSourceScopedEditorState();
@@ -184,6 +195,9 @@ export function useInitialEditorSource({
 				const sourcePath = fromFileUrl(currentVideo.path);
 				project.setVideoSourcePath(sourcePath);
 				project.setVideoPath(await resolveVideoUrl(sourcePath));
+				// A restored source means there is something to edit — show the editor,
+				// otherwise a reload leaves the user on Projects with a loaded video.
+				setViewMode("editor");
 				project.setCurrentProjectPath(null);
 				project.setLastSavedSnapshot(null);
 				resetSourceScopedEditorState();

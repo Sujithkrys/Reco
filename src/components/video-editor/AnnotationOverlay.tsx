@@ -2,7 +2,12 @@ import { useRef } from "react";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
 import { getArrowComponent } from "./ArrowSvgs";
-import { type AnnotationRegion, BASE_PREVIEW_WIDTH, BLUR_ANNOTATION_STRENGTH } from "./types";
+import {
+	type AnnotationRegion,
+	BASE_PREVIEW_WIDTH,
+	BLUR_ANNOTATION_STRENGTH,
+	DEFAULT_SHAPE_DATA,
+} from "./types";
 
 type Rect = {
 	x: number;
@@ -183,6 +188,28 @@ export function AnnotationOverlay({
 					</div>
 				);
 
+			case "shape": {
+				const shape = annotation.shapeData ?? DEFAULT_SHAPE_DATA;
+				const strokePx = shape.strokeWidth * sizeScale;
+				return (
+					<div
+						className="h-full w-full"
+						style={{
+							backgroundColor: shape.fillColor,
+							border:
+								shape.strokeWidth > 0
+									? `${strokePx}px solid ${shape.strokeColor}`
+									: undefined,
+							borderRadius:
+								shape.kind === "ellipse"
+									? "50%"
+									: `${shape.cornerRadius * sizeScale}px`,
+							boxSizing: "border-box",
+						}}
+					/>
+				);
+			}
+
 			case "blur": {
 				const currentBlurStrength = annotation.blurIntensity ?? BLUR_ANNOTATION_STRENGTH;
 				const blurPx = currentBlurStrength * blurScaleFactor;
@@ -300,6 +327,7 @@ export function AnnotationOverlay({
 					annotation.type === "text" && "bg-transparent",
 					annotation.type === "image" && "bg-transparent",
 					annotation.type === "figure" && "bg-transparent",
+					annotation.type === "shape" && "bg-transparent",
 					isSelected && "shadow-lg",
 				)}
 			>

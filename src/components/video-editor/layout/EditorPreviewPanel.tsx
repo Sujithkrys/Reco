@@ -233,38 +233,31 @@ export function EditorPreviewPanel(props: Props) {
 							align="start"
 							className="border-foreground/10 bg-editor-surface-alt"
 						>
-							<DropdownMenuItem
-								onClick={() => {
-									const nextTrack =
-										timeline.annotationRegions.length > 0
-											? Math.max(
-													...timeline.annotationRegions.map(
-														(region) => region.trackIndex ?? 0,
-													),
-												) + 1
-											: 0;
-									timelineRef.current?.addAnnotation(nextTrack);
-								}}
-								className="cursor-pointer text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
-							>
-								{t("timeline.annotation.label")}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => {
-									const nextTrack =
-										timeline.audioRegions.length > 0
-											? Math.max(
-													...timeline.audioRegions.map(
-														(region) => region.trackIndex ?? 0,
-													),
-												) + 1
-											: 0;
-									timelineRef.current?.addAudio(nextTrack);
-								}}
-								className="cursor-pointer text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
-							>
-								{t("timeline.audio.label")}
-							</DropdownMenuItem>
+							{(
+								[
+									{ type: "text", label: "Text" },
+									{ type: "image", label: "Image" },
+									{ type: "shape", label: "Shape" },
+								] as const
+							).map((option) => (
+								<DropdownMenuItem
+									key={option.type}
+									onClick={() => {
+										const nextTrack =
+											timeline.annotationRegions.length > 0
+												? Math.max(
+														...timeline.annotationRegions.map(
+															(region) => region.trackIndex ?? 0,
+														),
+													) + 1
+												: 0;
+										timelineRef.current?.addAnnotation(nextTrack, option.type);
+									}}
+									className="cursor-pointer text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+								>
+									{option.label}
+								</DropdownMenuItem>
+							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<div className="mx-1 h-4 w-px bg-foreground/10" />

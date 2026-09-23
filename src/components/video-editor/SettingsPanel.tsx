@@ -57,6 +57,7 @@ import type {
 	CursorStyle,
 	EditorEffectSection,
 	FigureData,
+	ShapeData,
 	Padding,
 	WebcamOverlaySettings,
 	WebcamPositionPreset,
@@ -627,6 +628,7 @@ interface SettingsPanelProps {
 	onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
+	onAnnotationShapeDataChange?: (id: string, shapeData: Partial<ShapeData>) => void;
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
 	onAnnotationDelete?: (id: string) => void;
@@ -1075,6 +1077,7 @@ export function SettingsPanel({
 	onAnnotationTypeChange,
 	onAnnotationStyleChange,
 	onAnnotationFigureDataChange,
+	onAnnotationShapeDataChange,
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
 	onAnnotationDelete,
@@ -2050,6 +2053,12 @@ export function SettingsPanel({
 					onAnnotationFigureDataChange
 						? (figureData) =>
 								onAnnotationFigureDataChange(selectedAnnotation.id, figureData)
+						: undefined
+				}
+				onShapeDataChange={
+					onAnnotationShapeDataChange
+						? (shapeData) =>
+								onAnnotationShapeDataChange(selectedAnnotation.id, shapeData)
 						: undefined
 				}
 				onBlurIntensityChange={

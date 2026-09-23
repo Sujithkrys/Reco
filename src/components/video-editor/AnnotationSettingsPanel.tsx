@@ -8,6 +8,7 @@ import {
 	Info,
 	TextItalic as Italic,
 	BoundingBox as SquareDashed,
+	Square,
 	Trash as Trash2,
 	TextT as Type,
 	TextUnderline as Underline,
@@ -33,7 +34,14 @@ import { cn } from "@/lib/utils";
 import { useScopedT } from "../../contexts/I18nContext";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { getArrowComponent } from "./ArrowSvgs";
-import type { AnnotationRegion, AnnotationType, ArrowDirection, FigureData } from "./types";
+import {
+	type AnnotationRegion,
+	type AnnotationType,
+	type ArrowDirection,
+	type FigureData,
+	type ShapeData,
+	DEFAULT_SHAPE_DATA,
+} from "./types";
 
 interface AnnotationSettingsPanelProps {
 	annotation: AnnotationRegion;
@@ -41,6 +49,7 @@ interface AnnotationSettingsPanelProps {
 	onTypeChange: (type: AnnotationType) => void;
 	onStyleChange: (style: Partial<AnnotationRegion["style"]>) => void;
 	onFigureDataChange?: (figureData: FigureData) => void;
+	onShapeDataChange?: (shapeData: Partial<ShapeData>) => void;
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
 	onDelete: () => void;
@@ -65,11 +74,13 @@ export function AnnotationSettingsPanel({
 	onTypeChange,
 	onStyleChange,
 	onFigureDataChange,
+	onShapeDataChange,
 	onBlurIntensityChange,
 	onBlurColorChange,
 	onDelete,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
+	const shape = annotation.shapeData ?? DEFAULT_SHAPE_DATA;
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
 
@@ -157,7 +168,7 @@ export function AnnotationSettingsPanel({
 						onValueChange={(value) => onTypeChange(value as AnnotationType)}
 						className="mb-6"
 					>
-						<TabsList className="mb-4 bg-foreground/5 border border-foreground/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
+						<TabsList className="mb-4 bg-foreground/5 border border-foreground/5 p-1 w-full grid grid-cols-5 h-auto rounded-xl">
 							<TabsTrigger
 								value="text"
 								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
@@ -190,6 +201,13 @@ export function AnnotationSettingsPanel({
 									/>
 								</svg>
 								{t("annotations.arrow")}
+							</TabsTrigger>
+							<TabsTrigger
+								value="shape"
+								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
+							>
+								<Square className="w-4 h-4" />
+								Shape
 							</TabsTrigger>
 							<TabsTrigger
 								value="blur"
@@ -658,6 +676,150 @@ export function AnnotationSettingsPanel({
 									</PopoverContent>
 								</Popover>
 							</div>
+						</TabsContent>
+
+						<TabsContent value="shape" className="mt-0 space-y-4">
+							<div>
+								<label className="text-xs font-medium text-foreground mb-3 block">
+									Shape
+								</label>
+								<div className="grid grid-cols-2 gap-2">
+									{(
+										[
+											{ kind: "rectangle", label: "Rectangle" },
+											{ kind: "ellipse", label: "Ellipse" },
+										] as const
+									).map((option) => {
+										const isActive = shape.kind === option.kind;
+										return (
+											<button
+												key={option.kind}
+												type="button"
+												onClick={() => onShapeDataChange?.({ kind: option.kind })}
+												className={cn(
+													"h-16 rounded-lg border flex items-center justify-center transition-all",
+													isActive
+														? "bg-[#2563EB] border-[#2563EB]"
+														: "bg-foreground/5 border-foreground/10 hover:bg-foreground/10 hover:border-foreground/20",
+												)}
+												aria-label={option.label}
+											>
+												<span
+													className={cn(
+														"block h-7 w-10 border-2",
+														option.kind === "ellipse"
+															? "rounded-full"
+															: "rounded-[4px]",
+													)}
+													style={{
+														borderColor: isActive ? "#ffffff" : "#94a3b8",
+													}}
+												/>
+											</button>
+										);
+									})}
+								</div>
+							</div>
+
+							<div>
+								<label className="text-xs font-medium text-foreground mb-2 block">
+									Fill colour
+								</label>
+								<Popover>
+									<PopoverTrigger asChild>
+										<Button
+											variant="outline"
+											className="w-full h-10 justify-start gap-2 bg-foreground/5 border-foreground/10 hover:bg-foreground/10"
+										>
+											<div
+												className="w-5 h-5 rounded-full border border-foreground/20"
+												style={{ backgroundColor: shape.fillColor }}
+											/>
+											<span className="text-xs text-muted-foreground truncate flex-1 text-left">
+												{shape.fillColor}
+											</span>
+											<ChevronDown className="h-3 w-3 opacity-50" />
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+										<Block
+											color={shape.fillColor}
+											colors={colorPalette}
+											onChange={(color) =>
+												onShapeDataChange?.({ fillColor: color.hex })
+											}
+											style={{ borderRadius: "8px" }}
+										/>
+									</PopoverContent>
+								</Popover>
+							</div>
+
+							<div>
+								<label className="text-xs font-medium text-foreground mb-2 block">
+									Border colour
+								</label>
+								<Popover>
+									<PopoverTrigger asChild>
+										<Button
+											variant="outline"
+											className="w-full h-10 justify-start gap-2 bg-foreground/5 border-foreground/10 hover:bg-foreground/10"
+										>
+											<div
+												className="w-5 h-5 rounded-full border border-foreground/20"
+												style={{ backgroundColor: shape.strokeColor }}
+											/>
+											<span className="text-xs text-muted-foreground truncate flex-1 text-left">
+												{shape.strokeColor}
+											</span>
+											<ChevronDown className="h-3 w-3 opacity-50" />
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+										<Block
+											color={shape.strokeColor}
+											colors={colorPalette}
+											onChange={(color) =>
+												onShapeDataChange?.({ strokeColor: color.hex })
+											}
+											style={{ borderRadius: "8px" }}
+										/>
+									</PopoverContent>
+								</Popover>
+							</div>
+
+							<div>
+								<label className="text-xs font-medium text-foreground mb-2 block">
+									Border width ({shape.strokeWidth}px)
+								</label>
+								<Slider
+									value={[shape.strokeWidth]}
+									onValueChange={([value]) =>
+										onShapeDataChange?.({ strokeWidth: value })
+									}
+									min={0}
+									max={24}
+									step={1}
+									className="w-full"
+								/>
+							</div>
+
+							{shape.kind === "rectangle" ? (
+								<div>
+									<label className="text-xs font-medium text-foreground mb-2 block">
+										Corner radius ({shape.cornerRadius}px)
+									</label>
+									<Slider
+										value={[shape.cornerRadius]}
+										onValueChange={([value]) =>
+											onShapeDataChange?.({ cornerRadius: value })
+										}
+										min={0}
+										max={120}
+										step={1}
+										className="w-full"
+									/>
+								</div>
+							) : null}
 						</TabsContent>
 
 						<TabsContent value="blur" className="mt-0 space-y-4">

@@ -143,6 +143,7 @@ export function useEditorProjectController(input: Input) {
 	);
 
 	useInitialEditorSource({
+		setViewMode: input.setViewMode,
 		project: input.project,
 		appearance: input.appearance,
 		timeline: input.timeline,

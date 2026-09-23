@@ -1,7 +1,9 @@
 import {
 	type AnnotationRegion,
 	type ArrowDirection,
+	type ShapeData,
 	BLUR_ANNOTATION_STRENGTH,
+	DEFAULT_SHAPE_DATA,
 } from "@/components/video-editor/types";
 
 export interface AnnotationRenderAssets {
@@ -195,6 +197,63 @@ function renderArrow(
 	}
 
 	ctx.stroke();
+
+	ctx.restore();
+}
+
+function renderShape(
+	ctx: CanvasRenderingContext2D,
+	shape: ShapeData,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	scaleFactor: number,
+) {
+	if (width <= 0 || height <= 0) return;
+
+	const strokeWidth = shape.strokeWidth * scaleFactor;
+	// Strokes straddle the path, so inset by half to keep the shape inside its
+	// box — matching the preview's `box-sizing: border-box`.
+	const inset = strokeWidth / 2;
+	const left = x + inset;
+	const top = y + inset;
+	const innerWidth = Math.max(0, width - strokeWidth);
+	const innerHeight = Math.max(0, height - strokeWidth);
+	if (innerWidth <= 0 || innerHeight <= 0) return;
+
+	ctx.save();
+	ctx.beginPath();
+
+	if (shape.kind === "ellipse") {
+		ctx.ellipse(
+			left + innerWidth / 2,
+			top + innerHeight / 2,
+			innerWidth / 2,
+			innerHeight / 2,
+			0,
+			0,
+			Math.PI * 2,
+		);
+	} else {
+		const radius = Math.min(
+			shape.cornerRadius * scaleFactor,
+			innerWidth / 2,
+			innerHeight / 2,
+		);
+		ctx.roundRect(left, top, innerWidth, innerHeight, Math.max(0, radius));
+	}
+
+	if (shape.fillColor && shape.fillColor !== "transparent") {
+		ctx.fillStyle = shape.fillColor;
+		ctx.fill();
+	}
+
+	if (strokeWidth > 0 && shape.strokeColor && shape.strokeColor !== "transparent") {
+		ctx.lineWidth = strokeWidth;
+		ctx.strokeStyle = shape.strokeColor;
+		ctx.stroke();
+	}
 
 	ctx.restore();
 }
@@ -416,6 +475,18 @@ export async function renderAnnotations(
 				}
 				break;
 
+			case "shape":
+				renderShape(
+					ctx,
+					annotation.shapeData ?? DEFAULT_SHAPE_DATA,
+					x,
+					y,
+					width,
+					height,
+					effectiveScaleFactor,
+				);
+				break;
+
 			case "blur": {
 				const blurStrength =
 					(annotation.blurIntensity ?? BLUR_ANNOTATION_STRENGTH) * effectiveScaleFactor;
@@ -508,6 +579,19 @@ export async function renderAnnotationToCanvas(
 				scaleFactor,
 			);
 			break;
+
+		case "shape":
+			renderShape(
+				ctx,
+				annotation.shapeData ?? DEFAULT_SHAPE_DATA,
+				0,
+				0,
+				canvasWidth,
+				canvasHeight,
+				scaleFactor,
+			);
+			break;
+
 		case "blur":
 			// Blur annotations must sample already-rendered scene pixels,
 			// so they cannot be rasterized as standalone sprites.

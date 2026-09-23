@@ -8,8 +8,17 @@ import { Plus, CaretDown, VideoCamera, FileVideo, FilePlus } from "@phosphor-ico
 import { toFileUrl } from "../projectPersistence";
 import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
 
+/**
+ * Thumbnails are stored as `data:` URLs in web mode; only real filesystem
+ * paths need converting to file:// URLs.
+ */
+function resolveThumbnailSrc(thumbnailPath: string): string {
+	return /^(data:|blob:|https?:)/i.test(thumbnailPath)
+		? thumbnailPath
+		: toFileUrl(thumbnailPath);
+}
+
 type EditorDashboardProps = {
-	mode: "dashboard" | "projects";
 	entries: ProjectLibraryEntry[];
 	onOpenProject: (projectPath: string) => void;
 	onNewProject: (postAction?: "upload" | "record") => Promise<string | null>;
@@ -17,14 +26,12 @@ type EditorDashboardProps = {
 };
 
 export default function EditorDashboard({
-	mode,
 	entries,
 	onOpenProject,
 	onNewProject,
 	onRecordScreen,
 }: EditorDashboardProps) {
-	// Show up to 4 most recent projects for dashboard, all for projects list
-	const displayProjects = mode === "dashboard" ? entries.slice(0, 4) : entries;
+	const displayProjects = entries;
 
 	return (
 		<div className="flex h-full w-full flex-col overflow-y-auto bg-editor-panel text-foreground">
@@ -32,73 +39,62 @@ export default function EditorDashboard({
 				<header className="flex flex-col gap-3">
 					<div className="flex items-center justify-between">
 						<div>
-							<h2 className="text-2xl font-bold tracking-tight">
-								{mode === "dashboard" ? "Dashboard" : "Projects"}
-							</h2>
+							<h2 className="text-2xl font-bold tracking-tight">Projects</h2>
 							<p className="text-sm text-foreground/60">
-								{mode === "dashboard" 
-									? "Start a new project or open a recent one." 
-									: "Manage and open your saved projects."}
+								Start a new project or open a saved one.
 							</p>
 						</div>
-						{mode === "dashboard" && (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button 
-										type="button"
-										className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
-									>
-										<Plus weight="bold" />
-										New project
-										<CaretDown weight="bold" className="ml-1 opacity-70" />
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-56 bg-editor-dialog border-foreground/10 text-foreground p-1">
-									<DropdownMenuItem 
-										onClick={() => onNewProject()}
-										className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
-									>
-										<FilePlus className="h-4 w-4" />
-										<span>Start blank project</span>
-									</DropdownMenuItem>
-									
-									<DropdownMenuItem 
-										onClick={async () => {
-											const path = await onNewProject();
-											if (path) {
-												onRecordScreen();
-											}
-										}}
-										className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
-									>
-										<VideoCamera className="h-4 w-4" />
-										<span>Record screen</span>
-									</DropdownMenuItem>
-									
-									<DropdownMenuItem 
-										onClick={() => onNewProject("upload")}
-										className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
-									>
-										<FileVideo className="h-4 w-4" />
-										<span>Upload video</span>
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						)}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<button
+									type="button"
+									className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+								>
+									<Plus weight="bold" />
+									New project
+									<CaretDown weight="bold" className="ml-1 opacity-70" />
+								</button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-56 bg-editor-dialog border-foreground/10 text-foreground p-1">
+								<DropdownMenuItem
+									onClick={() => onNewProject()}
+									className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
+								>
+									<FilePlus className="h-4 w-4" />
+									<span>Start blank project</span>
+								</DropdownMenuItem>
+
+								<DropdownMenuItem
+									onClick={async () => {
+										const path = await onNewProject();
+										if (path) {
+											onRecordScreen();
+										}
+									}}
+									className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
+								>
+									<VideoCamera className="h-4 w-4" />
+									<span>Record screen</span>
+								</DropdownMenuItem>
+
+								<DropdownMenuItem
+									onClick={() => onNewProject("upload")}
+									className="flex items-center gap-2 cursor-pointer focus:bg-foreground/10"
+								>
+									<FileVideo className="h-4 w-4" />
+									<span>Upload video</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 				</header>
 
 				{displayProjects.length > 0 ? (
 					<section className="flex flex-col gap-3">
-						{mode === "dashboard" && (
-							<h3 className="text-sm font-medium tracking-tight text-foreground/80">
-								Recent Projects
-							</h3>
-						)}
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 							{displayProjects.map((entry) => {
 								const thumbnailSrc = entry.thumbnailPath
-									? toFileUrl(entry.thumbnailPath)
+									? resolveThumbnailSrc(entry.thumbnailPath)
 									: null;
 								return (
 									<button

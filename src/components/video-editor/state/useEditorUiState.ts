@@ -46,7 +46,7 @@ export function useEditorUiState(
 	const [previewVolume, setPreviewVolume] = useState(1);
 	const [aspectRatio, setAspectRatio] = useState<AspectRatio>(initialPreferences.aspectRatio);
 	const [viewMode, setViewMode] = useState<"dashboard" | "editor">("dashboard");
-	const [activeEffectSection, setActiveEffectSection] = useState<EditorEffectSection>("dashboard");
+	const [activeEffectSection, setActiveEffectSection] = useState<EditorEffectSection>("projects");
 	const [showCropModal, setShowCropModal] = useState(false);
 	const [previewVersion, setPreviewVersion] = useState(0);
 	const [isPreviewReady, setIsPreviewReady] = useState(false);
