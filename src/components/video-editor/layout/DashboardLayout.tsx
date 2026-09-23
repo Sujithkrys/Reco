@@ -1,13 +1,12 @@
 import {
 	Gear,
-	House,
 	UserCircle,
 	Palette,
 	Translate,
 	TerminalWindow,
 	Folder,
 } from "@phosphor-icons/react";
-import { motion } from "motion/react";
+import type { Icon } from "@phosphor-icons/react";
 import { type ComponentProps, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -41,7 +40,8 @@ function DashboardSidebar({
 }: DashboardSidebarProps) {
 	const { user, openAuthModal, signOut } = useAuth();
 	
-	const menuGroups = useMemo(
+	const menuGroups: { id: EditorEffectSection; label: string; icon: Icon; isNew?: boolean }[][] =
+		useMemo(
 		() => [
 			[
 				{ id: "projects" as const, label: t("settings.sections.projects", "Projects"), icon: Folder },
@@ -68,9 +68,9 @@ function DashboardSidebar({
 				<span className="text-xl font-bold tracking-tight text-foreground">Reco</span>
 			</div>
 			
-			<div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+			<div className="flex flex-1 flex-col gap-4 overflow-y-auto mt-2">
 				{menuGroups.map((group, groupIndex) => (
-					<div key={groupIndex} className="flex flex-col gap-0.5">
+					<div key={groupIndex} className="flex flex-col gap-1">
 						{groupIndex > 0 && <div className="h-px bg-foreground/10 border-t border-dashed border-transparent my-1 mx-3" />}
 						{group.map((section) => {
 							const isActive = activeSection === section.id;
@@ -81,12 +81,12 @@ function DashboardSidebar({
 									onClick={() => setActiveSection(section.id)}
 									className={`group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors ${
 										isActive 
-											? "bg-foreground/[0.08] text-foreground" 
-											: "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"
+											? "bg-foreground/10 text-foreground" 
+											: "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
 									}`}
 								>
 									<section.icon 
-										className={`h-[18px] w-[18px] ${isActive ? "text-[#2563EB]" : "text-foreground/50 group-hover:text-foreground/70"}`} 
+										className={`h-[18px] w-[18px] ${isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground/80"}`} 
 										weight={isActive ? "fill" : "regular"} 
 									/>
 									<span>{section.label}</span>
@@ -102,19 +102,19 @@ function DashboardSidebar({
 				))}
 			</div>
 
-			<div className="mt-auto flex flex-col gap-0.5 pt-3">
+			<div className="mt-auto flex flex-col gap-1 pt-4">
 				<div className="h-px bg-foreground/10 border-t border-dashed border-transparent my-1 mx-3" />
 				<button
 					type="button"
 					onClick={() => setActiveSection("settings" as EditorEffectSection)}
 					className={`group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors ${
 						activeSection === "settings"
-							? "bg-foreground/[0.08] text-foreground" 
-							: "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"
+							? "bg-foreground/10 text-foreground" 
+							: "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
 					}`}
 				>
 					<Gear 
-						className={`h-[18px] w-[18px] ${activeSection === "settings" ? "text-[#2563EB]" : "text-foreground/50 group-hover:text-foreground/70"}`} 
+						className={`h-[18px] w-[18px] ${activeSection === "settings" ? "text-foreground" : "text-foreground/60 group-hover:text-foreground/80"}`} 
 						weight={activeSection === "settings" ? "fill" : "regular"} 
 					/>
 					<span>{t("settings.sections.settings", "Settings")}</span>
@@ -123,8 +123,8 @@ function DashboardSidebar({
 				{user ? (
 					<Popover>
 						<PopoverTrigger asChild>
-							<button className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground">
-								<UserCircle className="h-[18px] w-[18px] text-foreground/50 group-hover:text-foreground/70" weight="regular" />
+							<button className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/5 hover:text-foreground">
+								<UserCircle className="h-[18px] w-[18px] text-foreground/60 group-hover:text-foreground/80" weight="regular" />
 								<span className="truncate">{user.email?.split('@')[0] || "Account"}</span>
 							</button>
 						</PopoverTrigger>
@@ -146,9 +146,9 @@ function DashboardSidebar({
 				) : (
 					<button
 						onClick={openAuthModal}
-						className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"
+						className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
 					>
-						<UserCircle className="h-[18px] w-[18px] text-foreground/50 group-hover:text-foreground/70" weight="regular" />
+						<UserCircle className="h-[18px] w-[18px] text-foreground/60 group-hover:text-foreground/80" weight="regular" />
 						<span>Account</span>
 					</button>
 				)}
