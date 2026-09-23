@@ -40,116 +40,118 @@ function DashboardSidebar({
 	onRecordScreen,
 }: DashboardSidebarProps) {
 	const { user, openAuthModal, signOut } = useAuth();
-	const sections = useMemo(
+	
+	const menuGroups = useMemo(
 		() => [
-			{ id: "dashboard" as const, label: t("settings.sections.dashboard", "Home"), icon: House },
-			{ id: "projects" as const, label: t("settings.sections.projects", "Projects"), icon: Folder },
-			{ id: "brandkit" as const, label: t("settings.sections.brandkit", "Brand kit"), icon: Palette },
-			{ id: "translation" as const, label: t("settings.sections.translation", "Translation"), icon: Translate },
-			{ id: "mcp" as const, label: t("settings.sections.mcp", "MCP"), icon: TerminalWindow },
-			{
-				id: "settings" as const,
-				label: t("settings.sections.settings", "Settings"),
-				icon: Gear,
-			},
+			[
+				{ id: "projects" as const, label: t("settings.sections.projects", "Projects"), icon: Folder },
+			],
+			[
+				{ id: "brandkit" as const, label: t("settings.sections.brandkit", "Brand kit"), icon: Palette },
+				{ id: "translation" as const, label: t("settings.sections.translation", "Translation"), icon: Translate },
+			],
+			[
+				{ id: "mcp" as const, label: t("settings.sections.mcp", "MCP"), icon: TerminalWindow, isNew: true },
+			]
 		],
 		[t],
 	);
 
 	return (
-		<div className="flex flex-shrink-0 gap-1.5 h-full">
-			<div className="flex flex-shrink-0 flex-col items-center gap-0.5 px-2 py-2">
-				{sections.map((section) => {
-					const isActive = activeSection === section.id;
-					return (
-						<div key={section.id} className="flex items-center">
-							<motion.button
-								type="button"
-								onClick={() => setActiveSection(section.id)}
-								title={section.label}
-								className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none"
-								animate={{ opacity: isActive ? 1 : 0.55 }}
-								transition={{ duration: 0.14 }}
-							>
-								{isActive ? (
-									<motion.span
-										layoutId="dashboard-rail-active-bg"
-										className="absolute inset-0 rounded-lg bg-foreground/[0.08]"
-										transition={{ type: "spring", stiffness: 450, damping: 35 }}
-									/>
-								) : null}
-								<motion.span
-									className="relative z-10"
-									animate={{
-										color: isActive ? "#2563EB" : "hsl(var(--foreground))",
-									}}
-									transition={{ duration: 0.14 }}
-								>
-									<section.icon
-										className="h-[27px] w-[27px]"
-										weight={isActive ? "fill" : "regular"}
-									/>
-								</motion.span>
-							</motion.button>
-							<div className="ml-1.5 h-1.5 w-1.5 flex-shrink-0">
-								{isActive ? (
-									<motion.span
-										layoutId="dashboard-rail-active-dot"
-										className="block h-1.5 w-1.5 rounded-full bg-[#2563EB]"
-										initial={{ opacity: 0, scale: 0.5 }}
-										animate={{ opacity: 1, scale: 1 }}
-										exit={{ opacity: 0, scale: 0.5 }}
-										transition={{ type: "spring", stiffness: 500, damping: 32 }}
-									/>
-								) : null}
-							</div>
-						</div>
-					);
-				})}
-				<div className="mt-auto flex flex-col items-center gap-0.5 pt-3">
-					{user ? (
-						<Popover>
-							<PopoverTrigger asChild>
-								<motion.button
-									type="button"
-									title={t("editor.account.title", "Account")}
-									className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground outline-none transition focus:outline-none focus-visible:outline-none"
-									whileHover={{ opacity: 1 }}
-									initial={{ opacity: 0.9 }}
-								>
-									<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
-									<UserCircle className="relative z-10 h-[22px] w-[22px]" weight="fill" />
-								</motion.button>
-							</PopoverTrigger>
-							<PopoverContent className="w-56 bg-editor-dialog p-2 border-foreground/10 text-foreground" side="right" align="end">
-								<div className="flex flex-col gap-2">
-									<div className="px-2 py-1.5 text-sm font-medium opacity-80 truncate">
-										{user.email}
-									</div>
-									<div className="h-px bg-foreground/10 my-1" />
-									<button
-										onClick={() => signOut()}
-										className="w-full text-left px-2 py-1.5 text-sm rounded-md text-red-500 hover:bg-red-500/10 transition-colors"
-									>
-										Sign out
-									</button>
-								</div>
-							</PopoverContent>
-						</Popover>
-					) : (
-						<motion.button
-							type="button"
-							onClick={openAuthModal}
-							title={t("editor.account.title", "Account")}
-							className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground/55 outline-none transition hover:text-foreground focus:outline-none focus-visible:outline-none"
-							whileHover={{ opacity: 1 }}
-							initial={{ opacity: 0.55 }}
-						>
-							<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
-							<UserCircle className="relative z-10 h-[22px] w-[22px]" />
-						</motion.button>
-					)}
+		<div className="flex flex-shrink-0 w-60 h-full flex-col bg-editor-bg border-r border-foreground/5 pr-4 pl-2 py-4">
+			<div className="flex items-center gap-2 px-3 mb-6">
+				<div className="flex h-7 w-7 items-center justify-center rounded bg-pink-500 text-white">
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+						<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+					</svg>
 				</div>
+				<span className="text-xl font-bold tracking-tight text-foreground">Reco</span>
+			</div>
+			
+			<div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+				{menuGroups.map((group, groupIndex) => (
+					<div key={groupIndex} className="flex flex-col gap-0.5">
+						{groupIndex > 0 && <div className="h-px bg-foreground/10 border-t border-dashed border-transparent my-1 mx-3" />}
+						{group.map((section) => {
+							const isActive = activeSection === section.id;
+							return (
+								<button
+									key={section.id}
+									type="button"
+									onClick={() => setActiveSection(section.id)}
+									className={`group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors ${
+										isActive 
+											? "bg-foreground/[0.08] text-foreground" 
+											: "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"
+									}`}
+								>
+									<section.icon 
+										className={`h-[18px] w-[18px] ${isActive ? "text-[#2563EB]" : "text-foreground/50 group-hover:text-foreground/70"}`} 
+										weight={isActive ? "fill" : "regular"} 
+									/>
+									<span>{section.label}</span>
+									{section.isNew && (
+										<span className="ml-auto rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">
+											New
+										</span>
+									)}
+								</button>
+							);
+						})}
+					</div>
+				))}
+			</div>
+
+			<div className="mt-auto flex flex-col gap-0.5 pt-3">
+				<div className="h-px bg-foreground/10 border-t border-dashed border-transparent my-1 mx-3" />
+				<button
+					type="button"
+					onClick={() => setActiveSection("settings" as EditorEffectSection)}
+					className={`group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors ${
+						activeSection === "settings"
+							? "bg-foreground/[0.08] text-foreground" 
+							: "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"
+					}`}
+				>
+					<Gear 
+						className={`h-[18px] w-[18px] ${activeSection === "settings" ? "text-[#2563EB]" : "text-foreground/50 group-hover:text-foreground/70"}`} 
+						weight={activeSection === "settings" ? "fill" : "regular"} 
+					/>
+					<span>{t("settings.sections.settings", "Settings")}</span>
+				</button>
+
+				{user ? (
+					<Popover>
+						<PopoverTrigger asChild>
+							<button className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground">
+								<UserCircle className="h-[18px] w-[18px] text-foreground/50 group-hover:text-foreground/70" weight="regular" />
+								<span className="truncate">{user.email?.split('@')[0] || "Account"}</span>
+							</button>
+						</PopoverTrigger>
+						<PopoverContent className="w-56 bg-editor-dialog p-2 border-foreground/10 text-foreground" side="right" align="end">
+							<div className="flex flex-col gap-2">
+								<div className="px-2 py-1.5 text-sm font-medium opacity-80 truncate">
+									{user.email}
+								</div>
+								<div className="h-px bg-foreground/10 my-1" />
+								<button
+									onClick={() => signOut()}
+									className="w-full text-left px-2 py-1.5 text-sm rounded-md text-red-500 hover:bg-red-500/10 transition-colors"
+								>
+									Sign out
+								</button>
+							</div>
+						</PopoverContent>
+					</Popover>
+				) : (
+					<button
+						onClick={openAuthModal}
+						className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground"
+					>
+						<UserCircle className="h-[18px] w-[18px] text-foreground/50 group-hover:text-foreground/70" weight="regular" />
+						<span>Account</span>
+					</button>
+				)}
 			</div>
 			{activeSection === "settings" ? (
 				<SettingsPanel
@@ -189,10 +191,12 @@ export function DashboardLayout({
 	const { openActions, saveActions, lifecycle, recordingActions } = projectController;
 	const { activeEffectSection, setActiveEffectSection } = ui;
 
-	// Ensure we only have valid dashboard sections
-	const safeActiveSection = ["dashboard", "projects", "brandkit", "translation", "mcp", "settings"].includes(activeEffectSection)
+	// "Projects" is the landing section; legacy "dashboard" ids fall through to it.
+	const safeActiveSection = ["projects", "brandkit", "translation", "mcp", "settings"].includes(
+		activeEffectSection,
+	)
 		? activeEffectSection
-		: "dashboard";
+		: "projects";
 
 	const editorDialogs = (
 		<EditorDialogs
@@ -235,9 +239,8 @@ export function DashboardLayout({
 					onRecordScreen={recordingActions.openLauncher}
 				/>
 				<div className="flex-1 overflow-hidden rounded-xl border border-foreground/10 bg-editor-panel shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
-					{safeActiveSection === "dashboard" || safeActiveSection === "projects" ? (
+					{safeActiveSection === "projects" ? (
 						<EditorDashboard
-							mode={safeActiveSection}
 							entries={project.projectLibraryEntries}
 							onOpenProject={openActions.handleOpenProjectFromLibrary}
 							onNewProject={openActions.handleCreateNewProject}
