@@ -40,19 +40,12 @@ function DashboardSidebar({
 }: DashboardSidebarProps) {
 	const { user, openAuthModal, signOut } = useAuth();
 	
-	const menuGroups: { id: EditorEffectSection; label: string; icon: Icon; isNew?: boolean }[][] =
-		useMemo(
+	const menuItems = useMemo(
 		() => [
-			[
-				{ id: "projects" as const, label: t("settings.sections.projects", "Projects"), icon: Folder },
-			],
-			[
-				{ id: "brandkit" as const, label: t("settings.sections.brandkit", "Brand kit"), icon: Palette },
-				{ id: "translation" as const, label: t("settings.sections.translation", "Translation"), icon: Translate },
-			],
-			[
-				{ id: "mcp" as const, label: t("settings.sections.mcp", "MCP"), icon: TerminalWindow, isNew: true },
-			]
+			{ id: "projects" as const, label: t("settings.sections.projects", "Projects"), icon: Folder },
+			{ id: "brandkit" as const, label: t("settings.sections.brandkit", "Brand kit"), icon: Palette },
+			{ id: "translation" as const, label: t("settings.sections.translation", "Translation"), icon: Translate },
+			{ id: "mcp" as const, label: t("settings.sections.mcp", "MCP"), icon: TerminalWindow, isNew: true },
 		],
 		[t],
 	);
@@ -60,7 +53,7 @@ function DashboardSidebar({
 	return (
 		<div className="flex flex-shrink-0 w-60 h-full flex-col bg-editor-bg border-r border-foreground/5 pr-4 pl-2 py-4">
 			<div className="flex items-center gap-2 px-3 mb-6">
-				<div className="flex h-7 w-7 items-center justify-center rounded bg-pink-500 text-white">
+				<div className="flex h-7 w-7 items-center justify-center rounded bg-[#2563EB] text-white">
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
 						<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
 					</svg>
@@ -68,37 +61,33 @@ function DashboardSidebar({
 				<span className="text-xl font-bold tracking-tight text-foreground">Reco</span>
 			</div>
 			
-			<div className="flex flex-1 flex-col gap-4 overflow-y-auto mt-2">
-				{menuGroups.map((group, groupIndex) => (
-					<div key={groupIndex} className="flex flex-col gap-1">
-						{group.map((section) => {
-							const isActive = activeSection === section.id;
-							return (
-								<button
-									key={section.id}
-									type="button"
-									onClick={() => setActiveSection(section.id)}
-									className={`group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors ${
-										isActive 
-											? "bg-foreground/10 text-foreground" 
-											: "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
-									}`}
-								>
-									<section.icon 
-										className={`h-[18px] w-[18px] ${isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground/80"}`} 
-										weight={isActive ? "fill" : "regular"} 
-									/>
-									<span>{section.label}</span>
-									{section.isNew && (
-										<span className="ml-auto rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">
-											New
-										</span>
-									)}
-								</button>
-							);
-						})}
-					</div>
-				))}
+			<div className="flex flex-1 flex-col gap-1 overflow-y-auto mt-2">
+				{menuItems.map((section) => {
+					const isActive = activeSection === section.id;
+					return (
+						<button
+							key={section.id}
+							type="button"
+							onClick={() => setActiveSection(section.id)}
+							className={`group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors ${
+								isActive 
+									? "bg-foreground/10 text-foreground" 
+									: "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
+							}`}
+						>
+							<section.icon 
+								className={`h-[18px] w-[18px] ${isActive ? "text-foreground" : "text-foreground/60 group-hover:text-foreground/80"}`} 
+								weight={isActive ? "fill" : "regular"} 
+							/>
+							<span>{section.label}</span>
+							{section.isNew && (
+								<span className="ml-auto rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">
+									New
+								</span>
+							)}
+						</button>
+					);
+				})}
 			</div>
 
 			<div className="mt-auto flex flex-col gap-1 pt-4">
