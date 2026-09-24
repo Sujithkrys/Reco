@@ -140,13 +140,7 @@ function DashboardSidebar({
 					</button>
 				)}
 			</div>
-			{activeSection === "settings" ? (
-				<SettingsPanel
-					{...settingsPanelProps}
-					onImportFile={onImportFile}
-					onRecordScreen={onRecordScreen}
-				/>
-			) : null}
+
 		</div>
 	);
 }
@@ -239,6 +233,16 @@ export function DashboardLayout({
 						<ComingSoonPlaceholder title="Translation" />
 					) : safeActiveSection === "mcp" ? (
 						<ComingSoonPlaceholder title="Model Context Protocol" />
+					) : safeActiveSection === "settings" ? (
+						<div className="flex h-full w-full justify-center overflow-y-auto p-8">
+							<div className="w-full max-w-xl">
+								<SettingsPanel
+									{...settingsPanelProps}
+									onImportFile={openActions.handleImportMediaOrProject}
+									onRecordScreen={recordingActions.openLauncher}
+								/>
+							</div>
+						</div>
 					) : null}
 				</div>
 			</div>
