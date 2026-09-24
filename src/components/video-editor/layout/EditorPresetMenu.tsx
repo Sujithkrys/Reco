@@ -1,7 +1,9 @@
 import { BookmarkSimple, CaretDown, Check, X } from "@phosphor-icons/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import type { useI18n } from "@/contexts/I18nContext";
 import { cn } from "@/lib/utils";
 import type { useVideoEditorPresets } from "../presets/useVideoEditorPresets";
@@ -23,6 +25,8 @@ export function EditorPresetMenu({ t, presets }: Props) {
 		handleDeleteEditorPreset,
 		handleSavePresetSubmit,
 	} = presets;
+	const [captureFullStructure, setCaptureFullStructure] = useState(false);
+	const [includeIntroOutroPlaceholders, setIncludeIntroOutroPlaceholders] = useState(false);
 
 	return (
 		<Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
@@ -51,7 +55,10 @@ export function EditorPresetMenu({ t, presets }: Props) {
 					<form
 						onSubmit={(event) => {
 							event.preventDefault();
-							handleSavePresetSubmit();
+							handleSavePresetSubmit({
+								captureFullStructure,
+								includeIntroOutroPlaceholders,
+							});
 						}}
 						className="space-y-2"
 					>
@@ -74,6 +81,31 @@ export function EditorPresetMenu({ t, presets }: Props) {
 								{t("common.actions.save", "Save")}
 							</Button>
 						</div>
+						<div className="flex items-center justify-between gap-2 rounded-xl border border-foreground/8 bg-foreground/[0.03] px-3 py-2">
+							<span className="text-[11px] text-muted-foreground">
+								Capture full structure (layers, zooms, clips)
+							</span>
+							<Switch
+								checked={captureFullStructure}
+								onCheckedChange={(checked) => {
+									setCaptureFullStructure(checked);
+									if (!checked) setIncludeIntroOutroPlaceholders(false);
+								}}
+								aria-label="Capture full project structure"
+							/>
+						</div>
+						{captureFullStructure ? (
+							<div className="flex items-center justify-between gap-2 rounded-xl border border-foreground/8 bg-foreground/[0.03] px-3 py-2">
+								<span className="text-[11px] text-muted-foreground">
+									Include intro/outro placeholders
+								</span>
+								<Switch
+									checked={includeIntroOutroPlaceholders}
+									onCheckedChange={setIncludeIntroOutroPlaceholders}
+									aria-label="Include intro and outro placeholders"
+								/>
+							</div>
+						) : null}
 					</form>
 					<div className="space-y-2">
 						<p className="text-[11px] font-medium text-foreground">

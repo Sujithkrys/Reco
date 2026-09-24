@@ -3,9 +3,47 @@ import { toast } from "sonner";
 import {
 	type EditorPreset,
 	type EditorPresetSnapshot,
+	type TemplateAnnotationRegion,
 	saveEditorPresets,
 	serializeEditorPresetSnapshot,
 } from "../editorPreferences";
+import { DEFAULT_ANNOTATION_POSITION, DEFAULT_ANNOTATION_SIZE, DEFAULT_ANNOTATION_STYLE } from "../types";
+
+export interface SavePresetOptions {
+	/** Include layers, zoom keyframes and clip structure — not just visual style. */
+	captureFullStructure?: boolean;
+	/** Only meaningful with captureFullStructure: add editable intro/outro text placeholders. */
+	includeIntroOutroPlaceholders?: boolean;
+}
+
+function buildIntroOutroPlaceholders(): TemplateAnnotationRegion[] {
+	const placeholderDurationMs = 3000;
+	const base = {
+		position: { ...DEFAULT_ANNOTATION_POSITION },
+		size: { ...DEFAULT_ANNOTATION_SIZE },
+		style: { ...DEFAULT_ANNOTATION_STYLE },
+		zIndex: 9000,
+		type: "text" as const,
+	};
+	return [
+		{
+			...base,
+			id: `template-intro-${crypto.randomUUID()}`,
+			anchor: { reference: "start", offsetMs: 0 },
+			durationMs: placeholderDurationMs,
+			content: "Add your intro here",
+			textContent: "Add your intro here",
+		},
+		{
+			...base,
+			id: `template-outro-${crypto.randomUUID()}`,
+			anchor: { reference: "end", offsetMs: -placeholderDurationMs },
+			durationMs: placeholderDurationMs,
+			content: "Add your outro here",
+			textContent: "Add your outro here",
+		},
+	];
+}
 
 type Translator = (
 	key: string,
@@ -83,7 +121,7 @@ export function useEditorPresets({
 	);
 
 	const handleSaveEditorPreset = useCallback(
-		(name: string) => {
+		(name: string, options?: SavePresetOptions) => {
 			const normalizedName = name.trim().replace(/\s+/g, " ");
 			if (!normalizedName) {
 				toast.error(t("editor.presets.errors.nameRequired", "Enter a preset name."));
@@ -104,13 +142,31 @@ export function useEditorPresets({
 				return false;
 			}
 
+			const captureFullStructure = options?.captureFullStructure ?? false;
+			const snapshot: EditorPresetSnapshot = captureFullStructure
+				? {
+						...currentSnapshot,
+						templateAnnotations: options?.includeIntroOutroPlaceholders
+							? [...currentSnapshot.templateAnnotations, ...buildIntroOutroPlaceholders()]
+							: currentSnapshot.templateAnnotations,
+					}
+				: {
+						...currentSnapshot,
+						templateClips: [],
+						templateZooms: [],
+						templateAnnotations: [],
+						templateAudios: [],
+						_excludedMidTimelineElements: 0,
+						_excludedCustomAssets: 0,
+					};
+
 			const timestamp = new Date().toISOString();
 			const nextPreset: EditorPreset = {
 				id: crypto.randomUUID(),
 				name: normalizedName,
 				createdAt: timestamp,
 				updatedAt: timestamp,
-				snapshot: currentSnapshot,
+				snapshot,
 			};
 			const nextPresets = [nextPreset, ...editorPresets];
 			if (!saveEditorPresets(nextPresets)) {
@@ -125,8 +181,8 @@ export function useEditorPresets({
 			setEditorPresets(nextPresets);
 			setActivePresetId(nextPreset.id);
 
-			const excludedMid = currentSnapshot._excludedMidTimelineElements ?? 0;
-			const excludedAssets = currentSnapshot._excludedCustomAssets ?? 0;
+			const excludedMid = snapshot._excludedMidTimelineElements ?? 0;
+			const excludedAssets = snapshot._excludedCustomAssets ?? 0;
 			
 			if (excludedMid > 0 || excludedAssets > 0) {
 				const parts = [];
@@ -176,9 +232,12 @@ export function useEditorPresets({
 		[activePresetId, editorPresets, setActivePresetId, setEditorPresets, t],
 	);
 
-	const handleSavePresetSubmit = useCallback(() => {
-		if (handleSaveEditorPreset(presetNameDraft)) setPresetNameDraft("");
-	}, [handleSaveEditorPreset, presetNameDraft, setPresetNameDraft]);
+	const handleSavePresetSubmit = useCallback(
+		(options?: SavePresetOptions) => {
+			if (handleSaveEditorPreset(presetNameDraft, options)) setPresetNameDraft("");
+		},
+		[handleSaveEditorPreset, presetNameDraft, setPresetNameDraft],
+	);
 
 	return {
 		currentEditorPreset,
