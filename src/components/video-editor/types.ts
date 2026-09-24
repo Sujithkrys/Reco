@@ -479,7 +479,10 @@ export interface AnnotationTextStyle {
 }
 
 function getDefaultAnnotationFontFamily() {
-	return '"SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif';
+	// Must match one of FONT_FAMILY_VALUES in AnnotationSettingsPanel.tsx
+	// ("Classic") — otherwise the Font Style dropdown has no matching option
+	// to select and renders blank the moment a text layer is created.
+	return "system-ui, -apple-system, sans-serif";
 }
 
 export function getDefaultCaptionFontFamily() {

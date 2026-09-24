@@ -21,9 +21,31 @@ type DragHandle = "top" | "right" | "bottom" | "left" | null;
 export function CropControl({ videoElement, cropRegion, onCropChange }: CropControlProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const wrapperRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState<DragHandle>(null);
 	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 	const [initialCrop, setInitialCrop] = useState<CropRegion>(cropRegion);
+	const [wrapperSize, setWrapperSize] = useState({ width: 0, height: 0 });
+
+	// CSS aspect-ratio + max-width/max-height auto-fit sizing doesn't reliably
+	// "contain" a flex item the way object-fit does on a replaced element —
+	// it previously let the crop box size itself taller than the space this
+	// dialog actually has, pushing the drag handles below the dialog's own
+	// clipped area. A mousedown there landed on the backdrop instead of a
+	// handle and closed the whole editor. Measuring the real available box
+	// and computing an explicit pixel size removes the ambiguity.
+	useEffect(() => {
+		const wrapper = wrapperRef.current;
+		if (!wrapper) return;
+		const update = () => {
+			const rect = wrapper.getBoundingClientRect();
+			setWrapperSize({ width: rect.width, height: rect.height });
+		};
+		update();
+		const observer = new ResizeObserver(update);
+		observer.observe(wrapper);
+		return () => observer.disconnect();
+	}, []);
 
 	useEffect(() => {
 		if (!videoElement || !canvasRef.current) return;
@@ -151,20 +173,38 @@ export function CropControl({ videoElement, cropRegion, onCropChange }: CropCont
 	const videoAspectRatio = videoElement
 		? videoElement.videoWidth / videoElement.videoHeight
 		: 16 / 9;
-	const isVideoPortrait = videoAspectRatio < 1;
-	const maxContainerWidth = isVideoPortrait ? "40vw" : "75vw";
-	const maxContainerHeight = "75vh";
+
+	// Fit the aspect-ratio box within the measured wrapper, like object-fit:
+	// contain — whichever axis is more constraining determines the size.
+	let fittedWidth = wrapperSize.width;
+	let fittedHeight = wrapperSize.height;
+	if (wrapperSize.width > 0 && wrapperSize.height > 0) {
+		if (wrapperSize.width / wrapperSize.height > videoAspectRatio) {
+			fittedHeight = wrapperSize.height;
+			fittedWidth = fittedHeight * videoAspectRatio;
+		} else {
+			fittedWidth = wrapperSize.width;
+			fittedHeight = fittedWidth / videoAspectRatio;
+		}
+	}
 
 	return (
-		<div className="w-full p-8">
+		<div ref={wrapperRef} className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-8">
 			<div
 				ref={containerRef}
-				className="relative w-full bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
+				className="relative bg-black rounded-lg overflow-visible cursor-default select-none shadow-2xl"
 				style={{
+					// An explicit measured pixel size (see the ResizeObserver above)
+					// instead of CSS aspect-ratio auto-fit, which doesn't reliably
+					// "contain" a flex item the way object-fit does on a replaced
+					// element — it previously let this box size itself taller than
+					// the dialog actually has room for, pushing the drag handles past
+					// the dialog's own clipped, hit-testable area. A mousedown meant
+					// for the bottom handle would land on the backdrop instead and
+					// close the whole editor.
+					width: fittedWidth > 0 ? fittedWidth : "100%",
+					height: fittedHeight > 0 ? fittedHeight : "auto",
 					aspectRatio: videoAspectRatio,
-					maxWidth: maxContainerWidth,
-					maxHeight: maxContainerHeight,
-					margin: "0 auto",
 				}}
 				onPointerMove={handlePointerMove}
 				onPointerUp={handlePointerUp}

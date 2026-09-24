@@ -37,8 +37,12 @@ export function useAnnotationRegionCommands({
 				startMs: Math.round(span.start),
 				endMs: Math.round(span.end),
 				type: initialType,
-				content: initialType === "text" ? "Enter text..." : "",
-				textContent: initialType === "text" ? "Enter text..." : undefined,
+				// Real empty content, not seed text: the settings panel's textarea
+				// already has a proper HTML placeholder for this, and pre-filling
+				// real text here meant typing appended after "Enter text..."
+				// instead of replacing it.
+				content: "",
+				textContent: initialType === "text" ? "" : undefined,
 				position: { ...DEFAULT_ANNOTATION_POSITION },
 				size: { ...DEFAULT_ANNOTATION_SIZE },
 				style: { ...DEFAULT_ANNOTATION_STYLE },
@@ -113,7 +117,7 @@ export function useAnnotationRegionCommands({
 				current.map((region) => {
 					if (region.id !== id) return region;
 					const updated = { ...region, type };
-					if (type === "text") updated.content = region.textContent || "Enter text...";
+					if (type === "text") updated.content = region.textContent || "";
 					else if (type === "image") updated.content = region.imageContent || "";
 					else if (type === "figure") {
 						updated.content = "";
