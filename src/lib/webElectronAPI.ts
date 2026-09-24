@@ -8,7 +8,7 @@
  */
 
 import { supabase } from "./supabase";
-import { set, get } from "idb-keyval";
+import { set, get, keys, del } from "idb-keyval";
 import * as tus from "tus-js-client";
 
 export const webBlobMap = new Map<string, Blob | File>();
@@ -173,18 +173,14 @@ export const webElectronAPI: unknown = {
 	}),
 	openProjectFileAtPath: async (_path: string) => {
 		try {
-			const { data: projectRecord, error } = await supabase
-				.from("projects")
-				.select("editor_state")
-				.eq("id", _path)
-				.single();
-			if (error || !projectRecord) throw new Error("Project not found");
+			const projectRecord = await get(`project_${_path}`) as any;
+			if (!projectRecord) throw new Error("Project not found");
 			
 			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
 			
 			return { success: true, project: restoredData, path: _path };
 		} catch (e: unknown) {
-			return { success: false, message: e.message, path: null };
+			return { success: false, message: (e as Error).message, path: null };
 		}
 	},
 	saveProjectFile: async (
@@ -194,41 +190,39 @@ export const webElectronAPI: unknown = {
 		thumbnail?: string
 	) => {
 		try {
-			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) {
-				return { success: false, path: null, message: "User not authenticated" };
-			}
-
 			const projectId = targetPath || crypto.randomUUID();
 			
 			// Persist all ephemeral blob URLs to IndexedDB
 			const persistedData = await persistProjectMedia(projectData);
 			
-			const { error } = await supabase.from("projects").upsert({
+			await set(`project_${projectId}`, {
 				id: projectId,
-				user_id: session.user.id,
 				name: fileNameBase || "Untitled Project",
 				editor_state: persistedData,
 				thumbnail_url: thumbnail || null,
 				updated_at: new Date().toISOString()
 			});
-
-			if (error) throw error;
 			
 			return { success: true, path: projectId };
 		} catch (e: unknown) {
 			console.error(e);
-			return { success: false, path: null, message: e.message };
+			return { success: false, path: null, message: (e as Error).message };
 		}
 	},
 	getProjectLibrary: async () => {
 		try {
-			const { data: projects, error } = await supabase
-				.from("projects")
-				.select("id, name, updated_at, thumbnail_url")
-				.order("updated_at", { ascending: false });
-				
-			if (error) throw error;
+			const allKeys = await keys();
+			const projectKeys = allKeys.filter(k => typeof k === 'string' && k.startsWith("project_"));
+			
+			const projects = [];
+			for (const key of projectKeys) {
+				const project = await get(key) as any;
+				if (project) {
+					projects.push(project);
+				}
+			}
+			
+			projects.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 			
 			const library = projects.map(p => ({
 				path: p.id,
@@ -246,7 +240,7 @@ export const webElectronAPI: unknown = {
 	},
 	deleteProjectFile: async (_path: string) => {
 		try {
-			await supabase.from("projects").delete().eq("id", _path);
+			await del(`project_${_path}`);
 			return { success: true };
 		} catch {
 			return { success: false };
@@ -260,10 +254,6 @@ export const webElectronAPI: unknown = {
 	// ── File pickers (browser native) ────────────────────────────────────
 	uploadMediaFile: async (fileOrPath: File | string, options?: { prefix?: string }) => {
 		try {
-			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) {
-				return { success: false, message: "User not authenticated" };
-			}
 			let file: File;
 			if (typeof fileOrPath === "string") {
 				const mapFile = webBlobMap.get(fileOrPath);
@@ -286,7 +276,7 @@ export const webElectronAPI: unknown = {
 						endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
 						retryDelays: [0, 3000, 5000, 10000, 20000],
 						headers: {
-							authorization: `Bearer ${session.access_token}`,
+							authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
 							'x-upsert': 'true',
 						},
 						uploadDataDuringCreation: true,
