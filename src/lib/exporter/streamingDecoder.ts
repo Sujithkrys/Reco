@@ -140,13 +140,15 @@ export class StreamingVideoDecoder {
 				: mediaStartTime;
 
 		let frameRate = 60;
-		if (videoStream?.avg_frame_rate) {
+		if (typeof videoStream?.avg_frame_rate === "string") {
 			const parts = videoStream.avg_frame_rate.split("/");
 			if (parts.length === 2) {
 				const num = parseInt(parts[0], 10);
 				const den = parseInt(parts[1], 10);
 				if (den > 0 && num > 0) frameRate = num / den;
 			}
+		} else if (typeof videoStream?.avg_frame_rate === "number") {
+			frameRate = videoStream.avg_frame_rate;
 		}
 
 		this.metadata = {

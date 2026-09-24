@@ -15,38 +15,38 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const [user, setUser] = useState<User | null>(null);
-	const [session, setSession] = useState<Session | null>(null);
-	const [loading, setLoading] = useState(true);
+	const [user, setUser] = useState<User | null>({ id: "local-user", email: "local@example.com" } as User);
+	const [session, setSession] = useState<Session | null>({} as Session);
+	const [loading, setLoading] = useState(false);
 	
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const pendingActionRef = useRef<(() => void) | null>(null);
 
 	useEffect(() => {
 		// Get initial session
-		supabase.auth.getSession().then(({ data: { session } }) => {
-			setSession(session);
-			setUser(session?.user ?? null);
-			setLoading(false);
-		});
+		// supabase.auth.getSession().then(({ data: { session } }) => {
+		// 	setSession(session);
+		// 	setUser(session?.user ?? null);
+		// 	setLoading(false);
+		// });
 
 		// Listen for auth changes
-		const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-			setSession(session);
-			setUser(session?.user ?? null);
-			setLoading(false);
-			
-			// If we just signed in and there's a pending action, execute it!
-			if (session?.user && pendingActionRef.current) {
-				const action = pendingActionRef.current;
-				pendingActionRef.current = null;
-				setIsModalOpen(false); // Close modal automatically
-				// Execute on next tick to ensure state settles
-				setTimeout(action, 10);
-			}
-		});
+		// const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+		// 	setSession(session);
+		// 	setUser(session?.user ?? null);
+		// 	setLoading(false);
+		// 	
+		// 	// If we just signed in and there's a pending action, execute it!
+		// 	if (session?.user && pendingActionRef.current) {
+		// 		const action = pendingActionRef.current;
+		// 		pendingActionRef.current = null;
+		// 		setIsModalOpen(false); // Close modal automatically
+		// 		// Execute on next tick to ensure state settles
+		// 		setTimeout(action, 10);
+		// 	}
+		// });
 
-		return () => subscription.unsubscribe();
+		// return () => subscription.unsubscribe();
 	}, []);
 
 	const signOut = async () => {
@@ -54,12 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	};
 
 	const requireAuth = (action: () => void) => {
-		if (user) {
-			action();
-		} else {
-			pendingActionRef.current = action;
-			setIsModalOpen(true);
-		}
+		action();
 	};
 	
 	const openAuthModal = () => {

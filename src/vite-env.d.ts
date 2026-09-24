@@ -16,7 +16,7 @@ interface RendererExportHardwareInfo {
 
 declare global {
 	interface Window {
-		electronAPI: unknown;
+		electronAPI: any;
 		isElectron?: boolean;
 	}
 }

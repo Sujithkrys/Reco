@@ -519,7 +519,10 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 			// independently of page styling). We restore it below for shares
 			// where we have no telemetry to replace it with.
 			screenStream = await navigator.mediaDevices.getDisplayMedia({
-				video: { frameRate: 30, cursor: "never" } as MediaTrackConstraints,
+				video: {
+					frameRate: { ideal: 60, max: 60 },
+					cursor: "never",
+				} as MediaTrackConstraints,
 				audio: true,
 			});
 		} catch (err) {
@@ -576,7 +579,10 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		const screenMimeType = selectRecordingMimeType();
 		const mainRecorder = new MediaRecorder(
 			mainStream,
-			screenMimeType ? { mimeType: screenMimeType } : undefined,
+			{
+				...(screenMimeType ? { mimeType: screenMimeType } : {}),
+				videoBitsPerSecond: 8000000,
+			}
 		);
 		mainRecorder.ondataavailable = (event) => {
 			if (event.data.size > 0) mainChunksRef.current.push(event.data);
@@ -588,7 +594,10 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 			const webcamMimeType = selectWebcamRecordingMimeType();
 			webcamRecorder = new MediaRecorder(
 				webcamStreamRef.current,
-				webcamMimeType ? { mimeType: webcamMimeType } : undefined,
+				{
+					...(webcamMimeType ? { mimeType: webcamMimeType } : {}),
+					videoBitsPerSecond: 3000000,
+				}
 			);
 			webcamRecorder.ondataavailable = (event) => {
 				if (event.data.size > 0) webcamChunksRef.current.push(event.data);

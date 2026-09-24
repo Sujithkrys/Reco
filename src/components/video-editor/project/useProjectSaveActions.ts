@@ -98,7 +98,7 @@ export function useProjectSaveActions({
 											lastSavedSnapshot?.projectId ?? null,
 										);
 							const fileNameBase =
-								currentSourcePath
+								(currentSourcePath || "")
 									.split(/[\\/]/)
 									.pop()
 									?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;

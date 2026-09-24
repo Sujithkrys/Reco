@@ -281,10 +281,9 @@ export function EditorLayout(props: Props) {
 						onImportFile={openActions.handleImportMediaOrProject}
 						onRecordScreen={recordingActions.openLauncher}
 					/>
-					{project.videoPath ? (
 						<EditorPreviewPanel
 							t={t}
-							videoPath={project.videoPath}
+							videoPath={project.videoPath || ""}
 							previewVersion={ui.previewVersion}
 							aspectRatio={ui.aspectRatio}
 							setAspectRatio={ui.setAspectRatio}
@@ -315,15 +314,7 @@ export function EditorLayout(props: Props) {
 							setIsPlaying={ui.setIsPlaying}
 							setError={project.setError}
 						/>
-					) : (
-						<BlankProjectCanvas
-							onImportVideo={openActions.handleImportVideoForCurrentProject}
-							onImportFile={openActions.handleImportDroppedFile}
-							onRecordScreen={recordingActions.openLauncher}
-						/>
-					)}
 				</div>
-				{project.videoPath ? (
 					<EditorTimelinePanel
 						timelineRef={ui.timelineRef}
 						timeline={timeline}
@@ -335,8 +326,8 @@ export function EditorLayout(props: Props) {
 						audioCommands={audioCommands}
 						captionCommands={captionCommands}
 						annotationCommands={annotationCommands}
-						videoPath={project.videoPath}
-						videoSourcePath={project.videoSourcePath}
+						videoPath={project.videoPath || ""}
+						videoSourcePath={project.videoSourcePath || ""}
 						cursorTelemetrySourcePath={timeline.cursorTelemetrySourcePath}
 						normalizedCursorTelemetry={cursor.normalizedCursorTelemetry}
 						autoSuggestZoomsTrigger={ui.autoSuggestZoomsTrigger}
@@ -345,7 +336,6 @@ export function EditorLayout(props: Props) {
 						currentTime={ui.currentTime}
 						handleSelectAnnotation={handleSelectAnnotation}
 					/>
-				) : null}
 			</div>
 			{editorDialogs}
 			<CropEditorDialog

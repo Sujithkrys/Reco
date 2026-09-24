@@ -298,7 +298,7 @@ function renderText(
 	}
 
 	const availableWidth = width - containerPadding * 2;
-	const rawLines = annotation.content.split("\n");
+	const rawLines = (annotation.content || "").split("\n");
 	const lines: string[] = [];
 	for (const rawLine of rawLines) {
 		if (!rawLine) {

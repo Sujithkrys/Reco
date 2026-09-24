@@ -2095,7 +2095,7 @@ export class ModernVideoExporter {
 	}
 
 	private async resolveNativeBundledAssetPath(assetPath: string): Promise<string | null> {
-		const normalizedAssetPath = assetPath.replace(/^\/+/, "");
+		const normalizedAssetPath = assetPath?.replace(/^\/+/, "") || "";
 		const [assetDirectory, fileName] = normalizedAssetPath.split("/");
 		if (!assetDirectory || !fileName) {
 			return null;

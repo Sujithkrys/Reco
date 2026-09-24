@@ -75,7 +75,7 @@ export function getNormalizedMediaResourceUrl(resource: string) {
 }
 
 function inferMimeType(filePath: string) {
-	const normalized = filePath.split("?")[0]?.toLowerCase() ?? filePath.toLowerCase();
+	const normalized = filePath?.split("?")[0]?.toLowerCase() ?? filePath?.toLowerCase() ?? "";
 
 	if (normalized.endsWith(".mp4") || normalized.endsWith(".m4v")) return "video/mp4";
 	if (normalized.endsWith(".mov")) return "video/quicktime";
@@ -118,7 +118,7 @@ export async function resolveMediaResourceUrl(resource: string): Promise<string>
 }
 
 async function createReadableMediaResourceFile(resource: string): Promise<File> {
-	const filename = resource.split(/[\\/]/).pop()?.split("?")[0] || "media";
+	const filename = resource?.split(/[\\/]/).pop()?.split("?")[0] || "media";
 	const resourceUrl = await resolveMediaResourceUrl(resource);
 	const response = await fetch(resourceUrl);
 	if (!response.ok) {
