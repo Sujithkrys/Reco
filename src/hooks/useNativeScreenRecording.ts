@@ -130,6 +130,7 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	const [webcamError, setWebcamError] = useState<string | null>(null);
 	const [micError, setMicError] = useState<string | null>(null);
 	const [micLevel, setMicLevel] = useState(0);
+	const [micReady, setMicReady] = useState(false);
 
 	const videoDevices = useVideoDevices(enabled);
 	const micDevices = useMicrophoneDevices(enabled);
@@ -138,6 +139,15 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	const micStreamRef = useRef<MediaStream | null>(null);
 	const webcamRequestIdRef = useRef(0);
 	const micRequestIdRef = useRef(0);
+	// Resolves once the in-flight getUserMedia() call for the current toggle
+	// state has settled (stream acquired, or failed). `start()` awaits these
+	// before deciding whether to record webcam/mic — without this, clicking
+	// "Start Recording" right after flipping a toggle (the natural, fast UX)
+	// could race the async getUserMedia() call and silently record with the
+	// toggle on but the stream still null, dropping webcam/mic from the
+	// output while the UI showed them as enabled.
+	const webcamAcquisitionRef = useRef<Promise<void>>(Promise.resolve());
+	const micAcquisitionRef = useRef<Promise<void>>(Promise.resolve());
 
 	const micAudioContextRef = useRef<AudioContext | null>(null);
 	const micAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -217,7 +227,7 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 				return;
 			}
 			setWebcamError(null);
-			void (async () => {
+			webcamAcquisitionRef.current = (async () => {
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
 						video: {
@@ -254,10 +264,12 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 				micStreamRef.current = null;
 				teardownMicLevelMeter();
 				setMicError(null);
+				setMicReady(false);
 				return;
 			}
 			setMicError(null);
-			void (async () => {
+			setMicReady(false);
+			micAcquisitionRef.current = (async () => {
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
 						audio: {
@@ -275,10 +287,12 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 					}
 					micStreamRef.current = stream;
 					setupMicLevelMeter(stream);
+					setMicReady(true);
 				} catch (err) {
 					if (requestId !== micRequestIdRef.current) return;
 					setMicError(describeGetUserMediaError(err));
 					setMicEnabledState(false);
+					setMicReady(false);
 				}
 			})();
 		},
@@ -434,6 +448,7 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		stopStream(micStreamRef.current);
 		micStreamRef.current = null;
 		setMicEnabledState(false);
+		setMicReady(false);
 		teardownMicLevelMeter();
 		if (mixAudioContextRef.current) {
 			mixAudioContextRef.current.close().catch(() => undefined);
@@ -531,6 +546,13 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 			return;
 		}
 		screenStreamRef.current = screenStream;
+
+		// Make sure any in-flight webcam/mic getUserMedia() calls from a toggle
+		// the user just flipped have actually settled before we decide what to
+		// record — otherwise a fast "toggle on, then click Start" click could
+		// beat the async permission/device resolution and silently record
+		// without them despite the UI showing them enabled.
+		await Promise.all([webcamAcquisitionRef.current, micAcquisitionRef.current]);
 
 		const screenVideoTrack = screenStream.getVideoTracks()[0];
 		// "This Tab" is the only share type where in-page pointer events line up
@@ -634,6 +656,7 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		webcamError,
 		micError,
 		micLevel,
+		micReady,
 		videoDevices,
 		micDevices,
 		lastResult,

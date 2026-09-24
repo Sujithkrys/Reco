@@ -248,6 +248,7 @@ function encodePathSegments(pathname: string, keepWindowsDrive = false): string 
 }
 
 export function toFileUrl(filePath: string): string {
+	if (!filePath) return "";
 	const normalized = filePath.replace(/\\/g, "/");
 
 	// Windows drive path: C:/Users/...
@@ -317,6 +318,13 @@ export function deriveNextId(prefix: string, ids: string[]): number {
  */
 export async function resolveVideoUrl(sourcePath: string): Promise<string> {
 	const trimmedSourcePath = sourcePath.trim();
+	if (!trimmedSourcePath) {
+		// A blank project has no video yet — resolving "" through toFileUrl()
+		// below would fabricate "file:///", a truthy-but-meaningless path that
+		// downstream code (timeline audio-peak sidecar lookups, the <video>
+		// element itself) would then treat as a real, loaded video.
+		return "";
+	}
 	if (/^(?:https?:|blob:|data:)/i.test(trimmedSourcePath)) {
 		return trimmedSourcePath;
 	}

@@ -2780,6 +2780,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						onDurationChange(e.currentTarget.duration);
 					}}
 					onError={(e) => {
+						// No video path means there's nothing to load — an empty `src`
+						// always fires a spurious MEDIA_ERR_SRC_NOT_SUPPORTED per the
+						// HTML spec, which isn't a real failure (e.g. a freshly created
+						// blank project with no clip yet).
+						if (!videoPath) return;
 						const mediaError = e.currentTarget.error;
 						const code = mediaError?.code;
 						const msg = mediaError?.message;

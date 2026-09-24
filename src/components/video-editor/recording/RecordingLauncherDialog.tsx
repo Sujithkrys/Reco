@@ -30,6 +30,9 @@ export function RecordingLauncherDialog({
 	}, [recorder.webcamStream]);
 
 	const starting = recorder.phase === "starting";
+	const webcamPending = recorder.webcamEnabled && !recorder.webcamStream && !recorder.webcamError;
+	const micPending = recorder.micEnabled && !recorder.micReady && !recorder.micError;
+	const notReady = webcamPending || micPending;
 
 	return (
 		<Dialog.Root open={open} onOpenChange={(next) => !starting && onOpenChange(next)}>
@@ -76,6 +79,9 @@ export function RecordingLauncherDialog({
 									No camera was detected on this device.
 								</p>
 							) : null}
+							{webcamPending ? (
+								<p className="mt-2 text-xs text-foreground/50">Starting camera…</p>
+							) : null}
 							{recorder.webcamError ? (
 								<p className="mt-2 text-xs text-red-400">{recorder.webcamError}</p>
 							) : null}
@@ -114,10 +120,13 @@ export function RecordingLauncherDialog({
 									No microphone was detected on this device.
 								</p>
 							) : null}
+							{micPending ? (
+								<p className="mt-2 text-xs text-foreground/50">Starting microphone…</p>
+							) : null}
 							{recorder.micError ? (
 								<p className="mt-2 text-xs text-red-400">{recorder.micError}</p>
 							) : null}
-							{recorder.micEnabled ? (
+							{recorder.micEnabled && recorder.micReady ? (
 								<div className="mt-3">
 									<div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10">
 										<div
@@ -139,11 +148,11 @@ export function RecordingLauncherDialog({
 						<Button
 							type="button"
 							onClick={onStart}
-							disabled={starting || !recorder.isSupported}
+							disabled={starting || !recorder.isSupported || notReady}
 							className="mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#2563EB] text-sm font-semibold text-white hover:bg-[#2563EB]/90 disabled:opacity-60"
 						>
 							<Record className="h-4 w-4" weight="fill" />
-							{starting ? "Waiting for share…" : "Start Recording"}
+							{starting ? "Waiting for share…" : notReady ? "Preparing devices…" : "Start Recording"}
 						</Button>
 						{!recorder.isSupported ? (
 							<p className="text-center text-xs text-foreground/50">

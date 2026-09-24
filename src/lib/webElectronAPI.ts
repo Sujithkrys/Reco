@@ -638,7 +638,11 @@ export const webElectronAPI: unknown = {
 	},
 
 	// ── Source audio fallback ─────────────────────────────────────────────
-	getSourceAudioFallbackPaths: async () => ({
+	// Web recordings mix mic/system audio into one track at capture time (see
+	// useNativeScreenRecording.ts), so there are never separate companion
+	// audio files to fall back to here — an empty list is the correct,
+	// successful answer, not a failure.
+	getVideoAudioFallbackPaths: async () => ({
 		success: true,
 		paths: [],
 	}),
