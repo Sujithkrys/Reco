@@ -1,9 +1,11 @@
 import { useEffect } from "react";
+import type { ComponentProps } from "react";
 import { ArrowLeft, Camera, ClosedCaptioning, Cursor, Sparkle } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { EditorAnnouncementBanner } from "@/components/announcements/EditorAnnouncementBanner";
 import { Toaster } from "@/components/ui/sonner";
 import type { useI18n } from "@/contexts/I18nContext";
+import { SettingsPanel } from "../SettingsPanel";
 import type { useEditorExportController } from "../export/useEditorExportController";
 import type { useExportDimensions } from "../export/useExportDimensions";
 import type { useExportSession } from "../export/useExportSession";
@@ -124,6 +126,7 @@ type Props = {
 	exportSettings: ReturnType<typeof useExportSettings>;
 	exportSession: ReturnType<typeof useExportSession>;
 	exportDimensions: ReturnType<typeof useExportDimensions>;
+	settingsPanelProps: ComponentProps<typeof SettingsPanel>;
 	headerLeftControlsPaddingClass: string;
 	hasCaptionsForSidecar: boolean;
 	nvidiaCudaExportAvailable: boolean;
@@ -147,6 +150,7 @@ export function EditorLayout(props: Props) {
 		exportSettings,
 		exportSession,
 		exportDimensions,
+		settingsPanelProps,
 		headerLeftControlsPaddingClass,
 		hasCaptionsForSidecar,
 		nvidiaCudaExportAvailable,
@@ -270,6 +274,12 @@ export function EditorLayout(props: Props) {
 							ui.setActiveEffectSection("projects");
 							ui.setViewMode("dashboard");
 						}}
+					/>
+					<SettingsPanel
+						{...settingsPanelProps}
+						activeEffectSection={safeActiveSection}
+						onImportFile={openActions.handleImportMediaOrProject}
+						onRecordScreen={recordingActions.openLauncher}
 					/>
 					{project.videoPath ? (
 						<EditorPreviewPanel
