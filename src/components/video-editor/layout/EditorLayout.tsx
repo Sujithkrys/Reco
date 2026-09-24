@@ -306,9 +306,10 @@ export function EditorLayout(props: Props) {
 							setError={project.setError}
 						/>
 					) : (
-						<BlankProjectCanvas 
-							onImportVideo={openActions.handleImportVideoForCurrentProject} 
-							onRecordScreen={recordingActions.openLauncher} 
+						<BlankProjectCanvas
+							onImportVideo={openActions.handleImportVideoForCurrentProject}
+							onImportFile={openActions.handleImportDroppedFile}
+							onRecordScreen={recordingActions.openLauncher}
 						/>
 					)}
 				</div>

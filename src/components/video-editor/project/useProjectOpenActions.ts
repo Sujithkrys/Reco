@@ -6,6 +6,7 @@ import {
 	useCallback,
 	useEffect,
 } from "react";
+import { uploadedMediaPaths, webBlobMap } from "@/lib/webElectronAPI";
 import { toast } from "sonner";
 import { fromFileUrl, resolveVideoUrl, createProjectData } from "../projectPersistence";
 import type { useAppearanceState } from "../state/useAppearanceState";
@@ -92,9 +93,29 @@ export function useProjectOpenActions({
 		],
 	);
 
-	const doImportMediaOrProject = useCallback(async (opts?: { preserveProject?: boolean, skipUnsavedPrompt?: boolean }) => {
+	const doImportMediaOrProject = useCallback(async (opts?: {
+		preserveProject?: boolean;
+		skipUnsavedPrompt?: boolean;
+		/** Pre-supplied file (drag-and-drop); skips the OS picker. */
+		file?: File;
+	}) => {
 		if (!opts?.skipUnsavedPrompt && !(await confirmReplaceSourceWithUnsavedChanges("import a file"))) return;
-		const result = await window.electronAPI.openVideoFilePicker({ includeProjects: true });
+
+		// Every entry point funnels through here. A dropped file just bypasses
+		// the picker step; everything downstream is identical.
+		let result: { canceled?: boolean; success?: boolean; message?: string; path?: string; kind?: string; project?: unknown };
+		if (opts?.file) {
+			if (!opts.file.type.startsWith("video/")) {
+				toast.error("That file isn't a video.");
+				return;
+			}
+			const objectUrl = URL.createObjectURL(opts.file);
+			webBlobMap.set(objectUrl, opts.file);
+			result = { success: true, path: objectUrl, kind: "media" };
+		} else {
+			result = await window.electronAPI.openVideoFilePicker({ includeProjects: true });
+		}
+
 		if (result.canceled) return;
 		if (!result.success) {
 			toast.error(result.message || "Failed to import file");
@@ -121,19 +142,20 @@ export function useProjectOpenActions({
 		await window.electronAPI.setCurrentVideoPath(sourcePath, { preserveProjectPath: false });
 		const sourceVideoUrl = await resolveVideoUrl(sourcePath);
 
-		// Start background upload
+		// Client-direct upload to Supabase Storage (TUS multipart above 100MB).
+		// Runs in the background so editing can start immediately.
 		if (window.electronAPI.uploadMediaFile) {
-			toast.info("Uploading video to cloud in the background...");
-			window.electronAPI.uploadMediaFile(result.path, { prefix: "TEST_PAVAN_" })
-				.then((res: any) => {
-					if (res.success) {
-						toast.success("Background upload complete!");
+			window.electronAPI
+				.uploadMediaFile(opts?.file ?? result.path)
+				.then((res: { success?: boolean; path?: string; message?: string }) => {
+					if (res?.success) {
+						uploadedMediaPaths.set(sourcePath, res.path ?? "");
 					} else {
-						toast.error(`Background upload failed: ${res.message}`);
+						toast.error(`Cloud upload failed: ${res?.message ?? "unknown error"}`);
 					}
 				})
-				.catch((err: any) => {
-					toast.error(`Background upload failed: ${String(err)}`);
+				.catch((err: unknown) => {
+					toast.error(`Cloud upload failed: ${String(err)}`);
 				});
 		}
 		try {
@@ -185,6 +207,13 @@ export function useProjectOpenActions({
 	const handleImportMediaOrProject = useCallback(() => doImportMediaOrProject(), [doImportMediaOrProject]);
 	
 	const handleImportVideoForCurrentProject = useCallback(() => doImportMediaOrProject({ preserveProject: true, skipUnsavedPrompt: true }), [doImportMediaOrProject]);
+
+	/** Drag-and-drop entry point — same import path, file supplied directly. */
+	const handleImportDroppedFile = useCallback(
+		(file: File) =>
+			doImportMediaOrProject({ preserveProject: true, skipUnsavedPrompt: true, file }),
+		[doImportMediaOrProject],
+	);
 
 	const handleOpenProjectBrowser = useCallback(() => {
 		if (project.projectBrowserOpen) {
@@ -238,5 +267,5 @@ export function useProjectOpenActions({
 		return result.path;
 	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary, doImportMediaOrProject]);
 
-	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject, handleImportVideoForCurrentProject };
+	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject, handleImportVideoForCurrentProject, handleImportDroppedFile };
 }

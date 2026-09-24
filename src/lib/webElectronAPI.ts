@@ -23,6 +23,9 @@ interface WebCursorTelemetryPoint {
 }
 export const cursorTelemetryMap = new Map<string, WebCursorTelemetryPoint[]>();
 
+/** Local media path/blob URL -> remote Supabase Storage object path. */
+export const uploadedMediaPaths = new Map<string, string>();
+
 async function persistProjectMedia(projectData: unknown): Promise<unknown> {
 	let jsonString = JSON.stringify(projectData);
 	const blobRegex = /"blob:(https?:\/\/[^"]+)"/g;
@@ -320,19 +323,35 @@ export const webElectronAPI: unknown = {
 	},
 	openVideoFilePicker: async (_opts?: { includeProjects?: boolean }) => {
 		return new Promise((resolve) => {
+			let settled = false;
+			const settle = (value: unknown) => {
+				if (settled) return;
+				settled = true;
+				window.removeEventListener("focus", onWindowFocus);
+				resolve(value);
+			};
+			// The native picker gives no cancel event — detect it by the window
+			// regaining focus with no change having fired. Without this a
+			// dismissed dialog leaves this promise (and its caller) hanging
+			// forever.
+			const onWindowFocus = () => {
+				window.setTimeout(() => settle({ canceled: true }), 300);
+			};
+			window.addEventListener("focus", onWindowFocus, { once: true });
+
 			const input = document.createElement("input");
 			input.type = "file";
 			input.accept = "video/*,.mp4,.webm,.mov,.mkv,.avi";
 			input.onchange = (e) => {
 				const file = (e.target as HTMLInputElement).files?.[0];
 				if (!file) {
-					resolve({ canceled: true });
+					settle({ canceled: true });
 					return;
 				}
 				const url = URL.createObjectURL(file);
 				webBlobMap.set(url, file);
 				currentVideoPath = url;
-				resolve({
+				settle({
 					success: true,
 					path: url,
 					kind: "media" as const,
