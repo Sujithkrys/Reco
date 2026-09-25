@@ -82,6 +82,55 @@ function stopStream(stream: MediaStream | null) {
 	stream?.getTracks().forEach((track) => track.stop());
 }
 
+const CAMERA_NO_FRAMES_MESSAGE =
+	"Camera access was granted, but no picture is coming through. Close any other app that might be using the camera (Windows only lets one app at a time), then check Settings → Privacy & security → Camera to make sure browser access is turned on.";
+
+/**
+ * getUserMedia() resolving is not proof the camera is actually delivering
+ * frames — a track can come back "live" while genuinely dark (OS-level
+ * camera privacy blocking the browser, or another app holding the device
+ * exclusively) with no error ever thrown. Detect that silent case instead
+ * of just leaving the preview blank with no explanation.
+ */
+function watchWebcamFrameLiveness(
+	stream: MediaStream,
+	onNoFrames: () => void,
+	onFramesArrived: () => void,
+): () => void {
+	const videoTrack = stream.getVideoTracks()[0];
+	let settled = false;
+	const probe = document.createElement("video");
+	probe.muted = true;
+	probe.playsInline = true;
+	probe.srcObject = stream;
+
+	const finish = (hasFrames: boolean) => {
+		if (settled) return;
+		settled = true;
+		probe.pause();
+		probe.srcObject = null;
+		if (hasFrames) onFramesArrived();
+		else onNoFrames();
+	};
+
+	const checkForFrames = () => {
+		if (probe.videoWidth > 0 && probe.videoHeight > 0) finish(true);
+	};
+	probe.addEventListener("loadedmetadata", checkForFrames);
+	probe.addEventListener("playing", checkForFrames);
+	videoTrack?.addEventListener("mute", () => finish(false));
+	void probe.play().catch(() => undefined);
+
+	const timeoutId = window.setTimeout(() => finish(false), 3500);
+
+	return () => {
+		window.clearTimeout(timeoutId);
+		settled = true;
+		probe.pause();
+		probe.srcObject = null;
+	};
+}
+
 /**
  * MediaRecorder-produced webm/matroska files don't carry duration metadata,
  * so `video.duration` reads back as `Infinity` — which the editor's
@@ -138,6 +187,7 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	const webcamStreamRef = useRef<MediaStream | null>(null);
 	const micStreamRef = useRef<MediaStream | null>(null);
 	const webcamRequestIdRef = useRef(0);
+	const webcamFrameWatchCleanupRef = useRef<(() => void) | null>(null);
 	const micRequestIdRef = useRef(0);
 	// Resolves once the in-flight getUserMedia() call for the current toggle
 	// state has settled (stream acquired, or failed). `start()` awaits these
@@ -219,6 +269,8 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		(enabled: boolean) => {
 			setWebcamEnabledState(enabled);
 			const requestId = ++webcamRequestIdRef.current;
+			webcamFrameWatchCleanupRef.current?.();
+			webcamFrameWatchCleanupRef.current = null;
 			if (!enabled) {
 				stopStream(webcamStreamRef.current);
 				webcamStreamRef.current = null;
@@ -245,6 +297,17 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 					}
 					webcamStreamRef.current = stream;
 					setWebcamStream(stream);
+					webcamFrameWatchCleanupRef.current = watchWebcamFrameLiveness(
+						stream,
+						() => {
+							if (requestId !== webcamRequestIdRef.current) return;
+							setWebcamError(CAMERA_NO_FRAMES_MESSAGE);
+						},
+						() => {
+							if (requestId !== webcamRequestIdRef.current) return;
+							setWebcamError(null);
+						},
+					);
 				} catch (err) {
 					if (requestId !== webcamRequestIdRef.current) return;
 					setWebcamError(describeGetUserMediaError(err));
@@ -311,6 +374,7 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 
 	useEffect(() => {
 		return () => {
+			webcamFrameWatchCleanupRef.current?.();
 			stopStream(webcamStreamRef.current);
 			stopStream(micStreamRef.current);
 			stopStream(screenStreamRef.current);
@@ -441,6 +505,8 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		stopCursorCapture();
 		stopStream(screenStreamRef.current);
 		screenStreamRef.current = null;
+		webcamFrameWatchCleanupRef.current?.();
+		webcamFrameWatchCleanupRef.current = null;
 		stopStream(webcamStreamRef.current);
 		webcamStreamRef.current = null;
 		setWebcamStream(null);
