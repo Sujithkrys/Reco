@@ -1101,7 +1101,17 @@ export class ModernVideoExporter {
 
 	private buildLightningExportError(error: unknown): string {
 		const message = error instanceof Error ? error.message : String(error);
-		const stack = error instanceof Error ? error.stack : undefined;
+		let stackInfo = "";
+		try {
+			if (error && typeof error === "object") {
+				stackInfo = `\nRaw Error Details:\n${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}\n`;
+			} else {
+				stackInfo = `\nRaw Error: ${String(error)}\n`;
+			}
+		} catch (e) {
+			stackInfo = "\n(Could not stringify error)\n";
+		}
+
 		const failureCode = message.match(/\[([A-Z][A-Z0-9_]+)\]/)?.[1];
 		const isVideoDecodeFailure = /VideoDecoder failure|VIDEO_DECODE|VIDEO_CODEC/i.test(message);
 		const resolvedEncodePath =
@@ -1115,7 +1125,7 @@ export class ModernVideoExporter {
 			...(failureCode ? [`Failure code: ${failureCode}`] : []),
 			...(isVideoDecodeFailure ? ["Failure stage: Input video decoding"] : []),
 			`Reason: ${message}`,
-			...(stack ? [`\nStack Trace:\n${stack}\n`] : []),
+			stackInfo,
 			`Platform: ${this.getPlatformLabel()}`,
 			`Requested backend mode: ${this.config.backendPreference ?? "auto"}`,
 			`Output: ${this.config.width}x${this.config.height} @ ${this.config.frameRate} FPS; ${(this.config.bitrate / 1_000_000).toFixed(2)} Mbps; mode=${this.config.encodingMode ?? "default"}`,

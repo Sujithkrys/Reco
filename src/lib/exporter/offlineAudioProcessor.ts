@@ -236,6 +236,11 @@ export class OfflineAudioProcessor extends AudioMediaProcessor {
 				pendingMuxing = pendingMuxing
 					.then(async () => {
 						if (this.cancelled) return;
+						// Windows Chrome often omits the codec string in decoderConfig,
+						// causing mediabunny to crash with "Cannot read properties of undefined (reading 'split')"
+						if (meta?.decoderConfig && !meta.decoderConfig.codec) {
+							meta.decoderConfig.codec = encodeConfig.codec;
+						}
 						await muxer.addAudioChunk(chunk, !wroteFirstChunk ? meta : undefined);
 						wroteFirstChunk = true;
 					})
