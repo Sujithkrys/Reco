@@ -613,7 +613,7 @@ export class FrameRenderer {
 				const gradientMatch = wallpaper.match(/(linear|radial)-gradient\((.+)\)/);
 				if (gradientMatch) {
 					const [, type, params] = gradientMatch;
-					const parts = params.split(",").map((s) => s.trim());
+					const parts = (params || "").split(",").map((s) => s.trim());
 
 					let gradient: CanvasGradient;
 

@@ -70,7 +70,7 @@ export async function saveExportBlob(
 	outputPath: string | null = null,
 	captionSidecar?: PendingExportSave["captionSidecar"],
 ) {
-	const extension = fileName.split(".").pop()?.toLowerCase() || "bin";
+	const extension = (fileName || "").split(".").pop()?.toLowerCase() || "bin";
 	const hasExportStreamApi =
 		typeof window !== "undefined" &&
 		typeof window.electronAPI?.openExportStream === "function" &&

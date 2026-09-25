@@ -118,7 +118,7 @@ export async function resolveMediaResourceUrl(resource: string): Promise<string>
 }
 
 async function createReadableMediaResourceFile(resource: string): Promise<File> {
-	const filename = resource?.split(/[\\/]/).pop()?.split("?")[0] || "media";
+	const filename = (resource || "").split(/[\\/]/).pop()?.split("?")[0] || "media";
 	const resourceUrl = await resolveMediaResourceUrl(resource);
 	const response = await fetch(resourceUrl);
 	if (!response.ok) {

@@ -1956,7 +1956,7 @@ export class ModernVideoExporter {
 		}
 
 		const [, type, params] = gradientMatch;
-		const parts = this.splitCssGradientArguments(params).map((part) => part.trim());
+		const parts = this.splitCssGradientArguments(params || "").map((part) => part.trim());
 		const colorStops = parts
 			.map(
 				(part) =>

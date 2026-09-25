@@ -1190,7 +1190,7 @@ export class FrameRenderer {
 					bgCtx.fillRect(0, 0, this.config.width, this.config.height);
 				} else {
 					const [, type, params] = gradientMatch;
-					const parts = params.split(",").map((value) => value.trim());
+					const parts = (params || "").split(",").map((value) => value.trim());
 					const gradient =
 						type === "linear"
 							? bgCtx.createLinearGradient(0, 0, 0, this.config.height)
