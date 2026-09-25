@@ -1108,7 +1108,7 @@ export class ModernVideoExporter {
 			} else {
 				stackInfo = `\nRaw Error: ${String(error)}\n`;
 			}
-		} catch (e) {
+		} catch {
 			stackInfo = "\n(Could not stringify error)\n";
 		}
 
@@ -3567,7 +3567,7 @@ export class ModernVideoExporter {
 
 				this.pendingMuxing = this.pendingMuxing.then(async () => {
 					try {
-						if (isFirstChunk && this.videoDescription) {
+						if (isFirstChunk) {
 							// Add decoder config for the first chunk
 							const colorSpace =
 								this.videoColorSpace || ENCODED_H264_COLOR_SPACE_FALLBACK;

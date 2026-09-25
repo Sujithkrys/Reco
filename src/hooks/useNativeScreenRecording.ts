@@ -188,6 +188,23 @@ async function fixRecordingBlobDuration(blob: Blob, durationMs: number): Promise
 	}
 }
 
+/**
+ * A recording is built as a plain Blob (`new Blob(chunks, { type })`), with
+ * no filename — unlike an uploaded video, which is always a real `File` from
+ * the OS picker or drag-drop. The export pipeline's demuxer (web-demuxer,
+ * WASM-compiled FFmpeg) needs a real filename to create its virtual
+ * filesystem entry; handed a nameless Blob, that path construction reads
+ * `undefined` and throws deep inside the WASM boundary as a bare
+ * "Cannot read properties of undefined (reading 'split')", which is why
+ * exporting a recording failed while exporting an uploaded file — going
+ * through the identical demux path — did not. Wrapping the recording's
+ * output in a real, named File makes it indistinguishable from an uploaded
+ * one by the time it reaches the exporter.
+ */
+function toNamedRecordingFile(blob: Blob, baseName: string, extension: string): File {
+	return new File([blob], `${baseName}${extension}`, { type: blob.type });
+}
+
 export function isNativeScreenRecordingSupported(): boolean {
 	return (
 		typeof navigator !== "undefined" &&
@@ -492,15 +509,21 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 			? new Blob(webcamChunksRef.current, { type: webcamMimeType ?? "video/webm" })
 			: null;
 
-		const screenBlob = await fixRecordingBlobDuration(rawScreenBlob, durationMs);
+		const screenExtension = getVideoExtensionForMimeType(screenMimeType);
+		const fixedScreenBlob = await fixRecordingBlobDuration(rawScreenBlob, durationMs);
+		const screenBlob = toNamedRecordingFile(fixedScreenBlob, "recording", screenExtension);
 		const webcamBlob = rawWebcamBlob
-			? await fixRecordingBlobDuration(rawWebcamBlob, durationMs)
+			? toNamedRecordingFile(
+					await fixRecordingBlobDuration(rawWebcamBlob, durationMs),
+					"webcam",
+					getVideoExtensionForMimeType(webcamMimeType ?? "video/webm"),
+				)
 			: null;
 
 		return {
 			screenBlob,
 			screenMimeType,
-			screenExtension: getVideoExtensionForMimeType(screenMimeType),
+			screenExtension,
 			webcamBlob,
 			webcamMimeType: webcamBlob ? webcamMimeType : null,
 			timeOffsetMs:

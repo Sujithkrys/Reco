@@ -1260,7 +1260,7 @@ export class VideoExporter {
 
 				this.pendingMuxing = this.pendingMuxing.then(async () => {
 					try {
-						if (isFirstChunk && this.videoDescription) {
+						if (isFirstChunk) {
 							// Add decoder config for the first chunk
 							const colorSpace =
 								this.videoColorSpace || ENCODED_H264_COLOR_SPACE_FALLBACK;
