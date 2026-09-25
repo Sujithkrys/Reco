@@ -35,6 +35,10 @@ export function planClipSplit(params: {
 		...target,
 		id: createId(),
 		endMs: splitAtMs,
+		// The split point is a straight continuation of the same footage, not
+		// a cut that needs blending — any transition on `target` belongs to
+		// its actual tail, which is now `right`.
+		transitionOut: undefined,
 	};
 	const right: ClipRegion = {
 		...target,

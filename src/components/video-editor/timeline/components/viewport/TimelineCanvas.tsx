@@ -30,6 +30,7 @@ import {
 	isAudioTrackRowId,
 } from "../../core/rows";
 import type { TimelineRenderItem } from "../../core/timelineTypes";
+import type { ClipRegion, ClipTransition } from "../../../types";
 import { DEFAULT_CAPTION_DURATION_MS } from "../../hooks/actions/useTimelineCaptionActions";
 import { useTimelineAudioPeaks } from "../../hooks/useTimelineAudioPeaks";
 import Item from "../../Item";
@@ -43,6 +44,7 @@ import {
 } from "../../timelineLayout";
 import TimelineAxis from "../axis/TimelineAxis";
 import ClipMarkerOverlay from "../overlays/ClipMarkerOverlay";
+import TransitionMarkerOverlay from "../overlays/TransitionMarkerOverlay";
 import PlaybackCursor from "../playhead/PlaybackCursor";
 
 const HINT_CLIP = "Press C to split clip";
@@ -51,6 +53,8 @@ const HINT_AUDIO = "Click music icon to add audio";
 
 interface TimelineCanvasProps {
 	items: TimelineRenderItem[];
+	clipRegions?: ClipRegion[];
+	onClipTransitionChange?: (id: string, transition: ClipTransition | null) => void;
 	videoDurationMs: number;
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
@@ -748,6 +752,8 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 
 export default function TimelineCanvas({
 	items,
+	clipRegions = [],
+	onClipTransitionChange,
 	videoDurationMs,
 	currentTimeMs,
 	onSeek,
@@ -1011,6 +1017,16 @@ export default function TimelineCanvas({
 				timelineRef={localTimelineRef}
 				keyframes={keyframes}
 				isLoading={isLoading}
+			/>
+			{/* Rendered as a sibling of PlaybackCursor (not nested inside the clip
+				Row) so it shares the same stacking tier — nested one row deep, its
+				z-index would be capped by the rows container's own z-10 and could
+				never win a hit-test against the cursor's z-50 when the playhead
+				sits exactly on a cut point, e.g. right after splitting there. */}
+			<TransitionMarkerOverlay
+				clipRegions={clipRegions}
+				onClipTransitionChange={onClipTransitionChange}
+				topOffsetPx={TIMELINE_AXIS_HEIGHT_PX}
 			/>
 			{canShowGhostPlayhead && (
 				<div

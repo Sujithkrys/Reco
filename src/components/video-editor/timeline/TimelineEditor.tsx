@@ -14,6 +14,7 @@ import type {
 	AudioRegion,
 	CaptionCue,
 	ClipRegion,
+	ClipTransition,
 	CursorTelemetryPoint,
 	SpeedRegion,
 	TrimRegion,
@@ -54,6 +55,7 @@ export interface TimelineEditorProps {
 	onClipSplit?: (splitMs: number) => void;
 	onClipSpanChange?: (id: string, span: Span) => void;
 	onClipDelete?: (id: string) => void;
+	onClipTransitionChange?: (id: string, transition: ClipTransition | null) => void;
 	selectedClipId?: string | null;
 	onSelectClip?: (id: string | null) => void;
 	annotationRegions?: AnnotationRegion[];
@@ -137,6 +139,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onClipSplit,
 			onClipSpanChange,
 			onClipDelete,
+			onClipTransitionChange,
 			selectedClipId,
 			onSelectClip,
 			annotationRegions = [],
@@ -484,6 +487,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						/>
 						<TimelineCanvas
 							items={timelineItems}
+							clipRegions={clipRegions}
+							onClipTransitionChange={onClipTransitionChange}
 							videoDurationMs={totalMs}
 							currentTimeMs={currentTimeMs}
 							onSeek={onSeek}

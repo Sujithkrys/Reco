@@ -76,6 +76,7 @@ import {
 	DEFAULT_ZOOM_MOTION_BLUR_TUNING,
 	DEFAULT_ZOOM_OUT_DURATION_MS,
 	DEFAULT_ZOOM_OUT_EASING,
+	findActiveClipTransition,
 	findClipAtTimelineTime,
 	getDefaultCaptionFontFamily,
 	mapTimelineTimeToSourceTime,
@@ -381,6 +382,19 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			previewVideoSourceRef.current.setVideo(video);
 			videoRef.current = video;
 		}, []);
+		// A second, independently-seekable copy of the same source, used only to
+		// preview the incoming clip's head blending in during a clip transition
+		// window — the main video keeps playing the outgoing clip normally.
+		const transitionVideoRef = useRef<HTMLVideoElement | null>(null);
+		const transitionVideoSourceRef = useRef(new PreviewVideoSource());
+		const attachTransitionVideo = useCallback((video: HTMLVideoElement | null) => {
+			transitionVideoSourceRef.current.setVideo(video);
+			transitionVideoRef.current = video;
+		}, []);
+		const transitionSpriteRef = useRef<Sprite | null>(null);
+		const transitionTextureRef = useRef<Texture | null>(null);
+		const transitionWipeMaskRef = useRef<Graphics | null>(null);
+		const transitionOverlaySeekedMsRef = useRef<number | null>(null);
 		const previewFrameRef = useRef<HTMLDivElement | null>(null);
 		const containerRef = useRef<HTMLDivElement | null>(null);
 		const appRef = useRef<Application | null>(null);
@@ -1932,6 +1946,21 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				previewVideoSourceRef.current.suspend();
 
 				videoSpriteRef.current = null;
+
+				if (transitionSpriteRef.current) {
+					destroyPixiContainer(transitionSpriteRef.current);
+					transitionSpriteRef.current = null;
+				}
+				if (transitionTextureRef.current && !transitionTextureRef.current.destroyed) {
+					transitionTextureRef.current.destroy(false);
+				}
+				transitionTextureRef.current = null;
+				if (transitionWipeMaskRef.current && !transitionWipeMaskRef.current.destroyed) {
+					transitionWipeMaskRef.current.destroy();
+				}
+				transitionWipeMaskRef.current = null;
+				transitionVideoSourceRef.current.suspend();
+				transitionOverlaySeekedMsRef.current = null;
 			};
 		}, [onPlayStateChange, onTimeUpdate, pixiReady, videoReady]);
 
@@ -1989,6 +2018,89 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						y: appliedTransform.y,
 					};
 				});
+			};
+
+			// Preview a clip transition by seeking a second copy of the same
+			// source to the incoming clip's head and compositing it on top of the
+			// outgoing clip's own sprite, matching whatever kind/progress the cut
+			// point's transitionOut specifies. Kept isolated from the camera/zoom
+			// logic above so a mistake here can't destabilize normal playback.
+			const syncTransitionOverlay = (timelineMs: number) => {
+				const activeTransition = findActiveClipTransition(timelineMs, clipRegionsRef.current);
+				const transitionVideo = transitionVideoRef.current;
+
+				if (!activeTransition || !transitionVideo) {
+					if (transitionSpriteRef.current) transitionSpriteRef.current.visible = false;
+					transitionOverlaySeekedMsRef.current = null;
+					return;
+				}
+
+				if (!transitionSpriteRef.current) {
+					if (transitionVideo.videoWidth === 0 || transitionVideo.videoHeight === 0) return;
+					try {
+						const texture = Texture.from(transitionVideoSourceRef.current.getSource());
+						const sprite = new Sprite(texture);
+						transitionTextureRef.current = texture;
+						transitionSpriteRef.current = sprite;
+						videoContainer.addChild(sprite);
+					} catch {
+						return;
+					}
+				}
+
+				const sprite = transitionSpriteRef.current;
+				if (!sprite) return;
+
+				// Both sprites share the same parent, so copying the outgoing
+				// sprite's current on-screen box (already accounting for crop and
+				// aspect fit) is the only positioning work needed.
+				sprite.anchor.copyFrom(videoSprite.anchor);
+				sprite.x = videoSprite.x;
+				sprite.y = videoSprite.y;
+				sprite.width = videoSprite.width;
+				sprite.height = videoSprite.height;
+				sprite.visible = true;
+				sprite.alpha = 1;
+				sprite.mask = null;
+
+				const overlaySeconds = Math.max(0, activeTransition.overlaySourceMs / 1000);
+				const overlaySeekTargetMs = overlaySeconds * 1000;
+				if (
+					transitionOverlaySeekedMsRef.current === null ||
+					Math.abs(transitionOverlaySeekedMsRef.current - overlaySeekTargetMs) > 8
+				) {
+					const clampedSeconds = Number.isFinite(transitionVideo.duration)
+						? Math.min(overlaySeconds, Math.max(0, transitionVideo.duration - 0.01))
+						: overlaySeconds;
+					if (Math.abs(transitionVideo.currentTime - clampedSeconds) > 0.001) {
+						transitionVideo.currentTime = clampedSeconds;
+					}
+					transitionOverlaySeekedMsRef.current = overlaySeekTargetMs;
+				}
+
+				switch (activeTransition.kind) {
+					case "crossfade": {
+						sprite.alpha = activeTransition.progress;
+						break;
+					}
+					case "slide": {
+						sprite.x = videoSprite.x + (1 - activeTransition.progress) * (videoSprite.width || 0);
+						break;
+					}
+					case "wipe": {
+						const width = videoSprite.width || 0;
+						const height = videoSprite.height || 0;
+						transitionWipeMaskRef.current ??= new Graphics();
+						const mask = transitionWipeMaskRef.current;
+						if (!mask.parent) sprite.addChild(mask);
+						mask.clear();
+						mask.rect(sprite.x, sprite.y, width * activeTransition.progress, height).fill({
+							color: 0xffffff,
+						});
+						sprite.mask = mask;
+						break;
+					}
+				}
 			};
 
 			const ticker = () => {
@@ -2120,6 +2232,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				if (shouldSnapPausedFrameRef.current) {
 					shouldSnapPausedFrameRef.current = false;
 				}
+
+				syncTransitionOverlay(contentTimeMs);
 			};
 
 			app.ticker.add(ticker);
@@ -2804,6 +2918,19 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						);
 						onError(`Failed to load video (${detail})`);
 					}}
+				/>
+				{/* Second, independently-seeked copy of the same source, used only to
+					preview the incoming clip's head during a clip transition window
+					(see syncTransitionOverlay above). Errors here are non-fatal — the
+					main video already reports load failures for this src. */}
+				<video
+					ref={attachTransitionVideo}
+					src={videoPath}
+					className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
+					preload="auto"
+					muted
+					playsInline
+					aria-hidden="true"
 				/>
 			</div>
 		);

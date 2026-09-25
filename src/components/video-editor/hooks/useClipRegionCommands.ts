@@ -4,7 +4,16 @@ import { toast } from "sonner";
 import { changeClipSpan } from "../clipSpanChange";
 import { planClipSpeedChange } from "../clipSpeedChange";
 import { planClipSplit } from "../clipSplit";
-import type { ClipRegion, EditorEffectSection, ZoomRegion } from "../types";
+import {
+	type ClipRegion,
+	type ClipTransition,
+	type EditorEffectSection,
+	getClipSourceStartMs,
+	MAX_TRANSITION_DURATION_MS,
+	MIN_TRANSITION_DURATION_MS,
+	sortClipRegions,
+	type ZoomRegion,
+} from "../types";
 import { supportsPreviewPlaybackRate } from "../videoPlayback/playbackRate";
 
 type Translator = (
@@ -176,6 +185,88 @@ export function useClipRegionCommands({
 		[selectedClipId, setClipRegions],
 	);
 
+	const handleClipTransitionChange = useCallback(
+		(clipId: string, transition: ClipTransition | null) => {
+			const sorted = sortClipRegions(clipRegions);
+			const index = sorted.findIndex((clip) => clip.id === clipId);
+			if (index === -1 || index === sorted.length - 1) return;
+
+			const clip = sorted[index];
+			const nextClip = sorted[index + 1];
+			if (nextClip.startMs !== clip.endMs) {
+				toast.warning(
+					t(
+						"editor.timeline.transitionNeedsAdjacentClips",
+						"Clips must be touching, with no gap, to add a transition.",
+					),
+				);
+				return;
+			}
+
+			const oldDurationMs = clip.transitionOut?.durationMs ?? 0;
+
+			if (!transition) {
+				if (oldDurationMs === 0) return;
+				setClipRegions((current) =>
+					current.map((c) => {
+						if (c.id === clip.id) {
+							const { transitionOut: _removed, ...rest } = c;
+							return rest;
+						}
+						if (c.id === nextClip.id) {
+							return { ...c, sourceStartMs: getClipSourceStartMs(c) - oldDurationMs };
+						}
+						return c;
+					}),
+				);
+				return;
+			}
+
+			const clipTimelineLenMs = clip.endMs - clip.startMs;
+			let newDurationMs = Math.max(
+				MIN_TRANSITION_DURATION_MS,
+				Math.min(transition.durationMs, clipTimelineLenMs, MAX_TRANSITION_DURATION_MS),
+			);
+
+			const nextSpeed =
+				Number.isFinite(nextClip.speed) && nextClip.speed > 0 ? nextClip.speed : 1;
+			const nextSourceLenMs = (nextClip.endMs - nextClip.startMs) * nextSpeed;
+			// Undo any previously-applied shift before measuring how much room is
+			// actually available, so re-editing an existing transition's duration
+			// doesn't compound against its own earlier adjustment.
+			const baseNextSourceStartMs = getClipSourceStartMs(nextClip) - oldDurationMs;
+			const maxAvailableDurationMs = Math.max(
+				0,
+				Math.floor((sourceDurationMs - nextSourceLenMs - baseNextSourceStartMs) / nextSpeed),
+			);
+
+			if (maxAvailableDurationMs < MIN_TRANSITION_DURATION_MS) {
+				toast.warning(
+					t(
+						"editor.timeline.transitionNoRoom",
+						"Not enough footage after this cut to add a transition here.",
+					),
+				);
+				return;
+			}
+			newDurationMs = Math.min(newDurationMs, maxAvailableDurationMs);
+
+			const delta = newDurationMs - oldDurationMs;
+			setClipRegions((current) =>
+				current.map((c) => {
+					if (c.id === clip.id) {
+						return { ...c, transitionOut: { kind: transition.kind, durationMs: newDurationMs } };
+					}
+					if (c.id === nextClip.id && delta !== 0) {
+						return { ...c, sourceStartMs: getClipSourceStartMs(c) + delta };
+					}
+					return c;
+				}),
+			);
+		},
+		[clipRegions, setClipRegions, sourceDurationMs, t],
+	);
+
 	const handleClipDelete = useCallback(
 		(id: string) => {
 			// Other tracks have their own timeline positions; deleting footage is not a ripple edit.
@@ -192,6 +283,7 @@ export function useClipRegionCommands({
 		handleClipSpeedChange,
 		handleClipMutedChange,
 		handleClipShowSourceAudioChange,
+		handleClipTransitionChange,
 		handleClipDelete,
 	};
 }

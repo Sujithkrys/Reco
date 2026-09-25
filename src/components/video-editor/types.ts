@@ -229,6 +229,24 @@ export interface TrimRegion {
 	endMs: number;
 }
 
+export type TransitionKind = "crossfade" | "slide" | "wipe";
+
+export interface ClipTransition {
+	kind: TransitionKind;
+	/** Timeline ms carved from the end of this clip and shown blending into the next. */
+	durationMs: number;
+}
+
+export const DEFAULT_TRANSITION_DURATION_MS = 500;
+export const MIN_TRANSITION_DURATION_MS = 200;
+export const MAX_TRANSITION_DURATION_MS = 2000;
+
+export const TRANSITION_KIND_LABELS: Record<TransitionKind, string> = {
+	crossfade: "Crossfade",
+	slide: "Slide",
+	wipe: "Wipe",
+};
+
 export interface ClipRegion {
 	id: string;
 	/** Where the clip sits on the timeline. */
@@ -244,6 +262,16 @@ export interface ClipRegion {
 	speed: number;
 	muted?: boolean;
 	showSourceAudio?: boolean;
+	/**
+	 * A transition into the NEXT clip, valid only while that next clip is
+	 * immediately adjacent (its `startMs` equals this clip's `endMs`). Adding
+	 * one advances the next clip's `sourceStartMs` by `durationMs` — the same
+	 * "source moves without the clip moving" mechanism already used by
+	 * splitting/trimming — so the blended head footage plays exactly once
+	 * (faded in during this clip's tail) instead of once during the fade and
+	 * again when the next clip becomes active.
+	 */
+	transitionOut?: ClipTransition;
 }
 
 export function getClipSourceStartMs(clip: ClipRegion): number {
@@ -274,6 +302,51 @@ export function sortClipRegions(clips: ClipRegion[]): ClipRegion[] {
 
 function getSafeClipSpeed(clip: ClipRegion) {
 	return Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
+}
+
+export interface ActiveClipTransition {
+	fromClip: ClipRegion;
+	toClip: ClipRegion;
+	kind: TransitionKind;
+	/** 0 at the start of the blend, 1 right as the next clip becomes active. */
+	progress: number;
+	/** Source ms to preview for the incoming clip while it fades/wipes/slides in. */
+	overlaySourceMs: number;
+}
+
+/**
+ * Whether `timelineMs` falls within a transition's blend window (the last
+ * `durationMs` of a clip that has a `transitionOut` into an adjacent next
+ * clip), and if so what to show. Shared by the live preview and the
+ * exporter so both composite the same window the same way.
+ */
+export function findActiveClipTransition(
+	timelineMs: number,
+	clips: ClipRegion[],
+): ActiveClipTransition | null {
+	const sorted = sortClipRegions(clips);
+	for (let i = 0; i < sorted.length - 1; i++) {
+		const clip = sorted[i];
+		const transition = clip.transitionOut;
+		if (!transition || !(transition.durationMs > 0)) continue;
+		const nextClip = sorted[i + 1];
+		if (nextClip.startMs !== clip.endMs) continue;
+
+		const windowStartMs = clip.endMs - transition.durationMs;
+		if (timelineMs < windowStartMs || timelineMs >= clip.endMs) continue;
+
+		const progress = Math.min(1, Math.max(0, (timelineMs - windowStartMs) / transition.durationMs));
+		const nextSpeed = getSafeClipSpeed(nextClip);
+		// The next clip's sourceStartMs was advanced by durationMs when this
+		// transition was created (see ClipRegion.transitionOut), so its
+		// "skipped" head — the part shown blending in here — sits exactly
+		// durationMs before that stored position.
+		const overlaySourceMs =
+			getClipSourceStartMs(nextClip) - transition.durationMs + progress * transition.durationMs * nextSpeed;
+
+		return { fromClip: clip, toClip: nextClip, kind: transition.kind, progress, overlaySourceMs };
+	}
+	return null;
 }
 
 function mapNearestClipBoundary(timeMs: number, clips: ClipRegion[], from: "timeline" | "source") {
