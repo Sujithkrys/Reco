@@ -1,5 +1,5 @@
 export function summarizeErrorMessage(message: string): string {
-	const firstLine = message
+	const firstLine = (message || "")
 		.split(/\r?\n/)
 		.map((line) => line.trim())
 		.find((line) => line.length > 0);

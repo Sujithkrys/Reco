@@ -73,7 +73,7 @@ function clamp01(value: number) {
 }
 
 function splitCaptionWordsFromText(text: string) {
-	const sourceLines = text
+	const sourceLines = (text || "")
 		.split(/\r?\n/)
 		.map((line) => line.trim())
 		.filter((line) => line.length > 0);
