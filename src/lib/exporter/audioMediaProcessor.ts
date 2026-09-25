@@ -23,11 +23,15 @@ export class AudioMediaProcessor extends AudioTimelineProcessor {
 	protected async streamDecodeFromUrl(url: string): Promise<AudioBuffer | null> {
 		const source = await resolveMediaElementSource(url);
 		let demuxer: WebDemuxer | null = null;
+		let demuxSource: string | File = source.src;
+		if (demuxSource.startsWith("blob:")) {
+			demuxSource = await (await import("./localMediaSource")).createFallbackDemuxerSource(url);
+		}
 
 		try {
 			const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
 			demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
-			await demuxer.load(source.src);
+			await demuxer.load(demuxSource);
 
 			let audioConfig: AudioDecoderConfig;
 			try {

@@ -106,7 +106,7 @@ export class StreamingVideoDecoder {
 		};
 
 		let mediaInfo;
-		if (options.useFallbackMediaSource) {
+		if (options.useFallbackMediaSource || resourceUrl.startsWith("blob:")) {
 			mediaInfo = await loadMediaInfo(await createFallbackDemuxerSource(videoUrl));
 		} else {
 			try {
