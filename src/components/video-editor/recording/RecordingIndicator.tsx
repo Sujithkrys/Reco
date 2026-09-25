@@ -60,7 +60,7 @@ export function RecordingIndicator({ recorder, webcamSettings, onStop }: Recordi
 					</Button>
 				</div>
 			</div>
-			{recorder.webcamEnabled && recorder.webcamStream ? (
+			{recorder.webcamEnabled && recorder.webcamStream && !recorder.pipActive ? (
 				<div
 					className="pointer-events-none fixed z-[60] overflow-hidden rounded-full border-2 border-white/80 shadow-2xl"
 					style={{ ...cornerStyle, width: bubbleSizePx, height: bubbleSizePx }}

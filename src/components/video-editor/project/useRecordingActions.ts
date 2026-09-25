@@ -154,6 +154,14 @@ export function useRecordingActions({
 	}, [recorder.lastResult, applyRecordingResult, recorder.clearLastResult]);
 
 	const handleStartRecording = useCallback(async () => {
+		// Fire-and-forget, and before awaiting anything: Picture-in-Picture
+		// requires a real user gesture, and this click is it. `recorder.start()`
+		// awaits the native screen-share picker, which can take as long as the
+		// user takes to choose — long enough to spend the gesture's activation
+		// window before a PiP request made afterward would still count.
+		if (recorder.webcamEnabled) {
+			void recorder.requestWebcamPictureInPicture();
+		}
 		await recorder.start();
 	}, [recorder]);
 

@@ -82,6 +82,46 @@ function stopStream(stream: MediaStream | null) {
 	stream?.getTracks().forEach((track) => track.stop());
 }
 
+/**
+ * A screen recording's own live-preview UI (the floating "recording…" pill
+ * and webcam bubble) is just a normal element in this page — the moment the
+ * user switches to a different tab or a different application entirely
+ * (extremely common mid-recording: "let me show this other site"), that tab
+ * stops being painted on screen at all, so the bubble disappears even though
+ * capture keeps running underneath. The browser's Picture-in-Picture API is
+ * the standard web-platform answer: it puts a video in its own OS-level
+ * floating window that stays on top of every other window and application,
+ * not just other tabs — a website's genuine equivalent of the always-visible
+ * floating bubble a desktop app or extension would give you.
+ *
+ * PiP forces itself closed the moment its source <video> element is removed
+ * from the document, so this element is deliberately created and owned
+ * outside React's render tree (not tied to the launcher dialog, which closes
+ * the instant recording starts, or to the indicator pill, which only mounts
+ * after) — it must keep existing for as long as the webcam stream does,
+ * independent of whatever UI happens to be open.
+ */
+function createPersistentPipVideo(): HTMLVideoElement {
+	const video = document.createElement("video");
+	video.muted = true;
+	video.playsInline = true;
+	video.setAttribute("playsinline", "true");
+	video.style.cssText =
+		"position:fixed;top:-9999px;left:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;";
+	document.body.appendChild(video);
+	return video;
+}
+
+function destroyPersistentPipVideo(video: HTMLVideoElement | null) {
+	if (!video) return;
+	if (document.pictureInPictureElement === video) {
+		document.exitPictureInPicture().catch(() => undefined);
+	}
+	video.pause();
+	video.srcObject = null;
+	video.remove();
+}
+
 const CAMERA_NO_FRAMES_MESSAGE =
 	"Camera access was granted, but no picture is coming through. Close any other app that might be using the camera (Windows only lets one app at a time), then check Settings → Privacy & security → Camera to make sure browser access is turned on.";
 
@@ -188,6 +228,8 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	const micStreamRef = useRef<MediaStream | null>(null);
 	const webcamRequestIdRef = useRef(0);
 	const webcamFrameWatchCleanupRef = useRef<(() => void) | null>(null);
+	const pipVideoRef = useRef<HTMLVideoElement | null>(null);
+	const [pipActive, setPipActive] = useState(false);
 	const micRequestIdRef = useRef(0);
 	// Resolves once the in-flight getUserMedia() call for the current toggle
 	// state has settled (stream acquired, or failed). `start()` awaits these
@@ -272,6 +314,9 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 			webcamFrameWatchCleanupRef.current?.();
 			webcamFrameWatchCleanupRef.current = null;
 			if (!enabled) {
+				destroyPersistentPipVideo(pipVideoRef.current);
+				pipVideoRef.current = null;
+				setPipActive(false);
 				stopStream(webcamStreamRef.current);
 				webcamStreamRef.current = null;
 				setWebcamStream(null);
@@ -297,6 +342,9 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 					}
 					webcamStreamRef.current = stream;
 					setWebcamStream(stream);
+					pipVideoRef.current ??= createPersistentPipVideo();
+					pipVideoRef.current.srcObject = stream;
+					void pipVideoRef.current.play().catch(() => undefined);
 					webcamFrameWatchCleanupRef.current = watchWebcamFrameLiveness(
 						stream,
 						() => {
@@ -317,6 +365,52 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		},
 		[videoDevices.selectedDeviceId],
 	);
+
+	// Keep pipActive in sync however Picture-in-Picture actually ends — the
+	// user closing the floating window themselves is just as valid an exit as
+	// our own code calling exitPictureInPicture().
+	// biome-ignore lint/correctness/useExhaustiveDependencies: webcamStream re-runs this after pipVideoRef.current is (re)created; its value is never read inside the effect.
+	useEffect(() => {
+		const video = pipVideoRef.current;
+		if (!video) return;
+		const handleEnter = () => setPipActive(true);
+		const handleLeave = () => setPipActive(false);
+		video.addEventListener("enterpictureinpicture", handleEnter);
+		video.addEventListener("leavepictureinpicture", handleLeave);
+		return () => {
+			video.removeEventListener("enterpictureinpicture", handleEnter);
+			video.removeEventListener("leavepictureinpicture", handleLeave);
+		};
+	}, [webcamStream]);
+
+	/**
+	 * Puts the webcam feed into an OS-level floating window that stays on top
+	 * of every other window and application — not just other browser tabs —
+	 * so it's still visible once the user switches away from this tab mid
+	 * recording. Must be called synchronously from a real user gesture (e.g.
+	 * the "Start Recording" click) per the Picture-in-Picture spec; awaiting
+	 * anything first (like the screen-share picker) can spend that gesture's
+	 * activation window before this ever runs.
+	 */
+	const requestWebcamPictureInPicture = useCallback(async (): Promise<boolean> => {
+		const video = pipVideoRef.current;
+		if (
+			!video ||
+			typeof document === "undefined" ||
+			!document.pictureInPictureEnabled ||
+			typeof video.requestPictureInPicture !== "function"
+		) {
+			return false;
+		}
+		try {
+			if (document.pictureInPictureElement !== video) {
+				await video.requestPictureInPicture();
+			}
+			return true;
+		} catch {
+			return false;
+		}
+	}, []);
 
 	const setMicEnabled = useCallback(
 		(enabled: boolean) => {
@@ -375,6 +469,8 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 	useEffect(() => {
 		return () => {
 			webcamFrameWatchCleanupRef.current?.();
+			destroyPersistentPipVideo(pipVideoRef.current);
+			pipVideoRef.current = null;
 			stopStream(webcamStreamRef.current);
 			stopStream(micStreamRef.current);
 			stopStream(screenStreamRef.current);
@@ -507,6 +603,9 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		screenStreamRef.current = null;
 		webcamFrameWatchCleanupRef.current?.();
 		webcamFrameWatchCleanupRef.current = null;
+		destroyPersistentPipVideo(pipVideoRef.current);
+		pipVideoRef.current = null;
+		setPipActive(false);
 		stopStream(webcamStreamRef.current);
 		webcamStreamRef.current = null;
 		setWebcamStream(null);
@@ -723,6 +822,8 @@ export function useNativeScreenRecording(enabled: boolean = true) {
 		micError,
 		micLevel,
 		micReady,
+		pipActive,
+		requestWebcamPictureInPicture,
 		videoDevices,
 		micDevices,
 		lastResult,
