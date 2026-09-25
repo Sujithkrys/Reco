@@ -75,9 +75,22 @@ export function RecordingLauncherDialog({
 								/>
 							</div>
 							{!recorder.videoDevices.isLoading && recorder.videoDevices.devices.length === 0 ? (
-								<p className="mt-2 text-xs text-amber-500/90">
-									No camera was detected on this device.
-								</p>
+								recorder.videoDevices.permissionDenied ? (
+									<div className="mt-2 flex items-center justify-between gap-2 text-xs text-amber-500/90">
+										<span>Camera access is blocked for this site.</span>
+										<button
+											type="button"
+											onClick={recorder.videoDevices.retry}
+											className="shrink-0 underline underline-offset-2 hover:text-amber-400"
+										>
+											Retry
+										</button>
+									</div>
+								) : (
+									<p className="mt-2 text-xs text-amber-500/90">
+										No camera was detected on this device.
+									</p>
+								)
 							) : null}
 							{webcamPending ? (
 								<p className="mt-2 text-xs text-foreground/50">Starting camera…</p>
@@ -116,9 +129,22 @@ export function RecordingLauncherDialog({
 								/>
 							</div>
 							{!recorder.micDevices.isLoading && recorder.micDevices.devices.length === 0 ? (
-								<p className="mt-2 text-xs text-amber-500/90">
-									No microphone was detected on this device.
-								</p>
+								recorder.micDevices.permissionDenied ? (
+									<div className="mt-2 flex items-center justify-between gap-2 text-xs text-amber-500/90">
+										<span>Microphone access is blocked for this site.</span>
+										<button
+											type="button"
+											onClick={recorder.micDevices.retry}
+											className="shrink-0 underline underline-offset-2 hover:text-amber-400"
+										>
+											Retry
+										</button>
+									</div>
+								) : (
+									<p className="mt-2 text-xs text-amber-500/90">
+										No microphone was detected on this device.
+									</p>
+								)
 							) : null}
 							{micPending ? (
 								<p className="mt-2 text-xs text-foreground/50">Starting microphone…</p>

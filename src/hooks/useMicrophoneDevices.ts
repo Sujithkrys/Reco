@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface MicrophoneDevice {
 	deviceId: string;
@@ -6,20 +6,52 @@ export interface MicrophoneDevice {
 	groupId: string;
 }
 
-let hasRequestedMicrophoneLabels = false;
+function isPermissionDeniedError(err: unknown): boolean {
+	return (
+		err instanceof DOMException &&
+		(err.name === "NotAllowedError" ||
+			err.name === "PermissionDeniedError" ||
+			err.name === "SecurityError")
+	);
+}
 
 export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?: string) {
 	const [devices, setDevices] = useState<MicrophoneDevice[]>([]);
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string>("default");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [permissionDenied, setPermissionDenied] = useState(false);
+	const [retryToken, setRetryToken] = useState(0);
+	// Per-hook-instance, not module-level: a probe that failed for one editor
+	// session must not permanently block every later attempt for the same
+	// user within the same page load.
+	const hasProbedRef = useRef(false);
 
+	const retry = useCallback(() => {
+		hasProbedRef.current = false;
+		setRetryToken((token) => token + 1);
+	}, []);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: retryToken is a deliberate cache-buster for retry() and is never read inside the effect.
 	useEffect(() => {
 		if (!enabled) {
 			return;
 		}
+		if (!navigator.mediaDevices?.enumerateDevices) {
+			setError("This browser does not support microphone access.");
+			return;
+		}
 
 		let mounted = true;
+
+		const mapAudioInputs = (list: MediaDeviceInfo[]): MicrophoneDevice[] =>
+			list
+				.filter((device) => device.kind === "audioinput")
+				.map((device) => ({
+					deviceId: device.deviceId,
+					label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+					groupId: device.groupId,
+				}));
 
 		const loadDevices = async () => {
 			let permissionStream: MediaStream | null = null;
@@ -29,28 +61,47 @@ export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?
 				setError(null);
 
 				let allDevices = await navigator.mediaDevices.enumerateDevices();
-				let audioInputs = allDevices
-					.filter((device) => device.kind === "audioinput")
-					.map((device) => ({
-						deviceId: device.deviceId,
-						label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
-						groupId: device.groupId,
-					}));
+				const rawAudioInputs = allDevices.filter((device) => device.kind === "audioinput");
+				let audioInputs = mapAudioInputs(allDevices);
 
-				const needsLabelPermission =
-					audioInputs.length > 0 && audioInputs.every((device) => !device.label.trim());
+				// enumerateDevices() is not reliable evidence of "no microphone" on
+				// its own: for an origin with no prior permission decision,
+				// browsers commonly return zero audioinput entries at all, or
+				// entries with blank labels, even when real hardware is present —
+				// device kind/count and labels can both be gated behind
+				// permission. Check the *raw* label here, not the display
+				// fallback ("Microphone ...") that mapAudioInputs substitutes for
+				// a blank one — checking the already-substituted label can never
+				// see a blank label, so this probe would never fire.
+				const needsProbe =
+					!hasProbedRef.current &&
+					(rawAudioInputs.length === 0 || rawAudioInputs.every((device) => !device.label.trim()));
 
-				if (needsLabelPermission && !hasRequestedMicrophoneLabels) {
-					hasRequestedMicrophoneLabels = true;
-					permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-					allDevices = await navigator.mediaDevices.enumerateDevices();
-					audioInputs = allDevices
-						.filter((device) => device.kind === "audioinput")
-						.map((device) => ({
-							deviceId: device.deviceId,
-							label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
-							groupId: device.groupId,
-						}));
+				if (needsProbe) {
+					hasProbedRef.current = true;
+					try {
+						permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+						allDevices = await navigator.mediaDevices.enumerateDevices();
+						audioInputs = mapAudioInputs(allDevices);
+						if (mounted) setPermissionDenied(false);
+					} catch (probeError) {
+						// The pre-probe list (if any) is unconfirmed placeholder data —
+						// blank labels and possibly-empty deviceIds — that can't
+						// actually be used to start a stream. Don't report it as real
+						// once the probe has definitively failed, whatever the reason.
+						audioInputs = [];
+						if (mounted) {
+							// A real microphone may still exist — the user just hasn't
+							// (or has refused to have) granted this site access. That's
+							// a different, fixable situation from no hardware existing
+							// and needs its own message and a way to retry. Any other
+							// failure (no device, unsupported in this context, etc.)
+							// falls back to the plain "not detected" message.
+							setPermissionDenied(isPermissionDeniedError(probeError));
+						}
+					}
+				} else if (mounted) {
+					setPermissionDenied(false);
 				}
 
 				if (mounted) {
@@ -80,15 +131,13 @@ export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?
 					});
 					setIsLoading(false);
 				}
-			} catch (error) {
+			} catch (err) {
 				if (mounted) {
 					const message =
-						error instanceof Error
-							? error.message
-							: "Failed to enumerate audio devices";
+						err instanceof Error ? err.message : "Failed to enumerate audio devices";
 					setError(message);
 					setIsLoading(false);
-					console.error("Error loading microphone devices:", error);
+					console.error("Error loading microphone devices:", err);
 				}
 			} finally {
 				permissionStream?.getTracks().forEach((track) => track.stop());
@@ -100,14 +149,38 @@ export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?
 		const handleDeviceChange = () => {
 			void loadDevices();
 		};
-
 		navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+
+		// devicechange only fires for physical connect/disconnect, not for a
+		// permission decision changing — e.g. the user allowing mic access from
+		// the address-bar icon or chrome://settings while this dialog is still
+		// open. The Permissions API lets us react to that directly instead of
+		// requiring the user to close and reopen the dialog.
+		let permissionStatus: PermissionStatus | null = null;
+		const handlePermissionChange = () => {
+			hasProbedRef.current = false;
+			void loadDevices();
+		};
+		try {
+			navigator.permissions
+				?.query({ name: "microphone" as PermissionName })
+				.then((status) => {
+					if (!mounted) return;
+					permissionStatus = status;
+					status.addEventListener("change", handlePermissionChange);
+				})
+				.catch(() => undefined);
+		} catch {
+			// Some browsers (e.g. Firefox) reject "microphone" as an unrecognized
+			// PermissionName synchronously rather than via promise rejection.
+		}
 
 		return () => {
 			mounted = false;
 			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+			permissionStatus?.removeEventListener("change", handlePermissionChange);
 		};
-	}, [enabled, preferredDeviceId]);
+	}, [enabled, preferredDeviceId, retryToken]);
 
 	return {
 		devices,
@@ -115,5 +188,7 @@ export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?
 		setSelectedDeviceId,
 		isLoading,
 		error,
+		permissionDenied,
+		retry,
 	};
 }
