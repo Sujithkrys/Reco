@@ -171,6 +171,13 @@ export const webElectronAPI: unknown = {
 	},
 
 	// ── Project persistence ──────────────────────────────────────────────
+	// Called when the user deliberately navigates back to the dashboard, so a
+	// refresh there stays on the dashboard instead of jumping back into the
+	// project that's still recorded as "last open" in localStorage.
+	clearCurrentProjectFile: async () => {
+		localStorage.removeItem(LAST_OPEN_PROJECT_KEY);
+		return { success: true };
+	},
 	loadCurrentProjectFile: async () => {
 		try {
 			const lastProjectId = localStorage.getItem(LAST_OPEN_PROJECT_KEY);
@@ -226,11 +233,16 @@ export const webElectronAPI: unknown = {
 			return { success: false, path: null, message: (e as Error).message };
 		}
 	},
-	getProjectLibrary: async () => {
+	// Named to match useProjectLibraryController's refreshProjectLibrary(), the
+	// only caller -- this was previously named getProjectLibrary and returned
+	// `library` instead of `entries`, so that call has always thrown (caught
+	// and silently swallowed), leaving the dashboard's project list empty no
+	// matter how many projects were actually saved.
+	listProjectFiles: async () => {
 		try {
 			const allKeys = await keys();
 			const projectKeys = allKeys.filter(k => typeof k === 'string' && k.startsWith("project_"));
-			
+
 			const projects = [];
 			for (const key of projectKeys) {
 				const project = await get(key) as any;
@@ -238,10 +250,10 @@ export const webElectronAPI: unknown = {
 					projects.push(project);
 				}
 			}
-			
+
 			projects.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-			
-			const library = projects.map(p => ({
+
+			const entries = projects.map(p => ({
 				path: p.id,
 				name: p.name,
 				updatedAt: new Date(p.updated_at).getTime(),
@@ -249,10 +261,10 @@ export const webElectronAPI: unknown = {
 				isCurrent: false,
 				isInProjectsDirectory: true
 			}));
-			return { success: true, library };
+			return { success: true, entries };
 		} catch (e: unknown) {
 			console.error(e);
-			return { success: true, library: [] };
+			return { success: false, entries: [], error: (e as Error).message };
 		}
 	},
 	deleteProjectFile: async (_path: string) => {
