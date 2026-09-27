@@ -270,9 +270,26 @@ export const webElectronAPI: unknown = {
 	deleteProjectFile: async (_path: string) => {
 		try {
 			await del(`project_${_path}`);
+			if (localStorage.getItem(LAST_OPEN_PROJECT_KEY) === _path) {
+				localStorage.removeItem(LAST_OPEN_PROJECT_KEY);
+			}
 			return { success: true };
 		} catch {
 			return { success: false };
+		}
+	},
+	renameProjectFile: async (_path: string, newName: string) => {
+		try {
+			const projectRecord = (await get(`project_${_path}`)) as any;
+			if (!projectRecord) return { success: false, message: "Project not found" };
+			await set(`project_${_path}`, {
+				...projectRecord,
+				name: newName,
+				updated_at: new Date().toISOString(),
+			});
+			return { success: true };
+		} catch (e: unknown) {
+			return { success: false, message: (e as Error).message };
 		}
 	},
 	getProjectThumbnail: async (_path: string) => ({

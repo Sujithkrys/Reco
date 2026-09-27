@@ -226,6 +226,8 @@ export function DashboardLayout({
 							onOpenProject={openActions.handleOpenProjectFromLibrary}
 							onNewProject={openActions.handleCreateNewProject}
 							onRecordScreen={recordingActions.openLauncher}
+							onDeleteProject={openActions.handleDeleteProject}
+							onRenameProject={openActions.handleRenameProject}
 						/>
 					) : safeActiveSection === "brandkit" ? (
 						<ComingSoonPlaceholder title="Brand kit" />

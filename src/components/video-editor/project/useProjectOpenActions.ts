@@ -286,5 +286,49 @@ export function useProjectOpenActions({
 		return result.path;
 	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary, doImportMediaOrProject]);
 
-	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject, handleImportVideoForCurrentProject, handleImportDroppedFile };
+	const handleDeleteProject = useCallback(
+		async (projectPath: string) => {
+			const result = await window.electronAPI.deleteProjectFile(projectPath);
+			if (!result.success) {
+				toast.error(result.message || "Failed to delete project");
+				return false;
+			}
+			if (project.currentProjectPath === projectPath) {
+				project.setCurrentProjectPath(null);
+			}
+			await refreshProjectLibrary();
+			toast.success("Project deleted");
+			return true;
+		},
+		[project, refreshProjectLibrary],
+	);
+
+	const handleRenameProject = useCallback(
+		async (projectPath: string, newName: string) => {
+			const trimmed = newName.trim();
+			if (!trimmed) {
+				toast.error("Project name is required");
+				return false;
+			}
+			const result = await window.electronAPI.renameProjectFile(projectPath, trimmed);
+			if (!result.success) {
+				toast.error(result.message || "Failed to rename project");
+				return false;
+			}
+			await refreshProjectLibrary();
+			return true;
+		},
+		[refreshProjectLibrary],
+	);
+
+	return {
+		handleOpenProjectFromLibrary,
+		handleImportMediaOrProject,
+		handleOpenProjectBrowser,
+		handleCreateNewProject,
+		handleImportVideoForCurrentProject,
+		handleImportDroppedFile,
+		handleDeleteProject,
+		handleRenameProject,
+	};
 }
