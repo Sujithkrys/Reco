@@ -275,6 +275,17 @@ export function EditorLayout(props: Props) {
 						activeSection={safeActiveSection}
 						setActiveSection={ui.setActiveEffectSection}
 						onBack={() => {
+							// Leaving without saving used to just discard whatever
+							// changed since the last save -- silently persist first
+							// (matching the autosave debounce's own options) so the
+							// project reflects the latest state in the dashboard.
+							if (hasUnsavedChanges) {
+								void saveActions.saveProject(false, {
+									silent: true,
+									remountPreviewAfterSave: false,
+									refreshLibraryAfterSave: true,
+								});
+							}
 							ui.setActiveEffectSection("projects");
 							ui.setViewMode("dashboard");
 						}}
