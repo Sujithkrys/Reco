@@ -81,6 +81,11 @@ async function restoreProjectMedia(projectData: unknown): Promise<unknown> {
 // ---------------------------------------------------------------------------
 
 const WEB_SETTINGS_KEY = "reco-web-settings";
+// Tracks which saved project should be restored on the next page load --
+// localStorage (not the in-memory currentVideoPath/currentRecordingSession
+// vars below) is the only thing that survives an actual page refresh, since
+// a refresh re-executes this whole module from scratch.
+const LAST_OPEN_PROJECT_KEY = "reco-last-open-project-id";
 
 function readSettings(): Record<string, unknown> {
 	try {
@@ -166,18 +171,29 @@ export const webElectronAPI: unknown = {
 	},
 
 	// ── Project persistence ──────────────────────────────────────────────
-	loadCurrentProjectFile: async () => ({
-		success: false,
-		project: null,
-		path: null,
-	}),
+	loadCurrentProjectFile: async () => {
+		try {
+			const lastProjectId = localStorage.getItem(LAST_OPEN_PROJECT_KEY);
+			if (!lastProjectId) return { success: false, project: null, path: null };
+
+			const projectRecord = (await get(`project_${lastProjectId}`)) as any;
+			if (!projectRecord) return { success: false, project: null, path: null };
+
+			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
+			return { success: true, project: restoredData, path: lastProjectId };
+		} catch (e: unknown) {
+			console.error("Failed to restore last open project:", e);
+			return { success: false, project: null, path: null };
+		}
+	},
 	openProjectFileAtPath: async (_path: string) => {
 		try {
 			const projectRecord = await get(`project_${_path}`) as any;
 			if (!projectRecord) throw new Error("Project not found");
-			
+
 			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
-			
+			localStorage.setItem(LAST_OPEN_PROJECT_KEY, _path);
+
 			return { success: true, project: restoredData, path: _path };
 		} catch (e: unknown) {
 			return { success: false, message: (e as Error).message, path: null };
@@ -202,7 +218,8 @@ export const webElectronAPI: unknown = {
 				thumbnail_url: thumbnail || null,
 				updated_at: new Date().toISOString()
 			});
-			
+			localStorage.setItem(LAST_OPEN_PROJECT_KEY, projectId);
+
 			return { success: true, path: projectId };
 		} catch (e: unknown) {
 			console.error(e);
