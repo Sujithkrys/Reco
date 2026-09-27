@@ -4,10 +4,16 @@ import type {
 	AudioRegion,
 	CaptionCue,
 	ClipRegion,
+	GeneratedClipRegion,
 	ZoomRegion,
 } from "../../types";
 import { getClipSourceEndMs, getClipSourceStartMs } from "../../types";
-import { CAPTION_ROW_ID, CLIP_ROW_ID, ZOOM_ROW_ID } from "../core/constants";
+import {
+	CAPTION_ROW_ID,
+	CLIP_ROW_ID,
+	GENERATED_CLIP_ROW_ID,
+	ZOOM_ROW_ID,
+} from "../core/constants";
 import {
 	getAnnotationTrackIndex,
 	getAnnotationTrackRowId,
@@ -43,14 +49,30 @@ function getCaptionLabel(cue: CaptionCue): string {
 	return preview.length > 24 ? `${preview.substring(0, 24)}...` : preview;
 }
 
+export function getGeneratedClipLabel(region: GeneratedClipRegion): string {
+	const firstScene = region.spec.scenes[0];
+	const text = firstScene && "text" in firstScene.props ? firstScene.props.text : undefined;
+	if (!text) return "Generated clip";
+	const preview = text.trim() || "Generated clip";
+	return preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
+}
+
 export function buildTimelineItems(params: {
 	zoomRegions: ZoomRegion[];
 	clipRegions: ClipRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
 	captionCues?: CaptionCue[];
+	generatedClipRegions?: GeneratedClipRegion[];
 }): TimelineRenderItem[] {
-	const { zoomRegions, clipRegions, annotationRegions, audioRegions, captionCues = [] } = params;
+	const {
+		zoomRegions,
+		clipRegions,
+		annotationRegions,
+		audioRegions,
+		captionCues = [],
+		generatedClipRegions = [],
+	} = params;
 	const zooms: TimelineRenderItem[] = zoomRegions.map((region, index) => ({
 		id: region.id,
 		rowId: ZOOM_ROW_ID,
@@ -106,7 +128,15 @@ export function buildTimelineItems(params: {
 		variant: "caption",
 	}));
 
-	return [...zooms, ...clips, ...annotations, ...audios, ...captions];
+	const generatedClips: TimelineRenderItem[] = generatedClipRegions.map((region) => ({
+		id: region.id,
+		rowId: GENERATED_CLIP_ROW_ID,
+		span: { start: region.startMs, end: region.endMs },
+		label: getGeneratedClipLabel(region),
+		variant: "generatedClip",
+	}));
+
+	return [...zooms, ...clips, ...annotations, ...audios, ...captions, ...generatedClips];
 }
 
 export function buildAllRegionSpans(params: {

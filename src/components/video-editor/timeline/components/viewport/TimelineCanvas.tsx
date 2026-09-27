@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
 	CAPTION_ROW_ID,
 	CLIP_ROW_ID,
+	GENERATED_CLIP_ROW_ID,
 	SOURCE_AUDIO_ROW_ID,
 	ZOOM_ROW_ID,
 } from "../../core/constants";
@@ -64,6 +65,7 @@ interface TimelineCanvasProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onSelectAudio?: (id: string | null) => void;
 	onSelectCaption?: (id: string | null) => void;
+	onSelectGeneratedClip?: (id: string | null) => void;
 	onAddZoomAtMs?: (startMs: number) => void;
 	onAddCaptionAtMs?: (startMs: number) => void;
 	canPlaceCaptionAtMs?: (startMs: number) => boolean;
@@ -75,6 +77,7 @@ interface TimelineCanvasProps {
 	selectedAnnotationId?: string | null;
 	selectedAudioId?: string | null;
 	selectedCaptionId?: string | null;
+	selectedGeneratedClipId?: string | null;
 	selectAllBlocksActive?: boolean;
 	onClearBlockSelection?: () => void;
 	keyframes?: { id: string; time: number }[];
@@ -371,11 +374,13 @@ interface TimelineCanvasRowsProps {
 	selectedAnnotationId?: string | null;
 	selectedAudioId?: string | null;
 	selectedCaptionId?: string | null;
+	selectedGeneratedClipId?: string | null;
 	onSelectZoom?: (id: string | null) => void;
 	onSelectClip?: (id: string | null) => void;
 	onSelectAnnotation?: (id: string | null) => void;
 	onSelectAudio?: (id: string | null) => void;
 	onSelectCaption?: (id: string | null) => void;
+	onSelectGeneratedClip?: (id: string | null) => void;
 	sourceAudioTracks?: SourceAudioTrackWithPeaks[];
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
 	showSourceAudioTrack?: boolean;
@@ -450,11 +455,13 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	selectedAnnotationId,
 	selectedAudioId,
 	selectedCaptionId,
+	selectedGeneratedClipId,
 	onSelectZoom,
 	onSelectClip,
 	onSelectAnnotation,
 	onSelectAudio,
 	onSelectCaption,
+	onSelectGeneratedClip,
 	sourceAudioTracks = [],
 	getSourceAudioTrackSettingsForClip,
 	showSourceAudioTrack = false,
@@ -482,62 +489,69 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	onCaptionRowClick,
 }: TimelineCanvasRowsProps) {
 	const hiddenIds = useMemo(() => new Set(liveHiddenItemIds ?? []), [liveHiddenItemIds]);
-	const { clipItems, zoomItems, captionItems, annotationRows, audioRows } = useMemo(() => {
-		const nextClipItems: TimelineRenderItem[] = [];
-		const nextZoomItems: TimelineRenderItem[] = [];
-		const nextCaptionItems: TimelineRenderItem[] = [];
-		const annotationBuckets = new Map<number, TimelineRenderItem[]>();
-		const audioBuckets = new Map<number, TimelineRenderItem[]>();
+	const { clipItems, zoomItems, captionItems, generatedClipItems, annotationRows, audioRows } =
+		useMemo(() => {
+			const nextClipItems: TimelineRenderItem[] = [];
+			const nextZoomItems: TimelineRenderItem[] = [];
+			const nextCaptionItems: TimelineRenderItem[] = [];
+			const nextGeneratedClipItems: TimelineRenderItem[] = [];
+			const annotationBuckets = new Map<number, TimelineRenderItem[]>();
+			const audioBuckets = new Map<number, TimelineRenderItem[]>();
 
-		for (const item of items) {
-			if (item.rowId === CLIP_ROW_ID) {
-				nextClipItems.push(item);
-				continue;
+			for (const item of items) {
+				if (item.rowId === CLIP_ROW_ID) {
+					nextClipItems.push(item);
+					continue;
+				}
+				if (item.rowId === ZOOM_ROW_ID) {
+					nextZoomItems.push(item);
+					continue;
+				}
+				if (item.rowId === CAPTION_ROW_ID) {
+					nextCaptionItems.push(item);
+					continue;
+				}
+				if (item.rowId === GENERATED_CLIP_ROW_ID) {
+					nextGeneratedClipItems.push(item);
+					continue;
+				}
+				if (isAnnotationTrackRowId(item.rowId)) {
+					const trackIndex = getAnnotationTrackIndex(item.rowId);
+					const bucket = annotationBuckets.get(trackIndex);
+					if (bucket) bucket.push(item);
+					else annotationBuckets.set(trackIndex, [item]);
+					continue;
+				}
+				if (isAudioTrackRowId(item.rowId)) {
+					const trackIndex = getAudioTrackIndex(item.rowId);
+					const bucket = audioBuckets.get(trackIndex);
+					if (bucket) bucket.push(item);
+					else audioBuckets.set(trackIndex, [item]);
+				}
 			}
-			if (item.rowId === ZOOM_ROW_ID) {
-				nextZoomItems.push(item);
-				continue;
-			}
-			if (item.rowId === CAPTION_ROW_ID) {
-				nextCaptionItems.push(item);
-				continue;
-			}
-			if (isAnnotationTrackRowId(item.rowId)) {
-				const trackIndex = getAnnotationTrackIndex(item.rowId);
-				const bucket = annotationBuckets.get(trackIndex);
-				if (bucket) bucket.push(item);
-				else annotationBuckets.set(trackIndex, [item]);
-				continue;
-			}
-			if (isAudioTrackRowId(item.rowId)) {
-				const trackIndex = getAudioTrackIndex(item.rowId);
-				const bucket = audioBuckets.get(trackIndex);
-				if (bucket) bucket.push(item);
-				else audioBuckets.set(trackIndex, [item]);
-			}
-		}
 
-		const annotationRowsSorted = Array.from(annotationBuckets.entries())
-			.sort(([left], [right]) => left - right)
-			.map(([trackIndex, rowItems]) => ({
-				rowId: getAnnotationTrackRowId(trackIndex),
-				items: rowItems,
-			}));
-		const audioRowsSorted = Array.from(audioBuckets.entries())
-			.sort(([left], [right]) => left - right)
-			.map(([trackIndex, rowItems]) => ({
-				rowId: getAudioTrackRowId(trackIndex),
-				items: rowItems,
-			}));
+			const annotationRowsSorted = Array.from(annotationBuckets.entries())
+				.sort(([left], [right]) => left - right)
+				.map(([trackIndex, rowItems]) => ({
+					rowId: getAnnotationTrackRowId(trackIndex),
+					items: rowItems,
+				}));
+			const audioRowsSorted = Array.from(audioBuckets.entries())
+				.sort(([left], [right]) => left - right)
+				.map(([trackIndex, rowItems]) => ({
+					rowId: getAudioTrackRowId(trackIndex),
+					items: rowItems,
+				}));
 
-		return {
-			clipItems: nextClipItems,
-			zoomItems: nextZoomItems,
-			captionItems: nextCaptionItems,
-			annotationRows: annotationRowsSorted,
-			audioRows: audioRowsSorted,
-		};
-	}, [items]);
+			return {
+				clipItems: nextClipItems,
+				zoomItems: nextZoomItems,
+				captionItems: nextCaptionItems,
+				generatedClipItems: nextGeneratedClipItems,
+				annotationRows: annotationRowsSorted,
+				audioRows: audioRowsSorted,
+			};
+		}, [items]);
 
 	return (
 		<>
@@ -704,6 +718,24 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 				</Row>
 			)}
 
+			{generatedClipItems.length > 0 && (
+				<Row id={GENERATED_CLIP_ROW_ID} isEmpty={false}>
+					{generatedClipItems.map((item) => (
+						<Item
+							id={item.id}
+							key={item.id}
+							rowId={item.rowId}
+							span={item.span}
+							isSelected={item.id === selectedGeneratedClipId}
+							onSelectId={onSelectGeneratedClip}
+							variant="generatedClip"
+						>
+							{item.label}
+						</Item>
+					))}
+				</Row>
+			)}
+
 			{annotationRows.map(({ rowId, items: rowItems }, index) => (
 				<Row
 					key={rowId}
@@ -769,11 +801,13 @@ export default function TimelineCanvas({
 	onSelectAnnotation,
 	onSelectAudio,
 	onSelectCaption,
+	onSelectGeneratedClip,
 	selectedZoomId,
 	selectedClipId,
 	selectedAnnotationId,
 	selectedAudioId,
 	selectedCaptionId,
+	selectedGeneratedClipId,
 	selectAllBlocksActive = false,
 	onClearBlockSelection,
 	keyframes = [],
@@ -813,6 +847,7 @@ export default function TimelineCanvas({
 				onSelectAnnotation?.(null);
 				onSelectAudio?.(null);
 				onSelectCaption?.(null);
+				onSelectGeneratedClip?.(null);
 			}
 
 			const rect = e.currentTarget.getBoundingClientRect();
@@ -833,6 +868,7 @@ export default function TimelineCanvas({
 			onSelectAnnotation,
 			onSelectAudio,
 			onSelectCaption,
+			onSelectGeneratedClip,
 			onClearBlockSelection,
 			videoDurationMs,
 			sidebarWidth,
@@ -870,6 +906,7 @@ export default function TimelineCanvas({
 				onSelectAnnotation?.(null);
 				onSelectAudio?.(null);
 				onSelectCaption?.(null);
+				onSelectGeneratedClip?.(null);
 			}
 
 			const rect = localTimelineRef.current.getBoundingClientRect();
@@ -886,6 +923,7 @@ export default function TimelineCanvas({
 			onSelectCaption,
 			onSelectClip,
 			onSelectZoom,
+			onSelectGeneratedClip,
 			videoDurationMs,
 		],
 	);
@@ -1056,11 +1094,13 @@ export default function TimelineCanvas({
 					selectedAnnotationId={selectedAnnotationId}
 					selectedAudioId={selectedAudioId}
 					selectedCaptionId={selectedCaptionId}
+					selectedGeneratedClipId={selectedGeneratedClipId}
 					onSelectZoom={onSelectZoom}
 					onSelectClip={onSelectClip}
 					onSelectAnnotation={onSelectAnnotation}
 					onSelectAudio={onSelectAudio}
 					onSelectCaption={onSelectCaption}
+					onSelectGeneratedClip={onSelectGeneratedClip}
 					sourceAudioTracks={sourceAudioTracks}
 					getSourceAudioTrackSettingsForClip={getSourceAudioTrackSettingsForClip}
 					showSourceAudioTrack={showSourceAudioTrack}

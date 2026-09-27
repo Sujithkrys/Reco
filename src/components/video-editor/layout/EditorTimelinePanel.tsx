@@ -6,6 +6,7 @@ import type { useAudioRegionCommands } from "../hooks/useAudioRegionCommands";
 import type { useCaptionCommands } from "../hooks/useCaptionCommands";
 import type { useClipRegionCommands } from "../hooks/useClipRegionCommands";
 import type { useEditorPlaybackControls } from "../hooks/useEditorPlaybackControls";
+import type { useGeneratedClipRegionCommands } from "../hooks/useGeneratedClipRegionCommands";
 import type { useTimelineProjection } from "../hooks/useTimelineProjection";
 import type { useZoomRegionCommands } from "../hooks/useZoomRegionCommands";
 import type { useTimelineState } from "../state/useTimelineState";
@@ -22,6 +23,7 @@ type Props = {
 	audioCommands: ReturnType<typeof useAudioRegionCommands>;
 	captionCommands: ReturnType<typeof useCaptionCommands>;
 	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
+	generatedClipCommands: ReturnType<typeof useGeneratedClipRegionCommands>;
 	videoPath: string | null;
 	videoSourcePath: string | null;
 	cursorTelemetrySourcePath: string | null;
@@ -31,6 +33,7 @@ type Props = {
 	disableSuggestedZooms: boolean;
 	currentTime: number;
 	handleSelectAnnotation: (id: string | null) => void;
+	handleSelectGeneratedClip: (id: string | null) => void;
 };
 
 export function EditorTimelinePanel(props: Props) {
@@ -45,6 +48,7 @@ export function EditorTimelinePanel(props: Props) {
 		audioCommands,
 		captionCommands,
 		annotationCommands,
+		generatedClipCommands,
 		videoPath,
 		videoSourcePath,
 		cursorTelemetrySourcePath,
@@ -54,6 +58,7 @@ export function EditorTimelinePanel(props: Props) {
 		disableSuggestedZooms,
 		currentTime,
 		handleSelectAnnotation,
+		handleSelectGeneratedClip,
 	} = props;
 
 	return (
@@ -132,6 +137,11 @@ export function EditorTimelinePanel(props: Props) {
 				onAnnotationDelete={annotationCommands.handleAnnotationDelete}
 				selectedAnnotationId={timeline.selectedAnnotationId}
 				onSelectAnnotation={handleSelectAnnotation}
+				generatedClipRegions={timeline.generatedClipRegions}
+				onGeneratedClipSpanChange={generatedClipCommands.handleGeneratedClipSpanChange}
+				onGeneratedClipDelete={generatedClipCommands.handleGeneratedClipDelete}
+				selectedGeneratedClipId={timeline.selectedGeneratedClipId}
+				onSelectGeneratedClip={handleSelectGeneratedClip}
 				showSourceAudioTrack={timeline.clipRegions.some((clip) => clip.showSourceAudio)}
 				sourceAudioResourceVersion={timeline.sourceAudioFallbackRefreshKey}
 				sourceAudioTrackSettings={audio.activeSourceAudioTrackSettings}

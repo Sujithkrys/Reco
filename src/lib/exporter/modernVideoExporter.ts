@@ -1758,6 +1758,9 @@ export class ModernVideoExporter {
 		if ((this.config.autoCaptions ?? []).length > 0) {
 			reasons.push("unsupported-caption-overlay");
 		}
+		if ((this.config.generatedClipRegions ?? []).length > 0) {
+			reasons.push("unsupported-generated-clip-overlay");
+		}
 		if (this.config.webcam?.enabled) {
 			// Native GPU compositors use a different corner and shadow model.
 			// Keep webcam exports on the shared renderer used by preview.

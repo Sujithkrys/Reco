@@ -78,6 +78,7 @@ import {
 	DEFAULT_ZOOM_OUT_EASING,
 	findActiveClipTransition,
 	findClipAtTimelineTime,
+	type GeneratedClipRegion,
 	getDefaultCaptionFontFamily,
 	mapTimelineTimeToSourceTime,
 	type Padding,
@@ -94,6 +95,11 @@ import {
 } from "./videoPlayback/annotationVisibility";
 import { createClipPlayback, findPreviewClipAtTimelineTime } from "./videoPlayback/clipPlayback";
 import { DEFAULT_FOCUS } from "./videoPlayback/constants";
+import {
+	findActiveGeneratedClip,
+	getGeneratedClipTargetTimeSeconds,
+	shouldSeekGeneratedClipMedia,
+} from "./videoPlayback/generatedClipSync";
 import {
 	type CursorFollowCameraState,
 	createCursorFollowCameraState,
@@ -251,6 +257,7 @@ interface VideoPlaybackProps {
 	cropRegion?: import("./types").CropRegion;
 	webcam?: WebcamOverlaySettings;
 	webcamVideoPath?: string | null;
+	generatedClipRegions?: GeneratedClipRegion[];
 	aspectRatio: AspectRatio;
 	annotationRegions?: AnnotationRegion[];
 	autoCaptions?: CaptionCue[];
@@ -336,6 +343,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cropRegion,
 			webcam,
 			webcamVideoPath,
+			generatedClipRegions = [],
 			aspectRatio,
 			annotationRegions = [],
 			autoCaptions = [],
@@ -457,6 +465,57 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			clipRegionsRef.current = clipRegions;
 			clipPlaybackRef.current?.refresh();
 		}, [clipRegions]);
+		const generatedClipRegionsRef = useRef<GeneratedClipRegion[]>(generatedClipRegions);
+		useEffect(() => {
+			generatedClipRegionsRef.current = generatedClipRegions;
+		}, [generatedClipRegions]);
+		// One <video> element per generated clip, created/destroyed as regions are
+		// added/removed/re-rendered (same lifecycle pattern as audio regions in
+		// useAudioPreviewSync). Only the active clip's video is ever playing.
+		const generatedClipVideoElementsRef = useRef<Map<string, HTMLVideoElement>>(new Map());
+		const generatedClipPreviewSourceRef = useRef(new PreviewVideoSource());
+		const generatedClipSpriteRef = useRef<Sprite | null>(null);
+		const activeGeneratedClipIdRef = useRef<string | null>(null);
+		useEffect(() => {
+			const elements = generatedClipVideoElementsRef.current;
+			const currentIds = new Set(generatedClipRegions.map((region) => region.id));
+
+			for (const [id, video] of elements) {
+				if (!currentIds.has(id)) {
+					video.pause();
+					video.src = "";
+					elements.delete(id);
+				}
+			}
+
+			for (const region of generatedClipRegions) {
+				let video = elements.get(region.id);
+				if (!video) {
+					video = document.createElement("video");
+					video.preload = "auto";
+					video.muted = true;
+					video.playsInline = true;
+					video.crossOrigin = "anonymous";
+					elements.set(region.id, video);
+				}
+				if (video.src !== region.videoUrl) {
+					video.src = region.videoUrl;
+				}
+			}
+		}, [generatedClipRegions]);
+		// True unmount only (empty deps) -- the effect above intentionally has no
+		// cleanup, since it runs on every regions change and a cleanup there would
+		// tear down/restart every element on each edit rather than only on unmount.
+		useEffect(() => {
+			const elements = generatedClipVideoElementsRef.current;
+			return () => {
+				for (const video of elements.values()) {
+					video.pause();
+					video.src = "";
+				}
+				elements.clear();
+			};
+		}, []);
 		const zoomRegionsRef = useRef<ZoomRegion[]>([]);
 		const selectedZoomIdRef = useRef<string | null>(null);
 		const animationStateRef = useRef<PlaybackAnimationState>(createPlaybackAnimationState());
@@ -2103,6 +2162,77 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 			};
 
+			// A generated clip visually replaces the main recording's frame during
+			// its span (it's a full-screen insert, not an overlay like webcam/audio),
+			// so this hides the main video sprite and shows the active clip's video
+			// as its own full-frame sprite instead, sized to match exactly.
+			const syncGeneratedClipOverlay = (timelineMs: number) => {
+				const active = findActiveGeneratedClip(generatedClipRegionsRef.current, timelineMs);
+
+				if (!active) {
+					if (generatedClipSpriteRef.current) generatedClipSpriteRef.current.visible = false;
+					videoSprite.visible = true;
+					if (activeGeneratedClipIdRef.current) {
+						generatedClipVideoElementsRef.current
+							.get(activeGeneratedClipIdRef.current)
+							?.pause();
+					}
+					activeGeneratedClipIdRef.current = null;
+					return;
+				}
+
+				const video = generatedClipVideoElementsRef.current.get(active.id);
+				if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+					// Not decoded yet -- keep showing the main video rather than a blank frame.
+					return;
+				}
+
+				videoSprite.visible = false;
+
+				if (activeGeneratedClipIdRef.current !== active.id) {
+					generatedClipPreviewSourceRef.current.setVideo(video);
+					const source = generatedClipPreviewSourceRef.current.getSource();
+					const texture = Texture.from(source);
+					if (generatedClipSpriteRef.current) {
+						generatedClipSpriteRef.current.texture = texture;
+					} else {
+						const sprite = new Sprite(texture);
+						generatedClipSpriteRef.current = sprite;
+						videoContainer.addChild(sprite);
+					}
+					activeGeneratedClipIdRef.current = active.id;
+				}
+
+				const sprite = generatedClipSpriteRef.current;
+				if (!sprite) return;
+				sprite.visible = true;
+				sprite.anchor.copyFrom(videoSprite.anchor);
+				sprite.x = videoSprite.x;
+				sprite.y = videoSprite.y;
+				sprite.width = videoSprite.width;
+				sprite.height = videoSprite.height;
+				sprite.mask = null;
+				sprite.alpha = 1;
+
+				const targetSeconds = getGeneratedClipTargetTimeSeconds(timelineMs, active);
+				if (
+					shouldSeekGeneratedClipMedia({
+						desiredTime: targetSeconds,
+						currentTime: video.currentTime,
+						isPlaying: isPlayingRef.current,
+					})
+				) {
+					video.currentTime = Number.isFinite(video.duration)
+						? Math.min(targetSeconds, Math.max(0, video.duration - 0.01))
+						: targetSeconds;
+				}
+				if (isPlayingRef.current && video.paused) {
+					video.play().catch(() => undefined);
+				} else if (!isPlayingRef.current && !video.paused) {
+					video.pause();
+				}
+			};
+
 			const ticker = () => {
 				if (suspendRenderingRef.current) {
 					return;
@@ -2234,6 +2364,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 
 				syncTransitionOverlay(contentTimeMs);
+				syncGeneratedClipOverlay(contentTimeMs);
 			};
 
 			app.ticker.add(ticker);

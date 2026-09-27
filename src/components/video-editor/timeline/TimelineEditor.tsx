@@ -16,6 +16,7 @@ import type {
 	ClipRegion,
 	ClipTransition,
 	CursorTelemetryPoint,
+	GeneratedClipRegion,
 	SpeedRegion,
 	TrimRegion,
 	ZoomFocus,
@@ -80,6 +81,11 @@ export interface TimelineEditorProps {
 	captionQuickAddEnabled?: boolean;
 	selectedCaptionId?: string | null;
 	onSelectCaption?: (id: string | null) => void;
+	generatedClipRegions?: GeneratedClipRegion[];
+	onGeneratedClipSpanChange?: (id: string, span: Span) => void;
+	onGeneratedClipDelete?: (id: string) => void;
+	selectedGeneratedClipId?: string | null;
+	onSelectGeneratedClip?: (id: string | null) => void;
 	videoPath?: string | null;
 	videoSourcePath?: string | null;
 	cursorTelemetrySourcePath?: string | null;
@@ -164,6 +170,11 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			captionQuickAddEnabled = true,
 			selectedCaptionId,
 			onSelectCaption,
+			generatedClipRegions = [],
+			onGeneratedClipSpanChange,
+			onGeneratedClipDelete,
+			selectedGeneratedClipId,
+			onSelectGeneratedClip,
 			videoPath,
 			videoSourcePath,
 			cursorTelemetrySourcePath,
@@ -346,6 +357,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			handleSelectAnnotation,
 			handleSelectAudio,
 			handleSelectCaption,
+			handleSelectGeneratedClip,
 			hasOverlap,
 			timelineItems,
 			allRegionSpans,
@@ -401,6 +413,11 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onCaptionAdded,
 			selectedCaptionId,
 			onSelectCaption,
+			generatedClipRegions,
+			onGeneratedClipSpanChange,
+			onGeneratedClipDelete,
+			selectedGeneratedClipId,
+			onSelectGeneratedClip,
 			isMac,
 			keyShortcuts,
 			isTimelineFocusedRef,
@@ -504,11 +521,13 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							onSelectAnnotation={handleSelectAnnotation}
 							onSelectAudio={handleSelectAudio}
 							onSelectCaption={handleSelectCaption}
+							onSelectGeneratedClip={handleSelectGeneratedClip}
 							selectedZoomId={selectedZoomId}
 							selectedClipId={selectedClipId}
 							selectedAnnotationId={selectedAnnotationId}
 							selectedAudioId={selectedAudioId}
 							selectedCaptionId={selectedCaptionId}
+							selectedGeneratedClipId={selectedGeneratedClipId}
 							selectAllBlocksActive={selectAllBlocksActive}
 							onClearBlockSelection={clearSelectedBlocks}
 							keyframes={keyframes}

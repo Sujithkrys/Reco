@@ -98,6 +98,7 @@ export function EditorVideoPreview({
 			webcamVideoPath={
 				appearance.webcam.sourcePath ? appearance.resolvedWebcamVideoUrl : null
 			}
+			generatedClipRegions={timeline.generatedClipRegions}
 			annotationRegions={timeline.annotationRegions}
 			autoCaptions={timeline.autoCaptions}
 			autoCaptionSettings={timeline.autoCaptionSettings}

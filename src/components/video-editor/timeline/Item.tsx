@@ -5,6 +5,7 @@ import {
 	MusicNotes as Music,
 	MouseLeftClickIcon as PhMouseLeftClick,
 	Scissors,
+	Sparkle,
 	SpeakerX,
 	MagnifyingGlassPlus as ZoomIn,
 } from "@phosphor-icons/react";
@@ -35,7 +36,15 @@ interface ItemProps {
 	waveformGain?: number;
 	waveformNormalize?: boolean;
 	muted?: boolean;
-	variant?: "zoom" | "trim" | "clip" | "annotation" | "speed" | "audio" | "caption";
+	variant?:
+		| "zoom"
+		| "trim"
+		| "clip"
+		| "annotation"
+		| "speed"
+		| "audio"
+		| "caption"
+		| "generatedClip";
 	isLoading?: boolean;
 	loadingLabel?: string;
 }
@@ -126,6 +135,7 @@ export default function Item({
 	const isSpeed = variant === "speed";
 	const isAudio = variant === "audio";
 	const isCaption = variant === "caption";
+	const isGeneratedClip = variant === "generatedClip";
 	const showAudioWaveform = isAudio && Boolean(waveformPeaks);
 	const clipSpeedLabel = isClip ? formatClipSpeedLabel(speedValue ?? 1) : null;
 
@@ -141,7 +151,9 @@ export default function Item({
 						? glassStyles.glassDarkGreen
 						: isCaption
 							? glassStyles.glassCaption
-							: glassStyles.glassYellow;
+							: isGeneratedClip
+								? glassStyles.glassGreen
+								: glassStyles.glassYellow;
 
 	const MIN_ITEM_PX = 6;
 	const handleSelect = () => {
@@ -255,6 +267,13 @@ export default function Item({
 							) : isAudio ? (
 								<>
 									<Music className="w-3.5 h-3.5 shrink-0" />
+									<span className="text-[11px] font-semibold tracking-tight truncate max-w-full">
+										{children}
+									</span>
+								</>
+							) : isGeneratedClip ? (
+								<>
+									<Sparkle className="w-3.5 h-3.5 shrink-0" />
 									<span className="text-[11px] font-semibold tracking-tight truncate max-w-full">
 										{children}
 									</span>

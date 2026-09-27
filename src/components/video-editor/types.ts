@@ -663,6 +663,94 @@ export interface AudioRegion {
 	trackIndex?: number;
 }
 
+// Mirrors the spec shape defined in remo-clone's src/templates/schema.ts and
+// mcp-server's src/motionGraphicSpec.ts. Kept as plain TypeScript here (no
+// Zod, matching the rest of this frontend) — a third copy of the same shape
+// across three separate deployables is an accepted duplication for now,
+// since there's no shared package between them.
+export type GeneratedClipTemplateName =
+	| "textReveal"
+	| "iconCallout"
+	| "chartAnimation"
+	| "beforeAfterSplit";
+
+export type GeneratedClipIconName =
+	| "check"
+	| "star"
+	| "warning"
+	| "arrowRight"
+	| "heart"
+	| "bolt"
+	| "info";
+
+export interface TextRevealSpecProps {
+	text: string;
+	subtext?: string;
+	color?: string;
+	backgroundColor?: string;
+	durationInFrames?: number;
+}
+
+export interface IconCalloutSpecProps {
+	icon: GeneratedClipIconName;
+	text: string;
+	subtext?: string;
+	color?: string;
+	backgroundColor?: string;
+	durationInFrames?: number;
+}
+
+export interface ChartAnimationSpecProps {
+	title?: string;
+	data: { label: string; value: number }[];
+	color?: string;
+	backgroundColor?: string;
+	unit?: string;
+	durationInFrames?: number;
+}
+
+export interface BeforeAfterSplitSpecProps {
+	beforeLabel: string;
+	afterLabel: string;
+	beforeColor?: string;
+	afterColor?: string;
+	textColor?: string;
+	durationInFrames?: number;
+}
+
+export type GeneratedClipScene =
+	| { template: "textReveal"; props: TextRevealSpecProps }
+	| { template: "iconCallout"; props: IconCalloutSpecProps }
+	| { template: "chartAnimation"; props: ChartAnimationSpecProps }
+	| { template: "beforeAfterSplit"; props: BeforeAfterSplitSpecProps };
+
+export interface GeneratedClipSpec {
+	scenes: GeneratedClipScene[];
+	fps?: number;
+	width?: number;
+	height?: number;
+}
+
+/**
+ * A timeline clip backed by an AI-generated motion graphic: `spec` is the
+ * source of truth (editable via structured fields for a single-scene spec),
+ * `videoUrl` is the last rendered result. Unlike `ClipRegion` (a trim/speed
+ * segment of the one shared recording), this carries its own source video —
+ * closer to `AudioRegion` than to `ClipRegion`. It visually replaces the main
+ * recording's frame during its span rather than mixing alongside it, so it's
+ * allowed to freely overlap `ClipRegion` spans.
+ */
+export interface GeneratedClipRegion {
+	id: string;
+	startMs: number;
+	endMs: number;
+	videoUrl: string;
+	spec: GeneratedClipSpec;
+	/** The `motion_graphic_clips.id` row this clip persists to/re-renders against. */
+	clipId: string;
+	projectId: string;
+}
+
 export interface CaptionCue {
 	id: string;
 	startMs: number;

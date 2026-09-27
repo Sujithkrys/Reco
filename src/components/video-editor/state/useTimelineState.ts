@@ -7,6 +7,7 @@ import type {
 	CaptionCue,
 	ClipRegion,
 	CursorTelemetryPoint,
+	GeneratedClipRegion,
 	SpeedRegion,
 	TrimRegion,
 	ZoomRegion,
@@ -26,6 +27,8 @@ export function useTimelineState() {
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 	const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
 	const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
+	const [generatedClipRegions, setGeneratedClipRegions] = useState<GeneratedClipRegion[]>([]);
+	const [selectedGeneratedClipId, setSelectedGeneratedClipId] = useState<string | null>(null);
 	const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
 	const [sourceAudioTrackSettingsByClip, setSourceAudioTrackSettingsByClip] = useState<
 		Record<string, SourceAudioTrackSettings>
@@ -64,6 +67,10 @@ export function useTimelineState() {
 		setAudioRegions,
 		selectedAudioId,
 		setSelectedAudioId,
+		generatedClipRegions,
+		setGeneratedClipRegions,
+		selectedGeneratedClipId,
+		setSelectedGeneratedClipId,
 		selectedCaptionId,
 		setSelectedCaptionId,
 		sourceAudioTrackSettingsByClip,

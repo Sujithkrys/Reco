@@ -181,7 +181,9 @@ export function EditorLayout(props: Props) {
 		clipCommands,
 		audioCommands,
 		annotationCommands,
+		generatedClipCommands,
 		handleSelectAnnotation,
+		handleSelectGeneratedClip,
 		handleAutoSuggestZoomsConsumed,
 	} = editing;
 	
@@ -326,6 +328,7 @@ export function EditorLayout(props: Props) {
 						audioCommands={audioCommands}
 						captionCommands={captionCommands}
 						annotationCommands={annotationCommands}
+						generatedClipCommands={generatedClipCommands}
 						videoPath={project.videoPath || ""}
 						videoSourcePath={project.videoSourcePath || ""}
 						cursorTelemetrySourcePath={timeline.cursorTelemetrySourcePath}
@@ -335,6 +338,7 @@ export function EditorLayout(props: Props) {
 						disableSuggestedZooms={!appearance.autoApplyFreshRecordingAutoZooms}
 						currentTime={ui.currentTime}
 						handleSelectAnnotation={handleSelectAnnotation}
+						handleSelectGeneratedClip={handleSelectGeneratedClip}
 					/>
 			</div>
 			{editorDialogs}
