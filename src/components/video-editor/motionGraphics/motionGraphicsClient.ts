@@ -46,23 +46,15 @@ export async function listMotionGraphicClips(projectId: string): Promise<MotionG
 }
 
 const DEFAULT_FPS = 30;
-// remo-clone's templates default an unset scene to 90 frames (3s at 30fps);
-// mirrored here since the spec is optional on this field and we need some
-// estimate to place the clip's end on the timeline before it's ever played.
-const DEFAULT_SCENE_DURATION_FRAMES = 90;
 
 export function getGeneratedClipSpecDurationMs(spec: GeneratedClipSpec): number {
 	const fps = spec.fps && spec.fps > 0 ? spec.fps : DEFAULT_FPS;
-	const totalFrames = spec.scenes.reduce(
-		(sum, scene) => sum + (scene.props.durationInFrames ?? DEFAULT_SCENE_DURATION_FRAMES),
-		0,
-	);
-	return Math.round((totalFrames / fps) * 1000);
+	return Math.round((spec.durationInFrames / fps) * 1000);
 }
 
-export function getGeneratedClipSpecLabel(spec: GeneratedClipSpec): string {
-	const first = spec.scenes[0];
-	if (!first) return "Motion graphic";
-	if ("text" in first.props && first.props.text) return first.props.text;
-	return first.template;
+// The spec no longer carries any per-clip title (it's Claude-authored code,
+// not structured template props with a "text" field to read back) -- clips
+// are told apart by their render date in the Motion Graphics menu instead.
+export function getGeneratedClipSpecLabel(_spec: GeneratedClipSpec): string {
+	return "Motion graphic";
 }

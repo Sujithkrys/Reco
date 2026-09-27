@@ -16,13 +16,32 @@ function createServer(): McpServer {
 		{
 			title: "Create motion graphic",
 			description:
-				"Renders a motion graphic video from a spec (an ordered list of scenes, each a " +
-				"template name + props) and attaches it to a Reco project as a new clip. " +
-				"Returns the clip's id and a durable video URL. Use the textReveal, iconCallout, " +
-				"chartAnimation, and beforeAfterSplit templates.",
+				"Renders a custom motion graphics video from Remotion code you write yourself, " +
+				"and attaches it to a Reco project as a new clip. This works exactly like writing " +
+				"Remotion code in a chat session with Remotion attached — you are not filling in a " +
+				"template, you are the motion designer. Write genuinely creative, polished, " +
+				"professional-quality animation: staggered reveals, eased motion (spring()/Easing), " +
+				"layered composition, thoughtful typography and color, and multi-scene pacing via " +
+				"<Series>/<Sequence> all inside the one component you write. Treat 'go all out' or " +
+				"'showreel quality' requests literally — this is the same creative bar you'd hold " +
+				"yourself to writing Remotion in a normal chat, not a simplified/safe version of it.\n\n" +
+				"Code rules: default export a single React component (frame-driven via " +
+				"useCurrentFrame()). Available imports: react, remotion (Composition, AbsoluteFill, " +
+				"Sequence, Series, useCurrentFrame, useVideoConfig, interpolate, spring, Easing, " +
+				"random, Img, staticFile), @remotion/transitions (+ its /fade, /slide, /wipe, /flip, " +
+				"/clock-wipe, /none subpaths), @remotion/shapes, @remotion/animation-utils, " +
+				"@remotion/paths, @remotion/noise, @remotion/motion-blur, @remotion/layout-utils, " +
+				"@remotion/google-fonts. Nothing else — no npm install, no fetch/XHR/WebSocket, no " +
+				"fs/process/child_process/eval/require/dynamic import. Use remotion's random() (seeded, " +
+				"frame-deterministic) rather than Math.random(). Use inline styles, not Tailwind " +
+				"classes (Tailwind isn't wired into this render path). Don't export anything named " +
+				"durationInFrames, fps, width, or height — the render server injects those from the " +
+				"fields you pass alongside code. Pick durationInFrames/fps deliberately to match the " +
+				"pacing the request calls for, not a default.\n\n" +
+				"Returns the clip's id and a durable video URL.",
 			inputSchema: {
 				project_id: z.string().uuid().describe("The Reco project this clip belongs to"),
-				spec: motionGraphicSpecSchema.describe("The motion graphic spec to render"),
+				spec: motionGraphicSpecSchema.describe("The Remotion code and render settings"),
 			},
 		},
 		async ({ project_id, spec }) => {
@@ -43,13 +62,15 @@ function createServer(): McpServer {
 		{
 			title: "Edit motion graphic",
 			description:
-				"Re-renders an existing motion graphic clip with an updated spec. Fetch or recall " +
-				"the clip's current spec first, apply the requested change to it, then pass the " +
-				"full updated spec here — this replaces the clip's spec and video entirely.",
+				"Re-renders an existing motion graphic clip with updated Remotion code. Fetch or " +
+				"recall the clip's current code first, apply the requested change to it (same code " +
+				"quality bar as create_motion_graphic — this is still your own custom Remotion " +
+				"component, not a template), then pass the full updated code here — this replaces " +
+				"the clip's code and video entirely, it does not merge/patch.",
 			inputSchema: {
 				project_id: z.string().uuid().describe("The Reco project this clip belongs to"),
 				clip_id: z.string().uuid().describe("The clip to update"),
-				spec: motionGraphicSpecSchema.describe("The full updated motion graphic spec"),
+				spec: motionGraphicSpecSchema.describe("The full updated Remotion code and render settings"),
 			},
 		},
 		async ({ project_id, clip_id, spec }) => {

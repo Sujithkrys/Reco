@@ -49,12 +49,12 @@ function getCaptionLabel(cue: CaptionCue): string {
 	return preview.length > 24 ? `${preview.substring(0, 24)}...` : preview;
 }
 
-export function getGeneratedClipLabel(region: GeneratedClipRegion): string {
-	const firstScene = region.spec.scenes[0];
-	const text = firstScene && "text" in firstScene.props ? firstScene.props.text : undefined;
-	if (!text) return "Generated clip";
-	const preview = text.trim() || "Generated clip";
-	return preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
+// The spec is now Claude-authored Remotion code (no structured "text" field
+// to read a title back from), so every generated clip gets the same label on
+// the timeline -- distinguished by position/thumbnail instead, same as a
+// regular clip.
+export function getGeneratedClipLabel(_region: GeneratedClipRegion): string {
+	return "Generated clip";
 }
 
 export function buildTimelineItems(params: {

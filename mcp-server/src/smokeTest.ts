@@ -19,31 +19,41 @@ async function main() {
 
 	console.log("Creating motion graphic...");
 	const created = await createMotionGraphic(projectId, {
-		scenes: [
-			{
-				template: "textReveal",
-				props: {
-					text: "MCP smoke test",
-					subtext: "create_motion_graphic",
-					durationInFrames: 45,
-				},
-			},
-		],
+		code: `import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
+
+export default function GeneratedVideo() {
+	const frame = useCurrentFrame();
+	const opacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: "clamp" });
+	return (
+		<AbsoluteFill style={{ backgroundColor: "#0A0A0F", justifyContent: "center", alignItems: "center" }}>
+			<div style={{ opacity, color: "white", fontSize: 64, fontWeight: 700, fontFamily: "sans-serif" }}>
+				MCP smoke test
+			</div>
+		</AbsoluteFill>
+	);
+}
+`,
+		durationInFrames: 45,
 	});
 	console.log("Created:", created);
 
 	console.log("Editing motion graphic...");
 	const edited = await editMotionGraphic(projectId, created.clipId, {
-		scenes: [
-			{
-				template: "iconCallout",
-				props: {
-					icon: "check",
-					text: "edit_motion_graphic works too",
-					durationInFrames: 45,
-				},
-			},
-		],
+		code: `import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
+
+export default function GeneratedVideo() {
+	const frame = useCurrentFrame();
+	const scale = interpolate(frame, [0, 20], [0.8, 1], { extrapolateRight: "clamp" });
+	return (
+		<AbsoluteFill style={{ backgroundColor: "#111827", justifyContent: "center", alignItems: "center" }}>
+			<div style={{ transform: \`scale(\${scale})\`, color: "#22c55e", fontSize: 56, fontWeight: 700, fontFamily: "sans-serif" }}>
+				edit_motion_graphic works too
+			</div>
+		</AbsoluteFill>
+	);
+}
+`,
+		durationInFrames: 45,
 	});
 	console.log("Edited:", edited);
 }

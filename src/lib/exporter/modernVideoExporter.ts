@@ -8,6 +8,7 @@ import type {
 	CursorClickEffectStyle,
 	CursorStyle,
 	CursorTelemetryPoint,
+	GeneratedClipRegion,
 	Padding,
 	SourceAudioTrackSettings,
 	SpeedRegion,
@@ -122,6 +123,7 @@ interface VideoExporterConfig extends ExportConfig {
 	annotationRegions?: AnnotationRegion[];
 	autoCaptions?: CaptionCue[];
 	autoCaptionSettings?: AutoCaptionSettings;
+	generatedClipRegions?: GeneratedClipRegion[];
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
 	cursorStyle?: CursorStyle;

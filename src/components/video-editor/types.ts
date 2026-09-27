@@ -663,69 +663,17 @@ export interface AudioRegion {
 	trackIndex?: number;
 }
 
-// Mirrors the spec shape defined in remo-clone's src/templates/schema.ts and
-// mcp-server's src/motionGraphicSpec.ts. Kept as plain TypeScript here (no
-// Zod, matching the rest of this frontend) — a third copy of the same shape
-// across three separate deployables is an accepted duplication for now,
-// since there's no shared package between them.
-export type GeneratedClipTemplateName =
-	| "textReveal"
-	| "iconCallout"
-	| "chartAnimation"
-	| "beforeAfterSplit";
-
-export type GeneratedClipIconName =
-	| "check"
-	| "star"
-	| "warning"
-	| "arrowRight"
-	| "heart"
-	| "bolt"
-	| "info";
-
-export interface TextRevealSpecProps {
-	text: string;
-	subtext?: string;
-	color?: string;
-	backgroundColor?: string;
-	durationInFrames?: number;
-}
-
-export interface IconCalloutSpecProps {
-	icon: GeneratedClipIconName;
-	text: string;
-	subtext?: string;
-	color?: string;
-	backgroundColor?: string;
-	durationInFrames?: number;
-}
-
-export interface ChartAnimationSpecProps {
-	title?: string;
-	data: { label: string; value: number }[];
-	color?: string;
-	backgroundColor?: string;
-	unit?: string;
-	durationInFrames?: number;
-}
-
-export interface BeforeAfterSplitSpecProps {
-	beforeLabel: string;
-	afterLabel: string;
-	beforeColor?: string;
-	afterColor?: string;
-	textColor?: string;
-	durationInFrames?: number;
-}
-
-export type GeneratedClipScene =
-	| { template: "textReveal"; props: TextRevealSpecProps }
-	| { template: "iconCallout"; props: IconCalloutSpecProps }
-	| { template: "chartAnimation"; props: ChartAnimationSpecProps }
-	| { template: "beforeAfterSplit"; props: BeforeAfterSplitSpecProps };
-
+// Mirrors the shape remo-clone's /render endpoint accepts (server/index.ts +
+// server/codeValidation.ts) and mcp-server's src/motionGraphicSpec.ts. Kept
+// as plain TypeScript here (no Zod, matching the rest of this frontend) — a
+// third copy of the same shape across three separate deployables is an
+// accepted duplication for now, since there's no shared package between
+// them. `code` is a full Remotion component Claude writes itself (via the
+// create_motion_graphic/edit_motion_graphic MCP tools) — there is no fixed
+// template system on the other end of this any more.
 export interface GeneratedClipSpec {
-	scenes: GeneratedClipScene[];
+	code: string;
+	durationInFrames: number;
 	fps?: number;
 	width?: number;
 	height?: number;
