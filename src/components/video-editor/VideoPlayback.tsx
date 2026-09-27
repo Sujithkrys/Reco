@@ -547,7 +547,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			async (
 				container: HTMLDivElement,
 			): Promise<Application> => {
-				const backendOrder: PixiPreviewBackend[] = ["webgl", "webgpu"];
+				const backendOrder: PixiPreviewBackend[] = ["webgl"];
 				const attempts: PixiRendererAttempt[] = [];
 
 				for (const backend of backendOrder) {
