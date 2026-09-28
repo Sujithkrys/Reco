@@ -16,29 +16,56 @@ function createServer(): McpServer {
 		{
 			title: "Create motion graphic",
 			description:
-				"Renders a custom motion graphics video from Remotion code you write yourself, " +
-				"and attaches it to a Reco project as a new clip. This works exactly like writing " +
-				"Remotion code in a chat session with Remotion attached — you are not filling in a " +
-				"template, you are the motion designer. Write genuinely creative, polished, " +
-				"professional-quality animation: staggered reveals, eased motion (spring()/Easing), " +
-				"layered composition, thoughtful typography and color, and multi-scene pacing via " +
-				"<Series>/<Sequence> all inside the one component you write. Treat 'go all out' or " +
-				"'showreel quality' requests literally — this is the same creative bar you'd hold " +
-				"yourself to writing Remotion in a normal chat, not a simplified/safe version of it.\n\n" +
-				"Code rules: default export a single React component (frame-driven via " +
-				"useCurrentFrame()). Available imports: react, remotion (Composition, AbsoluteFill, " +
-				"Sequence, Series, useCurrentFrame, useVideoConfig, interpolate, spring, Easing, " +
-				"random, Img, staticFile), @remotion/transitions (+ its /fade, /slide, /wipe, /flip, " +
+				"Renders a custom motion graphics video from code you write yourself, and attaches " +
+				"it to a Reco project as a new clip. You are the motion designer here, not a template " +
+				"picker — treat 'go all out' / 'showreel quality' / 'impress me' requests completely " +
+				"literally, as a real creative-coding brief, not something to satisfy with the fastest " +
+				"trivial output. A good result for a 10-15s piece is genuinely substantial code (a few " +
+				"hundred lines is normal, not a smell) and a render that takes real minutes, not " +
+				"seconds — if what you wrote renders in a few seconds, that's a signal you under-built " +
+				"it, not that you were efficient.\n\n" +
+				"The strongest results come from hand-drawn procedural animation on an HTML5 <canvas>, " +
+				"not from simple declarative helpers — the same way a demoscene/creative-coding piece " +
+				"is built, ported to Remotion's frame model:\n" +
+				"- Structure the piece as a sequence of distinct named scenes/beats (e.g. functions " +
+				"s1(t), s2(t), ...), each owning a time range of t = frame / fps, dispatched from one " +
+				"renderFrame(t, frame) function that also layers shared finishing passes (vignette, " +
+				"grain, glitch, HUD/timecode overlay, screen-shake) on top every frame.\n" +
+				"- Write your own easing functions (outExpo, outBack, outElastic, inOutCubic, etc. — " +
+				"the standard Penner formulas) rather than relying only on spring()/interpolate() for " +
+				"everything; a seg(t, a, b) helper that maps a time range to a clamped 0-1 progress, " +
+				"then easing that, is the core building block for every beat.\n" +
+				"- Draw with the canvas 2D context directly (fillRect, arc, bezier/quadratic curves, " +
+				"gradients, clipping, save/restore, ctx.font + fillText for kinetic typography) for " +
+				"real control over shape, particles, and composition — plain DOM/CSS elements are fine " +
+				"for simple pieces, but canvas is what unlocks real visual sophistication (particle " +
+				"systems, morphing shapes, procedural texture/grain, glitch displacement).\n" +
+				"- Use remotion's random(seed) — never Math.random() — for anything stochastic (grain, " +
+				"glitch, particle jitter). Seed it by a string that includes the frame number (e.g. " +
+				"`glitch-y-${frame}-${i}`) so a given frame looks identical no matter which parallel " +
+				"render worker produces it; Math.random() is not frame-deterministic and causes visible " +
+				"flicker between adjacent frames.\n" +
+				"- If you load custom fonts, use delayRender()/continueRender() (both from 'remotion') " +
+				"to block the first frame until document.fonts.load(...) resolves for each font/weight " +
+				"you use — otherwise text can render in a fallback font on early frames.\n" +
+				"- Default export a single React component (frame-driven via useCurrentFrame() from " +
+				"'remotion'). An AbsoluteFill wrapping a <canvas> you draw into via useLayoutEffect, " +
+				"redrawn every frame, is the usual shape of the component itself — the actual visual " +
+				"work happens in the plain-JS drawing functions it calls, not in JSX.\n\n" +
+				"Available imports: react, remotion (Composition, AbsoluteFill, Sequence, Series, " +
+				"useCurrentFrame, useVideoConfig, interpolate, spring, Easing, random, delayRender, " +
+				"continueRender, Img, staticFile), @remotion/transitions (+ /fade, /slide, /wipe, /flip, " +
 				"/clock-wipe, /none subpaths), @remotion/shapes, @remotion/animation-utils, " +
 				"@remotion/paths, @remotion/noise, @remotion/motion-blur, @remotion/layout-utils, " +
-				"@remotion/google-fonts. Nothing else — no npm install, no fetch/XHR/WebSocket, no " +
-				"fs/process/child_process/eval/require/dynamic import. Use remotion's random() (seeded, " +
-				"frame-deterministic) rather than Math.random(). Use inline styles, not Tailwind " +
-				"classes (Tailwind isn't wired into this render path). Don't export anything named " +
-				"durationInFrames, fps, width, or height — the render server injects those from the " +
-				"fields you pass alongside code. Pick durationInFrames/fps deliberately to match the " +
-				"pacing the request calls for, not a default.\n\n" +
-				"Returns the clip's id and a durable video URL.",
+				"@remotion/google-fonts (use this for custom typography — @fontsource and other font " +
+				"packages aren't installed on the render server). Nothing else — no npm install, no " +
+				"fetch/XHR/WebSocket, no fs/process/child_process/eval/require/dynamic import. Don't " +
+				"export anything named durationInFrames, fps, width, or height — the render server " +
+				"injects those from the fields you pass alongside code. Pick durationInFrames/fps " +
+				"deliberately to match the pacing the request calls for, not a default.\n\n" +
+				"This will take real time to render (potentially several minutes) — that's expected " +
+				"for real per-frame canvas work, not a problem to work around. Returns the clip's id " +
+				"and a durable video URL once it finishes.",
 			inputSchema: {
 				project_id: z.string().uuid().describe("The Reco project this clip belongs to"),
 				spec: motionGraphicSpecSchema.describe("The Remotion code and render settings"),

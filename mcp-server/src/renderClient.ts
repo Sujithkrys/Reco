@@ -8,7 +8,11 @@ interface RenderStatus {
 }
 
 const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_ATTEMPTS = 100; // ~5 minutes
+// Sophisticated per-frame canvas rendering (particle systems, procedural
+// effects) is real work multiplied across every frame -- genuinely good
+// output takes real time, matching remo-clone's own 10-minute render
+// timeout, not a rush to return something in seconds.
+const MAX_POLL_ATTEMPTS = 220; // ~11 minutes, just past remo-clone's own cap
 
 export async function submitRender(spec: MotionGraphicSpec): Promise<string> {
 	const res = await fetch(`${env.renderServiceUrl}/render`, {
@@ -39,7 +43,7 @@ export async function waitForRender(jobId: string): Promise<void> {
 		}
 		await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
 	}
-	throw new Error("Render timed out after 5 minutes");
+	throw new Error("Render timed out after 11 minutes");
 }
 
 export async function fetchRenderResult(jobId: string): Promise<Buffer> {
