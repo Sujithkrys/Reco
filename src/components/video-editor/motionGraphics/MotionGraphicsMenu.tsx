@@ -61,16 +61,16 @@ export function MotionGraphicsMenu({
 
 	const handleInsert = useCallback(
 		(clip: MotionGraphicClipRow) => {
-			// TEMP diagnostic -- remove once the video-less timeline gate is
-			// confirmed working.
-			console.log("[MotionGraphicsMenu debug] handleInsert called", {
-				projectId,
-				currentTimeMs,
-				clipId: clip.id,
-			});
 			if (!projectId) return;
 			const durationMs = getGeneratedClipSpecDurationMs(clip.spec);
-			const startMs = Math.max(0, Math.round(currentTimeMs));
+			// currentTimeMs can be NaN in a video-less project (it derives from a
+			// duration-based fraction elsewhere in the app) -- an NaN start/end
+			// here poisons every Math.max() the timeline runs over all generated
+			// clips, which silently collapses the whole timeline's duration back
+			// to NaN (falsy, same as 0) and makes it look like nothing was
+			// inserted at all.
+			const safeCurrentTimeMs = Number.isFinite(currentTimeMs) ? currentTimeMs : 0;
+			const startMs = Math.max(0, Math.round(safeCurrentTimeMs));
 			const region = {
 				id: crypto.randomUUID(),
 				startMs,
@@ -80,7 +80,6 @@ export function MotionGraphicsMenu({
 				clipId: clip.id,
 				projectId,
 			};
-			console.log("[MotionGraphicsMenu debug] built region, calling onInsertGeneratedClip", region);
 			onInsertGeneratedClip(region);
 			toast.success("Inserted at playhead");
 			setOpen(false);

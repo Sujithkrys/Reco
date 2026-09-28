@@ -19,14 +19,7 @@ export function useGeneratedClipRegionCommands({
 	// rather than synthesizing default content.
 	const handleGeneratedClipAdded = useCallback(
 		(region: GeneratedClipRegion) => {
-			// TEMP diagnostic -- remove once the video-less timeline gate is
-			// confirmed working.
-			console.log("[handleGeneratedClipAdded debug] called with region:", region);
-			setGeneratedClipRegions((current) => {
-				const next = [...current, region];
-				console.log("[handleGeneratedClipAdded debug] setGeneratedClipRegions ->", next);
-				return next;
-			});
+			setGeneratedClipRegions((current) => [...current, region]);
 			setSelectedGeneratedClipId(region.id);
 		},
 		[setGeneratedClipRegions, setSelectedGeneratedClipId],
