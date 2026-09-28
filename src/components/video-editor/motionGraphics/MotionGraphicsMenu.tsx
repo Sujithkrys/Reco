@@ -61,10 +61,17 @@ export function MotionGraphicsMenu({
 
 	const handleInsert = useCallback(
 		(clip: MotionGraphicClipRow) => {
+			// TEMP diagnostic -- remove once the video-less timeline gate is
+			// confirmed working.
+			console.log("[MotionGraphicsMenu debug] handleInsert called", {
+				projectId,
+				currentTimeMs,
+				clipId: clip.id,
+			});
 			if (!projectId) return;
 			const durationMs = getGeneratedClipSpecDurationMs(clip.spec);
 			const startMs = Math.max(0, Math.round(currentTimeMs));
-			onInsertGeneratedClip({
+			const region = {
 				id: crypto.randomUUID(),
 				startMs,
 				endMs: startMs + durationMs,
@@ -72,7 +79,9 @@ export function MotionGraphicsMenu({
 				spec: clip.spec,
 				clipId: clip.id,
 				projectId,
-			});
+			};
+			console.log("[MotionGraphicsMenu debug] built region, calling onInsertGeneratedClip", region);
+			onInsertGeneratedClip(region);
 			toast.success("Inserted at playhead");
 			setOpen(false);
 		},
