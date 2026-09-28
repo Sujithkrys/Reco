@@ -114,7 +114,25 @@ export function useTimelineProjection({
 			(max, region) => Math.max(max, region.endMs),
 			0,
 		);
-		return Math.max(baseDurationMs, generatedClipsEndMs) / 1000;
+		const result = Math.max(baseDurationMs, generatedClipsEndMs) / 1000;
+		// TEMP diagnostic -- remove once the video-less timeline gate is confirmed
+		// working. Logs every input this computation depends on so we can see
+		// exactly which one is wrong instead of guessing.
+		console.log("[timelineDuration debug]", {
+			rawDuration: duration,
+			safeDurationMs,
+			clipRegionsCount: clipRegions.length,
+			baseDurationMs,
+			generatedClipRegionsCount: generatedClipRegions.length,
+			generatedClipRegions: generatedClipRegions.map((r) => ({
+				id: r.id,
+				startMs: r.startMs,
+				endMs: r.endMs,
+			})),
+			generatedClipsEndMs,
+			result,
+		});
+		return result;
 	}, [clipRegions, duration, generatedClipRegions]);
 	const effectiveSpeedRegions = useMemo<SpeedRegion[]>(() => {
 		const clipDerived = clipRegions
