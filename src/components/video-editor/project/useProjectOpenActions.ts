@@ -31,7 +31,7 @@ type UseProjectOpenActionsInput = {
 	openUnsavedChangesDialog: (actionLabel: string) => Promise<"save" | "discard" | "cancel">;
 	saveProject: (forceSaveAs: boolean) => Promise<boolean>;
 	refreshProjectLibrary: () => Promise<void>;
-	resetSourceScopedEditorState: () => void;
+	resetSourceScopedEditorState: (options?: { preserveGeneratedClips?: boolean }) => void;
 	applySessionPresentation: (session: null) => void;
 	handleSaveProject: () => Promise<unknown>;
 	handleSaveProjectAs: () => Promise<unknown>;
@@ -191,7 +191,7 @@ export function useProjectOpenActions({
 		} else {
 			project.setLastSavedSnapshot(null);
 		}
-		resetSourceScopedEditorState();
+		resetSourceScopedEditorState({ preserveGeneratedClips: Boolean(opts?.preserveProject) });
 		pendingFreshRecordingAutoZoomPathRef.current = appearance.autoApplyFreshRecordingAutoZooms
 			? sourceVideoUrl
 			: null;

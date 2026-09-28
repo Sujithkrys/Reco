@@ -327,7 +327,7 @@ export function useProjectLifecycle(input: Input) {
 		},
 		[appearance.webcam.timeOffsetMs, project.currentProjectPath],
 	);
-	const resetSourceScopedEditorState = useCallback(() => {
+	const resetSourceScopedEditorState = useCallback((options?: { preserveGeneratedClips?: boolean }) => {
 		const current = inputRef.current;
 		const { timeline, refs } = current;
 		timeline.setZoomRegions([]);
@@ -338,7 +338,13 @@ export function useProjectLifecycle(input: Input) {
 		refs.autoFullTrackClipEndMsRef.current = null;
 		timeline.setSpeedRegions([]);
 		timeline.setAnnotationRegions([]);
-		timeline.setGeneratedClipRegions([]);
+		// Generated clips are absolute-position overlays independent of the main
+		// video source -- adding/replacing the video for the current project
+		// shouldn't discard AI clips someone already placed on the timeline.
+		if (!options?.preserveGeneratedClips) {
+			timeline.setGeneratedClipRegions([]);
+			timeline.setSelectedGeneratedClipId(null);
+		}
 		timeline.setAudioRegions([]);
 		timeline.setCursorTelemetry([]);
 		timeline.setCursorTelemetrySourcePath(null);
@@ -350,7 +356,6 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSelectedZoomId(null);
 		timeline.setSelectedClipId(null);
 		timeline.setSelectedAnnotationId(null);
-		timeline.setSelectedGeneratedClipId(null);
 		timeline.setSelectedAudioId(null);
 		refs.nextZoomIdRef.current = 1;
 		refs.nextClipIdRef.current = 1;

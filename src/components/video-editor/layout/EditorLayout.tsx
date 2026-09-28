@@ -301,7 +301,7 @@ export function EditorLayout(props: Props) {
 					<SettingsPanel
 						{...settingsPanelProps}
 						activeEffectSection={safeActiveSection}
-						onImportFile={openActions.handleImportMediaOrProject}
+						onImportFile={openActions.handleImportVideoForCurrentProject}
 						onRecordScreen={recordingActions.openLauncher}
 					/>
 						<EditorPreviewPanel
