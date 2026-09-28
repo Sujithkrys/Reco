@@ -1969,7 +1969,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				!cameraContainer
 			)
 				return;
-			if (video.videoWidth === 0 || video.videoHeight === 0) return;
+			// With a real video source, wait for it to actually have decoded frames
+			// before creating a sprite/texture from it. With no video source at all
+			// (a project built entirely from generated clips), video.videoWidth can
+			// never become non-zero -- proceed anyway, since this sprite will just
+			// stay hidden behind whichever generated clip is active the whole time.
+			if (!hasNoVideoSource && (video.videoWidth === 0 || video.videoHeight === 0)) return;
 
 			const source = previewVideoSourceRef.current.getSource();
 			const videoTexture = Texture.from(source);
@@ -2050,7 +2055,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				transitionVideoSourceRef.current.suspend();
 				transitionOverlaySeekedMsRef.current = null;
 			};
-		}, [onPlayStateChange, onTimeUpdate, pixiReady, effectiveVideoReady]);
+		}, [onPlayStateChange, onTimeUpdate, pixiReady, effectiveVideoReady, hasNoVideoSource]);
 
 		useEffect(() => {
 			if (!pixiReady || !effectiveVideoReady) return;
