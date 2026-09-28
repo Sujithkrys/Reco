@@ -1976,8 +1976,16 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			// stay hidden behind whichever generated clip is active the whole time.
 			if (!hasNoVideoSource && (video.videoWidth === 0 || video.videoHeight === 0)) return;
 
-			const source = previewVideoSourceRef.current.getSource();
-			const videoTexture = Texture.from(source);
+			// A video-less project's <video> element intentionally always has an
+			// empty src (and therefore always fires a native 'error' event) -- never
+			// wrap it in a real VideoSource, since that attempts to load it and
+			// surfaces that error as an uncaught rejection. A plain empty texture is
+			// fine here: this sprite only exists to be toggled invisible behind
+			// whichever generated clip is active; it never needs to display anything
+			// itself in a project with no real video.
+			const videoTexture = hasNoVideoSource
+				? Texture.EMPTY
+				: Texture.from(previewVideoSourceRef.current.getSource());
 
 			const videoSprite = new Sprite(videoTexture);
 			videoSpriteRef.current = videoSprite;
@@ -2240,11 +2248,18 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				const sprite = generatedClipSpriteRef.current;
 				if (!sprite) return;
 				sprite.visible = true;
-				sprite.anchor.copyFrom(videoSprite.anchor);
-				sprite.x = videoSprite.x;
-				sprite.y = videoSprite.y;
-				sprite.width = videoSprite.width;
-				sprite.height = videoSprite.height;
+				// Sized from the mask rect (plain layout data, correct even with no
+				// real main video -- see layoutVideoContent's fallbackSize) rather
+				// than copied from videoSprite's own width/height, which reflects its
+				// *texture's* dimensions. In a video-less project that texture comes
+				// from an intentionally empty, always-erroring video element, so
+				// videoSprite.width/height is unreliable (0 or a stale placeholder)
+				// even though the mask rect itself is sized correctly.
+				sprite.anchor.set(0, 0);
+				sprite.x = baseMaskRef.current.x;
+				sprite.y = baseMaskRef.current.y;
+				sprite.width = baseMaskRef.current.width;
+				sprite.height = baseMaskRef.current.height;
 				sprite.mask = null;
 				sprite.alpha = 1;
 
