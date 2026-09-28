@@ -1,14 +1,14 @@
 import type { MotionGraphicSpec } from "../motionGraphicSpec.js";
-import { renderSpecToVideo } from "../renderClient.js";
-import { uploadClipVideo } from "../storage.js";
+import { submitRender } from "../renderClient.js";
 import { supabase } from "../supabaseClient.js";
-import type { MotionGraphicResult } from "./createMotionGraphic.js";
+import { completeRenderInBackground } from "./completeRenderInBackground.js";
+import type { MotionGraphicSubmitResult } from "./createMotionGraphic.js";
 
 export async function editMotionGraphic(
 	projectId: string,
 	clipId: string,
 	spec: MotionGraphicSpec,
-): Promise<MotionGraphicResult> {
+): Promise<MotionGraphicSubmitResult> {
 	const { data: clip, error: fetchError } = await supabase
 		.from("motion_graphic_clips")
 		.select("id, project_id")
@@ -30,22 +30,10 @@ export async function editMotionGraphic(
 		.update({ spec, status: "rendering", error: null, updated_at: new Date().toISOString() })
 		.eq("id", clipId);
 
-	try {
-		const video = await renderSpecToVideo(spec);
-		const videoUrl = await uploadClipVideo(clipId, video);
+	// Same async pattern as createMotionGraphic: submit (fast), return
+	// immediately, finish in the background -- poll get_motion_graphic_status.
+	const jobId = await submitRender(spec);
+	void completeRenderInBackground(clipId, jobId);
 
-		await supabase
-			.from("motion_graphic_clips")
-			.update({ video_url: videoUrl, status: "done", updated_at: new Date().toISOString() })
-			.eq("id", clipId);
-
-		return { clipId, videoUrl, spec };
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		await supabase
-			.from("motion_graphic_clips")
-			.update({ status: "error", error: message, updated_at: new Date().toISOString() })
-			.eq("id", clipId);
-		throw error;
-	}
+	return { clipId, status: "rendering" };
 }

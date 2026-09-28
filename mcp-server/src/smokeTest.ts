@@ -9,6 +9,17 @@
 import "dotenv/config";
 import { createMotionGraphic } from "./tools/createMotionGraphic.js";
 import { editMotionGraphic } from "./tools/editMotionGraphic.js";
+import { getMotionGraphicStatus } from "./tools/getMotionGraphicStatus.js";
+
+async function pollUntilDone(clipId: string) {
+	for (let attempt = 0; attempt < 220; attempt++) {
+		const status = await getMotionGraphicStatus(clipId);
+		if (status.status === "done") return status;
+		if (status.status === "error") throw new Error(`Render failed: ${status.error}`);
+		await new Promise((resolve) => setTimeout(resolve, 3000));
+	}
+	throw new Error("Timed out waiting for render");
+}
 
 async function main() {
 	const projectId = process.argv[2];
@@ -35,7 +46,9 @@ export default function GeneratedVideo() {
 `,
 		durationInFrames: 45,
 	});
-	console.log("Created:", created);
+	console.log("Submitted:", created);
+	const createdResult = await pollUntilDone(created.clipId);
+	console.log("Created:", createdResult);
 
 	console.log("Editing motion graphic...");
 	const edited = await editMotionGraphic(projectId, created.clipId, {
@@ -55,7 +68,9 @@ export default function GeneratedVideo() {
 `,
 		durationInFrames: 45,
 	});
-	console.log("Edited:", edited);
+	console.log("Submitted:", edited);
+	const editedResult = await pollUntilDone(edited.clipId);
+	console.log("Edited:", editedResult);
 }
 
 main().catch((error) => {

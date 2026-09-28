@@ -54,10 +54,3 @@ export async function fetchRenderResult(jobId: string): Promise<Buffer> {
 	const arrayBuffer = await res.arrayBuffer();
 	return Buffer.from(arrayBuffer);
 }
-
-/** Submits a spec, waits for it to finish, and returns the rendered MP4 bytes. */
-export async function renderSpecToVideo(spec: MotionGraphicSpec): Promise<Buffer> {
-	const jobId = await submitRender(spec);
-	await waitForRender(jobId);
-	return fetchRenderResult(jobId);
-}

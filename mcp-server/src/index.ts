@@ -7,6 +7,7 @@ import { env } from "./env.js";
 import { motionGraphicSpecSchema } from "./motionGraphicSpec.js";
 import { createMotionGraphic } from "./tools/createMotionGraphic.js";
 import { editMotionGraphic } from "./tools/editMotionGraphic.js";
+import { getMotionGraphicStatus } from "./tools/getMotionGraphicStatus.js";
 
 function createServer(): McpServer {
 	const server = new McpServer({ name: "reco-motion-graphics", version: "1.0.0" });
@@ -56,16 +57,22 @@ function createServer(): McpServer {
 				"useCurrentFrame, useVideoConfig, interpolate, spring, Easing, random, delayRender, " +
 				"continueRender, Img, staticFile), @remotion/transitions (+ /fade, /slide, /wipe, /flip, " +
 				"/clock-wipe, /none subpaths), @remotion/shapes, @remotion/animation-utils, " +
-				"@remotion/paths, @remotion/noise, @remotion/motion-blur, @remotion/layout-utils, " +
-				"@remotion/google-fonts (use this for custom typography — @fontsource and other font " +
-				"packages aren't installed on the render server). Nothing else — no npm install, no " +
-				"fetch/XHR/WebSocket, no fs/process/child_process/eval/require/dynamic import. Don't " +
-				"export anything named durationInFrames, fps, width, or height — the render server " +
-				"injects those from the fields you pass alongside code. Pick durationInFrames/fps " +
-				"deliberately to match the pacing the request calls for, not a default.\n\n" +
+				"@remotion/paths, @remotion/motion-blur, @remotion/layout-utils, @remotion/google-fonts " +
+				"(use this for custom typography — @fontsource and other font packages aren't installed " +
+				"on the render server; @remotion/noise is also not available — its simplex-noise " +
+				"dependency fails to bundle on this server, use remotion's own random() for any " +
+				"seeded/organic noise instead). Nothing else — no npm install, no fetch/XHR/WebSocket, " +
+				"no fs/process/child_process/eval/require/dynamic import. Don't export anything named " +
+				"durationInFrames, fps, width, or height — the render server injects those from the " +
+				"fields you pass alongside code. Pick durationInFrames/fps deliberately to match the " +
+				"pacing the request calls for, not a default.\n\n" +
 				"This will take real time to render (potentially several minutes) — that's expected " +
-				"for real per-frame canvas work, not a problem to work around. Returns the clip's id " +
-				"and a durable video URL once it finishes.",
+				"for real per-frame canvas work, not a problem to work around. Returns immediately with " +
+				"the clip's id and status 'rendering' — the render itself continues in the background. " +
+				"Poll get_motion_graphic_status with that clip_id until it reports status 'done' (with " +
+				"a video_url) or 'error'. Do not call create_motion_graphic again for the same request " +
+				"while waiting — that creates a duplicate clip; if a status check itself fails (a " +
+				"dropped connection, a 502), retry the status check, not the creation.",
 			inputSchema: {
 				project_id: z.string().uuid().describe("The Reco project this clip belongs to"),
 				spec: motionGraphicSpecSchema.describe("The Remotion code and render settings"),
@@ -77,7 +84,7 @@ function createServer(): McpServer {
 				content: [
 					{
 						type: "text",
-						text: JSON.stringify({ clip_id: result.clipId, video_url: result.videoUrl }),
+						text: JSON.stringify({ clip_id: result.clipId, status: result.status }),
 					},
 				],
 			};
@@ -93,7 +100,9 @@ function createServer(): McpServer {
 				"recall the clip's current code first, apply the requested change to it (same code " +
 				"quality bar as create_motion_graphic — this is still your own custom Remotion " +
 				"component, not a template), then pass the full updated code here — this replaces " +
-				"the clip's code and video entirely, it does not merge/patch.",
+				"the clip's code and video entirely, it does not merge/patch. Same async pattern as " +
+				"create_motion_graphic: returns immediately with status 'rendering', poll " +
+				"get_motion_graphic_status with the clip_id rather than calling this again.",
 			inputSchema: {
 				project_id: z.string().uuid().describe("The Reco project this clip belongs to"),
 				clip_id: z.string().uuid().describe("The clip to update"),
@@ -106,7 +115,40 @@ function createServer(): McpServer {
 				content: [
 					{
 						type: "text",
-						text: JSON.stringify({ clip_id: result.clipId, video_url: result.videoUrl }),
+						text: JSON.stringify({ clip_id: result.clipId, status: result.status }),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
+		"get_motion_graphic_status",
+		{
+			title: "Get motion graphic status",
+			description:
+				"Checks the current status of a clip previously submitted via create_motion_graphic " +
+				"or edit_motion_graphic. Poll this (a few seconds between calls is reasonable) until " +
+				"status is 'done' (video_url will be set) or 'error' (error will explain what failed). " +
+				"Safe to retry this call as many times as needed — a failed status check (a dropped " +
+				"connection, a 502) never risks creating a duplicate clip, unlike calling " +
+				"create_motion_graphic again would.",
+			inputSchema: {
+				clip_id: z.string().uuid().describe("The clip to check"),
+			},
+		},
+		async ({ clip_id }) => {
+			const result = await getMotionGraphicStatus(clip_id);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify({
+							clip_id: result.clipId,
+							status: result.status,
+							video_url: result.videoUrl,
+							error: result.error,
+						}),
 					},
 				],
 			};
