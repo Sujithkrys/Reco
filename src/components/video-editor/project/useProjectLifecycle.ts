@@ -175,6 +175,7 @@ export function useProjectLifecycle(input: Input) {
 		refs.autoFullTrackClipEndMsRef.current = null;
 		timeline.setSpeedRegions(editor.speedRegions);
 		timeline.setAnnotationRegions(editor.annotationRegions);
+		timeline.setGeneratedClipRegions(editor.generatedClipRegions);
 		timeline.setAudioRegions(editor.audioRegions);
 		timeline.setSourceAudioTrackSettingsByClip(editor.sourceAudioTrackSettingsByClip ?? {});
 		timeline.setDefaultSourceAudioTrackSettings(editor.defaultSourceAudioTrackSettings ?? {});
@@ -193,6 +194,7 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSelectedZoomId(null);
 		timeline.setSelectedClipId(null);
 		timeline.setSelectedAnnotationId(null);
+		timeline.setSelectedGeneratedClipId(null);
 		timeline.setSelectedAudioId(null);
 		refs.nextZoomIdRef.current = deriveNextId(
 			"zoom",
@@ -336,6 +338,7 @@ export function useProjectLifecycle(input: Input) {
 		refs.autoFullTrackClipEndMsRef.current = null;
 		timeline.setSpeedRegions([]);
 		timeline.setAnnotationRegions([]);
+		timeline.setGeneratedClipRegions([]);
 		timeline.setAudioRegions([]);
 		timeline.setCursorTelemetry([]);
 		timeline.setCursorTelemetrySourcePath(null);
@@ -347,6 +350,7 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSelectedZoomId(null);
 		timeline.setSelectedClipId(null);
 		timeline.setSelectedAnnotationId(null);
+		timeline.setSelectedGeneratedClipId(null);
 		timeline.setSelectedAudioId(null);
 		refs.nextZoomIdRef.current = 1;
 		refs.nextClipIdRef.current = 1;

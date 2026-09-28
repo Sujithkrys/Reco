@@ -61,6 +61,8 @@ import {
 	DEFAULT_ZOOM_MOTION_BLUR_TUNING,
 	DEFAULT_ZOOM_OUT_EASING,
 	DEFAULT_ZOOM_SMOOTHNESS,
+	type GeneratedClipRegion,
+	type GeneratedClipSpec,
 	getDefaultCaptionFontFamily,
 	normalizeCursorClickEffectColor,
 	normalizeCursorClickEffectStyle,
@@ -137,6 +139,7 @@ export interface ProjectEditorState {
 	autoFullTrackClipEndMs?: number | null;
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
+	generatedClipRegions: GeneratedClipRegion[];
 	audioRegions: AudioRegion[];
 	autoCaptions: CaptionCue[];
 	autoCaptionSettings: AutoCaptionSettings;
@@ -639,6 +642,40 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 				})
 		: [];
 
+	const normalizedGeneratedClipRegions: GeneratedClipRegion[] = Array.isArray(
+		editor.generatedClipRegions,
+	)
+		? editor.generatedClipRegions
+				.filter(
+					(region): region is GeneratedClipRegion =>
+						Boolean(region) &&
+						typeof region.id === "string" &&
+						typeof region.videoUrl === "string" &&
+						typeof region.clipId === "string" &&
+						typeof region.projectId === "string" &&
+						Boolean(region.spec) &&
+						typeof (region.spec as Partial<GeneratedClipSpec>).code === "string",
+				)
+				.map((region) => {
+					const rawStart = isFiniteNumber(region.startMs) ? Math.round(region.startMs) : 0;
+					const rawEnd = isFiniteNumber(region.endMs)
+						? Math.round(region.endMs)
+						: rawStart + 1000;
+					const startMs = Math.max(0, Math.min(rawStart, rawEnd));
+					const endMs = Math.max(startMs + 1, rawEnd);
+
+					return {
+						id: region.id,
+						startMs,
+						endMs,
+						videoUrl: region.videoUrl,
+						spec: region.spec,
+						clipId: region.clipId,
+						projectId: region.projectId,
+					};
+				})
+		: [];
+
 	const normalizedAudioRegions: AudioRegion[] = Array.isArray(
 		(editor as Partial<ProjectEditorState>).audioRegions,
 	)
@@ -963,6 +1000,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		autoFullTrackClipEndMs: normalizedAutoFullTrackClipEndMs,
 		speedRegions: normalizedSpeedRegions,
 		annotationRegions: normalizedAnnotationRegions,
+		generatedClipRegions: normalizedGeneratedClipRegions,
 		audioRegions: normalizedAudioRegions,
 		autoCaptions: normalizedAutoCaptions,
 		autoCaptionSettings: normalizedAutoCaptionSettings,
