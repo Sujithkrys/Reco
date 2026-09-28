@@ -53,6 +53,14 @@ function createServer(): McpServer {
 				"'remotion'). An AbsoluteFill wrapping a <canvas> you draw into via useLayoutEffect, " +
 				"redrawn every frame, is the usual shape of the component itself — the actual visual " +
 				"work happens in the plain-JS drawing functions it calls, not in JSX.\n\n" +
+				"Memory: the render server has a 1GB ceiling and has been OOM-killed by genuinely dense " +
+				"1080p pieces (many simultaneous effects — particle bursts, multiple morphing shapes, " +
+				"full-canvas post-processing — all layered together). Default to 1280x720 (the spec's " +
+				"default) unless the request specifically needs full HD. Whatever resolution you use, " +
+				"avoid whole-canvas ctx.getImageData()/putImageData() every frame for grain/noise effects " +
+				"— it's expensive at 30+ fps — use a small pre-rendered noise tile drawn with " +
+				"ctx.createPattern() instead, and create gradients/patterns once (module scope or memoized " +
+				"by their inputs) rather than inside the per-frame draw call.\n\n" +
 				"Available imports: react, remotion (Composition, AbsoluteFill, Sequence, Series, " +
 				"useCurrentFrame, useVideoConfig, interpolate, spring, Easing, random, delayRender, " +
 				"continueRender, Img, staticFile), @remotion/transitions (+ /fade, /slide, /wipe, /flip, " +
