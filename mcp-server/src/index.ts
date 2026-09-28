@@ -25,42 +25,54 @@ function createServer(): McpServer {
 				"hundred lines is normal, not a smell) and a render that takes real minutes, not " +
 				"seconds — if what you wrote renders in a few seconds, that's a signal you under-built " +
 				"it, not that you were efficient.\n\n" +
-				"The strongest results come from hand-drawn procedural animation on an HTML5 <canvas>, " +
-				"not from simple declarative helpers — the same way a demoscene/creative-coding piece " +
-				"is built, ported to Remotion's frame model:\n" +
-				"- Structure the piece as a sequence of distinct named scenes/beats (e.g. functions " +
-				"s1(t), s2(t), ...), each owning a time range of t = frame / fps, dispatched from one " +
-				"renderFrame(t, frame) function that also layers shared finishing passes (vignette, " +
-				"grain, glitch, HUD/timecode overlay, screen-shake) on top every frame.\n" +
-				"- Write your own easing functions (outExpo, outBack, outElastic, inOutCubic, etc. — " +
-				"the standard Penner formulas) rather than relying only on spring()/interpolate() for " +
-				"everything; a seg(t, a, b) helper that maps a time range to a clamped 0-1 progress, " +
-				"then easing that, is the core building block for every beat.\n" +
-				"- Draw with the canvas 2D context directly (fillRect, arc, bezier/quadratic curves, " +
-				"gradients, clipping, save/restore, ctx.font + fillText for kinetic typography) for " +
-				"real control over shape, particles, and composition — plain DOM/CSS elements are fine " +
-				"for simple pieces, but canvas is what unlocks real visual sophistication (particle " +
-				"systems, morphing shapes, procedural texture/grain, glitch displacement).\n" +
-				"- Use remotion's random(seed) — never Math.random() — for anything stochastic (grain, " +
-				"glitch, particle jitter). Seed it by a string that includes the frame number (e.g. " +
-				"`glitch-y-${frame}-${i}`) so a given frame looks identical no matter which parallel " +
-				"render worker produces it; Math.random() is not frame-deterministic and causes visible " +
-				"flicker between adjacent frames.\n" +
-				"- If you load custom fonts, use delayRender()/continueRender() (both from 'remotion') " +
-				"to block the first frame until document.fonts.load(...) resolves for each font/weight " +
-				"you use — otherwise text can render in a fallback font on early frames.\n" +
-				"- Default export a single React component (frame-driven via useCurrentFrame() from " +
-				"'remotion'). An AbsoluteFill wrapping a <canvas> you draw into via useLayoutEffect, " +
-				"redrawn every frame, is the usual shape of the component itself — the actual visual " +
-				"work happens in the plain-JS drawing functions it calls, not in JSX.\n\n" +
+				"Two technique families reliably produce real quality here — pick whichever suits the " +
+				"creative concept, or mix them in different scenes of the same piece:\n\n" +
+				"(A) Procedural canvas drawing — a demoscene/creative-coding approach. Structure the " +
+				"piece as named scene functions (s1(t), s2(t), ...) each owning a time range of " +
+				"t = frame / fps, dispatched from one renderFrame(t, frame) that also layers shared " +
+				"finishing passes (vignette, grain, HUD/timecode, screen-shake) on top every frame. " +
+				"Write your own easing functions (outExpo, outBack, outElastic, inOutCubic — the " +
+				"standard Penner formulas) and a seg(t, a, b) helper mapping a time range to clamped " +
+				"0-1 progress. Draw with the canvas 2D context directly (fillRect, arc, bezier curves, " +
+				"gradients, clipping, ctx.font + fillText) inside a component that's an AbsoluteFill " +
+				"wrapping a <canvas>, redrawn every frame via useLayoutEffect.\n\n" +
+				"(B) Declarative SVG + DOM/CSS — often the stronger choice for clean geometric or " +
+				"typographic pieces. Build actual JSX (<svg>, <circle>, <path>, <line>, <g>) and drive " +
+				"text/panel animation with inline CSS (transform, clipPath, mixBlendMode, " +
+				"WebkitTextStroke) computed via a small tween(frame, [inFrame, outFrame], [from, to], " +
+				"easing) helper built on remotion's own interpolate(), using custom cubic-bezier easing " +
+				"curves (Easing.bezier(0.16, 1, 0.3, 1) for a strong ease-out, etc. — see the Easing " +
+				"import) rather than only its built-in presets. Strong techniques in this family: " +
+				"morphing one shape into another by interpolating an SVG path's per-angle radius " +
+				"between two polygon vertex counts; scene transitions built as a small wrapper " +
+				"component that clips its children with clipPath (a circle for an iris wipe, an " +
+				"inset() for a directional wipe, a polygon() for a diagonal wipe) driven by the same " +
+				"tween helper; a HUD layer (corner brackets, live timecode, scene counter, progress " +
+				"bar, footer credit) using mixBlendMode: 'difference' so it stays legible over any " +
+				"background; and film grain via an SVG <feTurbulence type=\"fractalNoise\"> filter " +
+				"applied to a full-frame overlay rect — much cheaper than canvas pixel manipulation.\n\n" +
+				"Whichever family (or mix) you use: default export a single React component, frame-" +
+				"driven via useCurrentFrame() from 'remotion'. If you load custom fonts, use " +
+				"delayRender()/continueRender() (both from 'remotion') to block the first frame until " +
+				"document.fonts.load(...) resolves for each font/weight — otherwise text can render in " +
+				"a fallback font on early frames. Use remotion's random(seed) — never Math.random() — " +
+				"for anything stochastic; seed by a string including the frame number (e.g. " +
+				"`p-${frame}-${i}`) so a given frame looks identical no matter which parallel render " +
+				"worker produces it.\n\n" +
+				"Everything must be one file: no separate scene files importing from a shared utils/" +
+				"fonts module like a real multi-file Remotion project might have — define every helper " +
+				"function, easing curve, and scene component in the single code string, in whatever " +
+				"order makes sense (helpers first, then scene components, then the default-exported " +
+				"root component that composes them with <Sequence>). Custom audio/sound design isn't " +
+				"supported yet (no synthesizing or serving audio files) — build a purely visual piece.\n\n" +
 				"Memory: the render server has a 1GB ceiling and has been OOM-killed by genuinely dense " +
 				"1080p pieces (many simultaneous effects — particle bursts, multiple morphing shapes, " +
 				"full-canvas post-processing — all layered together). Default to 1280x720 (the spec's " +
-				"default) unless the request specifically needs full HD. Whatever resolution you use, " +
-				"avoid whole-canvas ctx.getImageData()/putImageData() every frame for grain/noise effects " +
-				"— it's expensive at 30+ fps — use a small pre-rendered noise tile drawn with " +
-				"ctx.createPattern() instead, and create gradients/patterns once (module scope or memoized " +
-				"by their inputs) rather than inside the per-frame draw call.\n\n" +
+				"default) unless the request specifically needs full HD. Whatever resolution or " +
+				"technique you use, avoid whole-canvas ctx.getImageData()/putImageData() every frame " +
+				"for grain (expensive at 30+ fps — use a small pre-rendered noise tile with " +
+				"ctx.createPattern(), or the SVG feTurbulence approach above), and create gradients/" +
+				"patterns once (module scope or memoized) rather than inside the per-frame draw call.\n\n" +
 				"Available imports: react, remotion (Composition, AbsoluteFill, Sequence, Series, " +
 				"useCurrentFrame, useVideoConfig, interpolate, spring, Easing, random, delayRender, " +
 				"continueRender, Img, staticFile), @remotion/transitions (+ /fade, /slide, /wipe, /flip, " +
@@ -75,12 +87,13 @@ function createServer(): McpServer {
 				"fields you pass alongside code. Pick durationInFrames/fps deliberately to match the " +
 				"pacing the request calls for, not a default.\n\n" +
 				"This will take real time to render (potentially several minutes) — that's expected " +
-				"for real per-frame canvas work, not a problem to work around. Returns immediately with " +
-				"the clip's id and status 'rendering' — the render itself continues in the background. " +
-				"Poll get_motion_graphic_status with that clip_id until it reports status 'done' (with " +
-				"a video_url) or 'error'. Do not call create_motion_graphic again for the same request " +
-				"while waiting — that creates a duplicate clip; if a status check itself fails (a " +
-				"dropped connection, a 502), retry the status check, not the creation.",
+				"for real per-frame work at this level of ambition, not a problem to work around. " +
+				"Returns immediately with the clip's id and status 'rendering' — the render itself " +
+				"continues in the background. Poll get_motion_graphic_status with that clip_id until " +
+				"it reports status 'done' (with a video_url) or 'error'. Do not call " +
+				"create_motion_graphic again for the same request while waiting — that creates a " +
+				"duplicate clip; if a status check itself fails (a dropped connection, a 502), retry " +
+				"the status check, not the creation.",
 			inputSchema: {
 				project_id: z.string().uuid().describe("The Reco project this clip belongs to"),
 				spec: motionGraphicSpecSchema.describe("The Remotion code and render settings"),
