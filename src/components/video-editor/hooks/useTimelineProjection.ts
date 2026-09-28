@@ -103,7 +103,13 @@ export function useTimelineProjection({
 		// gates on this being non-zero. Falling back to the furthest generated
 		// clip's own end time lets a project built entirely from AI-generated
 		// clips work the same way a recording-based one does.
-		const baseDurationMs = getTimelineDurationMs(clipRegions, duration * 1000);
+		// Defensive: an empty video src reports its duration as NaN, not 0 (the
+		// main source of this is already guarded where duration comes from, but
+		// Math.max(NaN, x) is always NaN, silently breaking this computation the
+		// same way 0 would look "already handled" while actually producing a
+		// falsy-but-wrong result) -- never let a non-finite duration in here.
+		const safeDurationMs = Number.isFinite(duration) ? duration * 1000 : 0;
+		const baseDurationMs = getTimelineDurationMs(clipRegions, safeDurationMs);
 		const generatedClipsEndMs = generatedClipRegions.reduce(
 			(max, region) => Math.max(max, region.endMs),
 			0,

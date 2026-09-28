@@ -3071,7 +3071,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					aria-hidden="true"
 					onLoadedMetadata={handleLoadedMetadata}
 					onDurationChange={(e) => {
-						onDurationChange(e.currentTarget.duration);
+						// An empty/no-op src (a video-less, generated-clips-only project)
+						// reports duration as NaN, not 0 -- passing that through makes
+						// every downstream Math.max/arithmetic involving it silently
+						// become NaN too (Math.max(NaN, x) is always NaN), which is
+						// falsy just like 0 is, so it looked like "no duration" was
+						// already handled when it actually broke differently downstream.
+						const nextDuration = e.currentTarget.duration;
+						onDurationChange(Number.isFinite(nextDuration) ? nextDuration : 0);
 					}}
 					onError={(e) => {
 						// No video path means there's nothing to load — an empty `src`
