@@ -496,6 +496,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				if (!currentIds.has(id)) {
 					video.pause();
 					video.src = "";
+					video.remove();
 					elements.delete(id);
 				}
 			}
@@ -508,10 +509,21 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					video.muted = true;
 					video.playsInline = true;
 					video.crossOrigin = "anonymous";
+					// A detached element (never inserted into the document) can decode
+					// unreliably across browsers -- hidden but attached matches how the
+					// main preview's own <video> element works, and is what actually
+					// gets it to reliably load/decode/play.
+					video.style.position = "absolute";
+					video.style.width = "0";
+					video.style.height = "0";
+					video.style.opacity = "0";
+					video.style.pointerEvents = "none";
+					document.body.appendChild(video);
 					elements.set(region.id, video);
 				}
 				if (video.src !== region.videoUrl) {
 					video.src = region.videoUrl;
+					video.load();
 				}
 			}
 		}, [generatedClipRegions]);
@@ -524,6 +536,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				for (const video of elements.values()) {
 					video.pause();
 					video.src = "";
+					video.remove();
 				}
 				elements.clear();
 			};
