@@ -110,7 +110,11 @@ import {
 	preloadCursorAssets,
 } from "./videoPlayback/cursorRenderer";
 import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focusUtils";
-import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
+import {
+	BASE_PREVIEW_HEIGHT,
+	BASE_PREVIEW_WIDTH,
+	layoutVideoContent as layoutVideoContentUtil,
+} from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import {
 	createSpringState,
@@ -415,6 +419,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const cameraContainerRef = useRef<Container | null>(null);
 		const [pixiReady, setPixiReady] = useState(false);
 		const videoReady = usePreviewVideoReady(videoRef, videoPath);
+		// A project built entirely from AI-generated clips (no imported/recorded
+		// main video at all) never has real decoded video frames, so videoReady
+		// never becomes true -- but the layout/render pipeline below still needs
+		// to run for generated clips to have somewhere to play. Only bypasses
+		// videoReady when there is genuinely no video source configured, never
+		// while a real one is merely still loading.
+		const hasNoVideoSource = !videoPath;
+		const effectiveVideoReady = videoReady || hasNoVideoSource;
 
 		const [previewViewportWidth, setPreviewViewportWidth] = useState(640);
 		const [annotationSceneTransform, setAnnotationSceneTransform] =
@@ -1079,6 +1091,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				borderRadius,
 				padding,
 				frameInsets: null,
+				fallbackSize: hasNoVideoSource
+					? { width: BASE_PREVIEW_WIDTH, height: BASE_PREVIEW_HEIGHT }
+					: null,
 			});
 
 			if (result) {
@@ -1136,6 +1151,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			padding,
 			applyWebcamBubbleLayout,
 			syncPreviewMotionBlurQuality,
+			hasNoVideoSource,
 		]);
 
 		useEffect(() => {
@@ -1606,7 +1622,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [currentTime]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 
 			animationStateRef.current = createPlaybackAnimationState();
 			cursorOverlayRef.current?.reset();
@@ -1614,10 +1630,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			layoutVideoContent();
 			// The next ticker frame applies the current zoom; layout must never stop playback.
 			shouldSnapPausedFrameRef.current = true;
-		}, [pixiReady, videoReady, layoutVideoContent]);
+		}, [pixiReady, effectiveVideoReady, layoutVideoContent]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 			const container = containerRef.current;
 			if (!container) return;
 
@@ -1633,17 +1649,17 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			return () => {
 				observer.disconnect();
 			};
-		}, [pixiReady, videoReady, layoutVideoContent]);
+		}, [pixiReady, effectiveVideoReady, layoutVideoContent]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 			updateOverlayForRegion(selectedZoom);
-		}, [selectedZoom, pixiReady, videoReady, updateOverlayForRegion]);
+		}, [selectedZoom, pixiReady, effectiveVideoReady, updateOverlayForRegion]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 			applyWebcamBubbleLayout(animationStateRef.current.appliedScale || 1);
-		}, [applyWebcamBubbleLayout, pixiReady, videoReady]);
+		}, [applyWebcamBubbleLayout, pixiReady, effectiveVideoReady]);
 
 		const syncWebcamMedia = useCallback(() => {
 			const webcamVideo = webcamVideoRef.current;
@@ -1918,11 +1934,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [videoPath]);
 
 		useEffect(() => {
-			onPreviewReadyChange?.(videoReady);
-		}, [onPreviewReadyChange, videoReady]);
+			onPreviewReadyChange?.(effectiveVideoReady);
+		}, [onPreviewReadyChange, effectiveVideoReady]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 
 			const video = videoRef.current;
 			const app = appRef.current;
@@ -2021,10 +2037,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				transitionVideoSourceRef.current.suspend();
 				transitionOverlaySeekedMsRef.current = null;
 			};
-		}, [onPlayStateChange, onTimeUpdate, pixiReady, videoReady]);
+		}, [onPlayStateChange, onTimeUpdate, pixiReady, effectiveVideoReady]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 
 			const app = appRef.current;
 			const videoSprite = videoSpriteRef.current;
@@ -2373,7 +2389,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					app.ticker.remove(ticker);
 				}
 			};
-		}, [pixiReady, videoReady, applyWebcamBubbleLayout]);
+		}, [pixiReady, effectiveVideoReady, applyWebcamBubbleLayout]);
 
 		useEffect(() => {
 			const overlay = cursorOverlayRef.current;
@@ -2627,7 +2643,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					}}
 				/>
 				{/* Only render overlay after PIXI and video are fully initialized */}
-				{pixiReady && videoReady && (
+				{pixiReady && effectiveVideoReady && (
 					<div
 						ref={overlayRef}
 						className="absolute inset-0 select-none"

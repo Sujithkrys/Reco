@@ -35,7 +35,8 @@ export function useTimelineProjection({
 	autoFullTrackIdRef,
 	autoFullTrackEndRef,
 }: Input) {
-	const { clipRegions, trimRegions, speedRegions, zoomRegions, autoCaptions } = timeline;
+	const { clipRegions, trimRegions, speedRegions, zoomRegions, autoCaptions, generatedClipRegions } =
+		timeline;
 
 	useEffect(() => {
 		const totalMs = Math.round(duration * 1000);
@@ -95,10 +96,20 @@ export function useTimelineProjection({
 		[autoCaptions, clipRegions],
 	);
 	const timelinePlayheadTime = currentTime;
-	const timelineDuration = useMemo(
-		() => getTimelineDurationMs(clipRegions, duration * 1000) / 1000,
-		[clipRegions, duration],
-	);
+	const timelineDuration = useMemo(() => {
+		// A project with no main recording (nothing imported/recorded yet) has
+		// clipRegions: [] and duration: 0, which used to make this always 0 --
+		// generated clips have nowhere to be shown since the whole timeline UI
+		// gates on this being non-zero. Falling back to the furthest generated
+		// clip's own end time lets a project built entirely from AI-generated
+		// clips work the same way a recording-based one does.
+		const baseDurationMs = getTimelineDurationMs(clipRegions, duration * 1000);
+		const generatedClipsEndMs = generatedClipRegions.reduce(
+			(max, region) => Math.max(max, region.endMs),
+			0,
+		);
+		return Math.max(baseDurationMs, generatedClipsEndMs) / 1000;
+	}, [clipRegions, duration, generatedClipRegions]);
 	const effectiveSpeedRegions = useMemo<SpeedRegion[]>(() => {
 		const clipDerived = clipRegions
 			.filter(({ speed }) => speed !== 1)
