@@ -2329,11 +2329,31 @@ export function SettingsPanel({
 				</div>
 				<div className="flex items-center justify-between gap-3">
 					<div className="text-sm font-medium text-foreground">
-						{tSettings("captions.language", "Language")}
+						{tSettings("captions.language", "Spoken Language")}
 					</div>
 					<Select
 						value={autoCaptionSettings.language || "auto"}
 						onValueChange={(value) => updateAutoCaptionSettings({ language: value })}
+					>
+						<SelectTrigger className="h-10 w-[180px] rounded-xl border-foreground/10 bg-foreground/5 text-sm text-foreground hover:bg-foreground/10">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent className="border-foreground/10 bg-editor-surface-alt text-foreground">
+							{CAPTION_LANGUAGE_OPTIONS.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="flex items-center justify-between gap-3">
+					<div className="text-sm font-medium text-foreground">
+						{tSettings("captions.targetLanguage", "Target Language")}
+					</div>
+					<Select
+						value={autoCaptionSettings.targetLanguage || "auto"}
+						onValueChange={(value) => updateAutoCaptionSettings({ targetLanguage: value })}
 					>
 						<SelectTrigger className="h-10 w-[180px] rounded-xl border-foreground/10 bg-foreground/5 text-sm text-foreground hover:bg-foreground/10">
 							<SelectValue />

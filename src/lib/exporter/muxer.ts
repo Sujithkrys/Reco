@@ -82,14 +82,16 @@ export class VideoMuxer {
 	private videoSource: EncodedVideoPacketSource | null = null;
 	private audioSource: EncodedAudioPacketSource | null = null;
 	private hasAudio: boolean;
+	private hasVideo: boolean;
 	private target: MediabunnyTarget | null = null;
 	private config: ExportConfig;
 	private mode: MuxerTargetMode;
 	private streamSink: IpcStreamSink | null = null;
 
-	constructor(config: ExportConfig, hasAudio = false, mode?: MuxerTargetMode) {
+	constructor(config: ExportConfig, hasAudio = false, mode?: MuxerTargetMode, hasVideo = true) {
 		this.config = config;
 		this.hasAudio = hasAudio;
+		this.hasVideo = hasVideo;
 		this.mode = mode ?? (shouldUseStreamTarget() ? "stream" : "buffer");
 	}
 
@@ -129,10 +131,12 @@ export class VideoMuxer {
 			target: this.target,
 		});
 
-		this.videoSource = new EncodedVideoPacketSource("avc");
-		this.output.addVideoTrack(this.videoSource, {
-			frameRate: this.config.frameRate,
-		});
+		if (this.hasVideo) {
+			this.videoSource = new EncodedVideoPacketSource("avc");
+			this.output.addVideoTrack(this.videoSource, {
+				frameRate: this.config.frameRate,
+			});
+		}
 
 		if (this.hasAudio) {
 			this.audioSource = new EncodedAudioPacketSource("aac");

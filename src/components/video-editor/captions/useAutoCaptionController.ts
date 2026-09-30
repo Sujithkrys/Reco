@@ -191,6 +191,7 @@ export function useAutoCaptionController({
 				whisperExecutablePath: whisperExecutablePath ?? undefined,
 				whisperModelPath,
 				language: autoCaptionSettings.language,
+				targetLanguage: autoCaptionSettings.targetLanguage,
 			});
 			if (!result.success || !result.cues) {
 				const errorMessage = result.error ? getErrorMessage(result.error) : result.message;

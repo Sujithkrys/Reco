@@ -1,4 +1,5 @@
 import {
+	BookmarkSimple,
 	CaretDown,
 	Check,
 	Crop,
@@ -13,8 +14,9 @@ import {
 	SpeakerHigh,
 	SpeakerLow,
 	SpeakerX,
+	Waveform,
 } from "@phosphor-icons/react";
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -34,6 +36,9 @@ import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
 import type { TimelineEditorHandle } from "../timeline/TimelineEditor";
 import type { VideoPlaybackRef } from "../VideoPlayback";
+import { ChapterManagementModal } from "../chapters/ChapterManagementModal";
+import { rippleShiftChapters } from "../chapters/chapterUtils";
+import { SilenceRemovalModal } from "../silenceRemoval/SilenceRemovalModal";
 import { EditorVideoPreview } from "./EditorVideoPreview";
 
 type Props = {
@@ -111,6 +116,24 @@ export function EditorPreviewPanel(props: Props) {
 		setIsPlaying,
 		setError,
 	} = props;
+
+	const [silenceModalOpen, setSilenceModalOpen] = useState(false);
+	const [chapterModalOpen, setChapterModalOpen] = useState(false);
+
+	const activeChapter = useMemo(() => {
+		const currentMs = projection.timelinePlayheadTime * 1000;
+		if (!timeline.chapters || timeline.chapters.length === 0) return null;
+		const sorted = [...timeline.chapters].sort((a, b) => a.timeMs - b.timeMs);
+		let match = null;
+		for (const ch of sorted) {
+			if (ch.timeMs <= currentMs) {
+				match = ch;
+			} else {
+				break;
+			}
+		}
+		return match;
+	}, [projection.timelinePlayheadTime, timeline.chapters]);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -258,6 +281,15 @@ export function EditorPreviewPanel(props: Props) {
 									{option.label}
 								</DropdownMenuItem>
 							))}
+							<DropdownMenuItem
+								key="audio"
+								onClick={() => {
+									timelineRef.current?.addAudio();
+								}}
+								className="cursor-pointer text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+							>
+								Audio
+							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<div className="mx-1 h-4 w-px bg-foreground/10" />
@@ -288,12 +320,44 @@ export function EditorPreviewPanel(props: Props) {
 					>
 						<Scissors className="h-4 w-4" />
 					</Button>
+					<Button
+						onClick={() => setSilenceModalOpen(true)}
+						variant="ghost"
+						size="icon"
+						className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-emerald-500/10 hover:text-emerald-500"
+						title="Smart Cut / Silence Removal"
+					>
+						<Waveform className="h-4 w-4" />
+					</Button>
+					<Button
+						onClick={() => setChapterModalOpen(true)}
+						variant="ghost"
+						size="icon"
+						className={`h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400 ${
+							timeline.chapters && timeline.chapters.length > 0 ? "text-amber-400" : ""
+						}`}
+						title={
+							timeline.chapters && timeline.chapters.length > 0
+								? `Video Chapters (${timeline.chapters.length})`
+								: "Video Chapters"
+						}
+					>
+						<BookmarkSimple
+							className="h-4 w-4"
+							weight={timeline.chapters && timeline.chapters.length > 0 ? "fill" : "regular"}
+						/>
+					</Button>
 				</div>
 
 				<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
 					<div className="pointer-events-auto flex items-center gap-1.5">
-						<span className="mr-1 text-[10px] font-medium tabular-nums text-muted-foreground">
-							{formatTime(projection.timelinePlayheadTime)}
+						<span className="mr-1 text-[10px] font-medium tabular-nums text-muted-foreground flex items-center gap-1.5">
+							<span>{formatTime(projection.timelinePlayheadTime)}</span>
+							{activeChapter && (
+								<span className="hidden sm:inline-block max-w-[120px] truncate text-amber-400 font-medium">
+									• {activeChapter.title}
+								</span>
+							)}
 						</span>
 						<Button
 							variant="ghost"
@@ -379,6 +443,45 @@ export function EditorPreviewPanel(props: Props) {
 					</div>
 				</div>
 			</div>
+			<SilenceRemovalModal
+				open={silenceModalOpen}
+				onOpenChange={setSilenceModalOpen}
+				videoPath={videoPath}
+				totalDurationMs={projection.timelineDuration * 1000}
+				clipRegions={timeline.clipRegions}
+				zoomRegions={timeline.zoomRegions}
+				annotationRegions={timeline.annotationRegions}
+				audioRegions={timeline.audioRegions}
+				captionCues={timeline.autoCaptions}
+				onApplyPlan={(plan, cuts) => {
+					timeline.setClipRegions(plan.newClipRegions);
+					timeline.setZoomRegions(plan.newZoomRegions);
+					timeline.setAnnotationRegions(plan.newAnnotationRegions);
+					timeline.setAudioRegions(plan.newAudioRegions);
+					if (plan.newCaptionCues && plan.newCaptionCues.length > 0) {
+						timeline.setAutoCaptions(plan.newCaptionCues);
+					}
+					if (timeline.chapters && timeline.chapters.length > 0 && cuts.length > 0) {
+						timeline.setChapters(
+							rippleShiftChapters(
+								timeline.chapters,
+								cuts,
+								projection.timelineDuration * 1000,
+							),
+						);
+					}
+				}}
+			/>
+			<ChapterManagementModal
+				open={chapterModalOpen}
+				onOpenChange={setChapterModalOpen}
+				chapters={timeline.chapters ?? []}
+				onSaveChapters={timeline.setChapters}
+				currentTimeMs={projection.timelinePlayheadTime * 1000}
+				onSeek={playback.handleTimelineSeek}
+				videoPath={videoPath}
+				transcript={timeline.autoCaptions}
+			/>
 		</div>
 	);
 }

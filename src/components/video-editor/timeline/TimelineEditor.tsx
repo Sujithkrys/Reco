@@ -21,6 +21,8 @@ import type {
 	ZoomFocus,
 	ZoomRegion,
 } from "../types";
+import type { ChapterMarker } from "../chapters/chapterTypes";
+import ChapterMarkers from "./components/markers/ChapterMarkers";
 import KeyframeMarkers from "./components/markers/KeyframeMarkers";
 import TimelineCanvas from "./components/viewport/TimelineCanvas";
 import TimelineWrapper from "./components/wrapper/TimelineWrapper";
@@ -80,6 +82,9 @@ export interface TimelineEditorProps {
 	captionQuickAddEnabled?: boolean;
 	selectedCaptionId?: string | null;
 	onSelectCaption?: (id: string | null) => void;
+	chapters?: ChapterMarker[];
+	selectedChapterId?: string | null;
+	onSelectChapter?: (id: string | null) => void;
 	videoPath?: string | null;
 	videoSourcePath?: string | null;
 	cursorTelemetrySourcePath?: string | null;
@@ -164,6 +169,9 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			captionQuickAddEnabled = true,
 			selectedCaptionId,
 			onSelectCaption,
+			chapters = [],
+			selectedChapterId = null,
+			onSelectChapter = () => {},
 			videoPath,
 			videoSourcePath,
 			cursorTelemetrySourcePath,
@@ -483,6 +491,13 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							setSelectedKeyframeId={setSelectedKeyframeId}
 							onKeyframeMove={handleKeyframeMove}
 							videoDurationMs={totalMs}
+							timelineRef={timelineContainerRef}
+						/>
+						<ChapterMarkers
+							chapters={chapters}
+							selectedChapterId={selectedChapterId}
+							onSelectChapter={onSelectChapter}
+							onSeek={onSeek}
 							timelineRef={timelineContainerRef}
 						/>
 						<TimelineCanvas

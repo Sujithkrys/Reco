@@ -254,6 +254,12 @@ export const webElectronAPI: unknown = {
 	// ── File pickers (browser native) ────────────────────────────────────
 	uploadMediaFile: async (fileOrPath: File | string, options?: { prefix?: string }) => {
 		try {
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token;
+			if (!token) {
+				return { success: false, message: "Please sign in to upload media." };
+			}
+
 			let file: File;
 			if (typeof fileOrPath === "string") {
 				const mapFile = webBlobMap.get(fileOrPath);
@@ -276,7 +282,7 @@ export const webElectronAPI: unknown = {
 						endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
 						retryDelays: [0, 3000, 5000, 10000, 20000],
 						headers: {
-							authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+							authorization: `Bearer ${token}`,
 							'x-upsert': 'true',
 						},
 						uploadDataDuringCreation: true,
@@ -352,18 +358,33 @@ export const webElectronAPI: unknown = {
 	},
 	openAudioFilePicker: async () => {
 		return new Promise((resolve) => {
+			let settled = false;
+			const settle = (value: unknown) => {
+				if (settled) return;
+				settled = true;
+				window.removeEventListener("focus", onWindowFocus);
+				resolve(value);
+			};
+			const onWindowFocus = () => {
+				window.setTimeout(() => settle({ canceled: true }), 300);
+			};
+			window.addEventListener("focus", onWindowFocus, { once: true });
+
 			const input = document.createElement("input");
 			input.type = "file";
 			input.accept = "audio/*,.mp3,.wav,.ogg,.m4a,.flac";
 			input.onchange = (e) => {
 				const file = (e.target as HTMLInputElement).files?.[0];
 				if (!file) {
-					resolve({ canceled: true });
+					settle({ canceled: true });
 					return;
 				}
-				resolve({
+				const url = URL.createObjectURL(file);
+				webBlobMap.set(url, file);
+				settle({
 					success: true,
-					path: URL.createObjectURL(file),
+					path: url,
+					file,
 				});
 			};
 			input.click();
@@ -611,10 +632,81 @@ export const webElectronAPI: unknown = {
 		success: false,
 	}),
 	cancelWhisperModelDownload: async () => { /* noop */ },
-	generateCaptions: async () => ({
-		success: false,
-		captions: [],
-	}),
+	generateAutoCaptions: async ({ videoPath, targetLanguage }: any) => {
+		try {
+			console.log("[webElectronAPI] Extracting audio for auto-captions...");
+			
+			// 1. Initialize Muxer for audio-only export
+			const { VideoMuxer } = await import("./exporter/muxer");
+			const { AudioProcessor } = await import("./exporter/audioEncoder");
+			const { WebDemuxer } = await import("web-demuxer");
+			
+			// dummy export config
+			const config = { frameRate: 30, width: 0, height: 0, bitRate: 0, sampleRate: 16000 };
+			const muxer = new VideoMuxer(config, true, "buffer", false);
+			await muxer.initialize();
+			
+			const demuxer = new WebDemuxer(videoPath);
+			await demuxer.load();
+			
+			const audioProcessor = new AudioProcessor();
+			await audioProcessor.process(
+				demuxer,
+				muxer,
+				videoPath,
+				[], [], undefined, [], [], {}, undefined, []
+			);
+			
+			const muxResult = await muxer.finalize();
+			if (muxResult.mode !== "buffer" || !muxResult.blob) {
+				throw new Error("Failed to extract audio blob");
+			}
+			
+			const audioBlob = muxResult.blob;
+			console.log(`[webElectronAPI] Audio extracted. Size: ${Math.round(audioBlob.size / 1024)} KB`);
+
+			// 2. Call Edge Function directly with FormData (Bypassing Supabase Storage)
+			const { supabase } = await import("./supabase");
+			
+			const formData = new FormData();
+			formData.append("file", audioBlob, "audio-extract.m4a");
+			if (targetLanguage) {
+				formData.append("targetLanguage", targetLanguage);
+			}
+
+			// Supabase JS library doesn't easily support FormData bodies in `invoke`, so we use standard fetch
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token;
+			if (!token) {
+				throw new Error("Please sign in to generate auto-captions.");
+			}
+			
+			const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-and-translate`, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+				},
+				body: formData,
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`Edge function failed: ${response.status} ${errorText}`);
+			}
+
+			const data = await response.json();
+			
+			if (!data?.success) {
+				throw new Error(data?.error || "Edge function failed");
+			}
+
+			return { success: true, cues: data.cues, message: `Generated ${data.cues.length} captions` };
+		} catch (error: any) {
+			console.error("[webElectronAPI] generateAutoCaptions error:", error);
+			return { success: false, error: error.message };
+		}
+	},
 
 	// ── Webcam ───────────────────────────────────────────────────────────
 	openWebcamFilePicker: async () => {

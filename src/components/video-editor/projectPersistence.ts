@@ -1,4 +1,6 @@
 import type { SourceAudioTrackSettings } from "@/components/video-editor/audio/audioTypes";
+import type { ChapterMarker } from "./chapters/chapterTypes";
+import { sanitizeChapterMarkers } from "./chapters/chapterUtils";
 import type {
 	ExportBackendPreference,
 	ExportEncodingMode,
@@ -140,6 +142,7 @@ export interface ProjectEditorState {
 	audioRegions: AudioRegion[];
 	autoCaptions: CaptionCue[];
 	autoCaptionSettings: AutoCaptionSettings;
+	chapters?: ChapterMarker[];
 	webcam: WebcamOverlaySettings;
 	aspectRatio: AspectRatio;
 	sourceAudioTrackSettingsByClip?: Record<string, SourceAudioTrackSettings>;
@@ -1060,6 +1063,9 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			typeof editor.defaultSourceAudioTrackSettings === "object"
 				? editor.defaultSourceAudioTrackSettings
 				: {},
+		chapters: Array.isArray((editor as Partial<ProjectEditorState>).chapters)
+			? sanitizeChapterMarkers((editor as Partial<ProjectEditorState>).chapters as any[])
+			: [],
 		aspectRatio:
 			typeof editor.aspectRatio === "string" &&
 			(validAspectRatios.has(editor.aspectRatio as AspectRatio) ||

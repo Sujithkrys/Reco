@@ -91,6 +91,9 @@ export function EditorTimelinePanel(props: Props) {
 				onAudioDelete={audioCommands.handleAudioDelete}
 				selectedAudioId={timeline.selectedAudioId}
 				onSelectAudio={audioCommands.handleSelectAudio}
+				chapters={timeline.chapters}
+				selectedChapterId={timeline.selectedChapterId}
+				onSelectChapter={timeline.setSelectedChapterId}
 				captionRegions={projection.effectiveCaptionRegions}
 				onCaptionSpanChange={(id, span) => {
 					const fragment = projection.effectiveCaptionRegions.find(

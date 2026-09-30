@@ -136,6 +136,23 @@ export function useTimelineAudioActions({
 				audioPath,
 				placement.trackIndex,
 			);
+
+			// Client-direct upload to Supabase Storage in the background
+			if (window.electronAPI?.uploadMediaFile) {
+				window.electronAPI
+					.uploadMediaFile((result as any).file ?? audioPath)
+					.then((res: { success?: boolean; path?: string; message?: string }) => {
+						if (!res?.success) {
+							deps.reportError(
+								"Cloud upload failed",
+								res?.message ?? "Please sign in to upload media.",
+							);
+						}
+					})
+					.catch((err: unknown) => {
+						deps.reportError("Cloud upload failed", String(err));
+					});
+			}
 		},
 		[videoDuration, totalMs, onAudioAdded, deps, currentTimeMs, audioRegions],
 	);
