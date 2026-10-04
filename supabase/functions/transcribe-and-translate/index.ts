@@ -20,10 +20,12 @@ serve(async (req: Request) => {
       });
     }
 
-    // 1. Setup keys
+    // 1. Setup keys & determine providers
+    const groqApiKey = Deno.env.get("GROQ_API_KEY");
     const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openAiApiKey) {
-      throw new Error("Missing OPENAI_API_KEY secret");
+
+    if (!groqApiKey && !openAiApiKey) {
+      throw new Error("Missing API key: either GROQ_API_KEY or OPENAI_API_KEY must be configured");
     }
 
     const contentType = req.headers.get("content-type") || "";
@@ -31,7 +33,19 @@ serve(async (req: Request) => {
     // ── Path A: Direct Transcript JSON (Fast Path for Existing Captions) ──
     if (contentType.includes("application/json")) {
       const body = await req.json();
-      const { action, transcript } = body;
+      const { action, transcript, provider: requestedProvider } = body;
+
+      const useOpenAiChat = requestedProvider === "groq"
+        ? false
+        : requestedProvider === "openai"
+          ? true
+          : Boolean(openAiApiKey);
+      const chatUrl = useOpenAiChat
+        ? "https://api.openai.com/v1/chat/completions"
+        : "https://api.groq.com/openai/v1/chat/completions";
+      const groqChatModel = (body.chatModel as string) || Deno.env.get("GROQ_CHAT_MODEL") || "openai/gpt-oss-120b";
+      const chatModel = useOpenAiChat ? "gpt-4o-mini" : groqChatModel;
+
 
       if (action === "generate-chapters") {
         if (!Array.isArray(transcript) || transcript.length === 0) {
@@ -42,14 +56,14 @@ serve(async (req: Request) => {
           .map((item: any) => `[${Math.round(item.startMs / 1000)}s - ${Math.round(item.endMs / 1000)}s]: ${item.text}`)
           .join("\n");
 
-        const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        const chatResponse = await fetch(chatUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${openAiApiKey}`,
+            Authorization: `Bearer ${chatKey}`,
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: chatModel,
             response_format: { type: "json_object" },
             messages: [
               {
@@ -66,7 +80,7 @@ serve(async (req: Request) => {
 
         if (!chatResponse.ok) {
           const errorText = await chatResponse.text();
-          throw new Error(`OpenAI Chat API error: ${chatResponse.status} ${errorText}`);
+          throw new Error(`Chat API error (${useOpenAiChat ? "OpenAI" : "Groq"}): ${chatResponse.status} ${errorText}`);
         }
 
         const chatResult = await chatResponse.json();
@@ -79,7 +93,17 @@ serve(async (req: Request) => {
           title: (ch.title || `Chapter ${idx + 1}`).trim(),
         }));
 
-        return new Response(JSON.stringify({ success: true, chapters }), {
+        const usage = chatResult.usage
+          ? {
+              provider: useOpenAiChat ? "openai" : "groq",
+              model: chatModel,
+              promptTokens: chatResult.usage.prompt_tokens,
+              completionTokens: chatResult.usage.completion_tokens,
+              totalTokens: chatResult.usage.total_tokens,
+            }
+          : undefined;
+
+        return new Response(JSON.stringify({ success: true, chapters, usage }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -92,50 +116,77 @@ serve(async (req: Request) => {
     const fileData = formData.get("file") as File;
     const targetLanguage = formData.get("targetLanguage") as string;
     const generateChapters = formData.get("generateChapters") === "true";
+    const requestedProvider = formData.get("provider") as string;
 
     if (!fileData) {
       throw new Error("Missing audio file in request");
     }
 
-    // Call OpenAI Whisper API for timestamped transcription
+    // Routing rules:
+    // Transcription: Groq whisper-large-v3-turbo if GROQ_API_KEY present (unless overridden to openai), else OpenAI whisper-1
+    const useGroqTranscription = requestedProvider === "openai"
+      ? false
+      : Boolean(groqApiKey);
+
+    // Translation & Chapters: OpenAI gpt-4o-mini if OPENAI_API_KEY present (unless overridden to groq), else Groq llama-3.3-70b-versatile
+    const useOpenAiChat = requestedProvider === "groq"
+      ? false
+      : requestedProvider === "openai"
+        ? true
+        : Boolean(openAiApiKey);
+    const chatUrl = useOpenAiChat
+      ? "https://api.openai.com/v1/chat/completions"
+      : "https://api.groq.com/openai/v1/chat/completions";
+    const chatKey = useOpenAiChat ? openAiApiKey : groqApiKey;
+    const groqChatModel = (formData.get("chatModel") as string) || Deno.env.get("GROQ_CHAT_MODEL") || "openai/gpt-oss-120b";
+    const chatModel = useOpenAiChat ? "gpt-4o-mini" : groqChatModel;
+
+    // Call Whisper API for timestamped transcription
+    const transcriptionUrl = useGroqTranscription
+      ? "https://api.groq.com/openai/v1/audio/transcriptions"
+      : "https://api.openai.com/v1/audio/transcriptions";
+    const transcriptionKey = useGroqTranscription ? groqApiKey : openAiApiKey;
+    const transcriptionModel = useGroqTranscription ? "whisper-large-v3-turbo" : "whisper-1";
+
     const whisperFormData = new FormData();
     whisperFormData.append("file", fileData, "audio.m4a");
-    whisperFormData.append("model", "whisper-1");
+    whisperFormData.append("model", transcriptionModel);
     whisperFormData.append("response_format", "verbose_json");
     whisperFormData.append("timestamp_granularities[]", "word");
     whisperFormData.append("timestamp_granularities[]", "segment");
 
-    const whisperResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const whisperResponse = await fetch(transcriptionUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${openAiApiKey}`,
+        Authorization: `Bearer ${transcriptionKey}`,
       },
       body: whisperFormData,
     });
 
     if (!whisperResponse.ok) {
       const errorText = await whisperResponse.text();
-      throw new Error(`Whisper API error: ${whisperResponse.status} ${errorText}`);
+      throw new Error(`Whisper API error (${useGroqTranscription ? "Groq" : "OpenAI"}): ${whisperResponse.status} ${errorText}`);
     }
 
     const whisperResult = await whisperResponse.json();
     let segments = whisperResult.segments || [];
 
     // Optional translation via Chat Completions
+    let translationUsage: any = undefined;
     if (targetLanguage && targetLanguage !== "auto" && targetLanguage !== whisperResult.language) {
       const translationPayload = segments.map((seg: any) => ({
         id: seg.id,
         text: seg.text,
       }));
 
-      const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const chatResponse = await fetch(chatUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${openAiApiKey}`,
+          Authorization: `Bearer ${chatKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: chatModel,
           response_format: { type: "json_object" },
           messages: [
             {
@@ -152,10 +203,21 @@ serve(async (req: Request) => {
 
       if (!chatResponse.ok) {
         const errorText = await chatResponse.text();
-        throw new Error(`Chat API error: ${chatResponse.status} ${errorText}`);
+        throw new Error(`Chat API error (${useOpenAiChat ? "OpenAI" : "Groq"}): ${chatResponse.status} ${errorText}`);
       }
 
       const chatResult = await chatResponse.json();
+      if (chatResult.usage) {
+        translationUsage = {
+          provider: useOpenAiChat ? "openai" : "groq",
+          model: chatModel,
+          promptTokens: chatResult.usage.prompt_tokens,
+          completionTokens: chatResult.usage.completion_tokens,
+          totalTokens: chatResult.usage.total_tokens,
+        };
+        console.log("Translation Token Usage:", JSON.stringify(translationUsage));
+      }
+
       const translatedContent = JSON.parse(chatResult.choices[0].message.content);
       const translatedSegments = translatedContent.segments || [];
 
@@ -185,19 +247,20 @@ serve(async (req: Request) => {
 
     // Optional chapters generation if requested along with audio
     let chapters: any[] | undefined = undefined;
+    let chapterUsage: any = undefined;
     if (generateChapters && segments.length > 0) {
       const formattedTranscript = segments
         .map((seg: any) => `[${Math.round(seg.start)}s - ${Math.round(seg.end)}s]: ${seg.text}`)
         .join("\n");
 
-      const chapterChatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const chapterChatResponse = await fetch(chatUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${openAiApiKey}`,
+          Authorization: `Bearer ${chatKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: chatModel,
           response_format: { type: "json_object" },
           messages: [
             {
@@ -214,6 +277,15 @@ serve(async (req: Request) => {
 
       if (chapterChatResponse.ok) {
         const chapterResult = await chapterChatResponse.json();
+        if (chapterResult.usage) {
+          chapterUsage = {
+            provider: useOpenAiChat ? "openai" : "groq",
+            model: chatModel,
+            promptTokens: chapterResult.usage.prompt_tokens,
+            completionTokens: chapterResult.usage.completion_tokens,
+            totalTokens: chapterResult.usage.total_tokens,
+          };
+        }
         const parsed = JSON.parse(chapterResult.choices[0].message.content);
         chapters = (parsed.chapters || []).map((ch: any, idx: number) => ({
           id: crypto.randomUUID(),
@@ -223,7 +295,14 @@ serve(async (req: Request) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, cues, chapters }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      transcriptionProvider: useGroqTranscription ? "groq" : "openai",
+      transcriptionModel,
+      cues, 
+      chapters,
+      usage: (translationUsage || chapterUsage) ? { translation: translationUsage, chapters: chapterUsage } : undefined,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
