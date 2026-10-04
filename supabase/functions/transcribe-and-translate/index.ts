@@ -108,7 +108,10 @@ serve(async (req: Request) => {
         });
       }
 
-      throw new Error(`Unknown JSON action: ${action}`);
+      return new Response(JSON.stringify({ success: false, error: `Invalid or unknown action: ${action}` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ── Path B: Multipart Audio Upload (Whisper Transcription & Optional Chapters) ──
