@@ -194,6 +194,9 @@ export const webElectronAPI: unknown = {
 			
 			// Persist all ephemeral blob URLs to IndexedDB
 			const persistedData = await persistProjectMedia(projectData);
+			if (typeof persistedData === "object" && persistedData !== null) {
+				(persistedData as any).projectId = projectId;
+			}
 			
 			await set(`project_${projectId}`, {
 				id: projectId,
@@ -203,10 +206,69 @@ export const webElectronAPI: unknown = {
 				updated_at: new Date().toISOString()
 			});
 			
-			return { success: true, path: projectId };
+			return { success: true, path: projectId, projectId };
 		} catch (e: unknown) {
-			console.error(e);
+			console.error("saveProjectFile error:", e);
 			return { success: false, path: null, message: (e as Error).message };
+		}
+	},
+	saveProjectFileNamed: async (
+		projectData: unknown,
+		name: string,
+		thumbnail?: string | null,
+		mode: "rename" | "copy" = "rename"
+	) => {
+		try {
+			const existingId = (projectData as any)?.projectId;
+			const projectId = (mode === "rename" && existingId) ? existingId : crypto.randomUUID();
+			
+			// Persist all ephemeral blob URLs to IndexedDB
+			const persistedData = await persistProjectMedia(projectData);
+			if (typeof persistedData === "object" && persistedData !== null) {
+				(persistedData as any).projectId = projectId;
+			}
+			
+			await set(`project_${projectId}`, {
+				id: projectId,
+				name: name.trim() || "Untitled Project",
+				editor_state: persistedData,
+				thumbnail_url: thumbnail || null,
+				updated_at: new Date().toISOString()
+			});
+			
+			return { success: true, path: projectId, projectId };
+		} catch (e: unknown) {
+			console.error("saveProjectFileNamed error:", e);
+			return { success: false, path: null, message: (e as Error).message };
+		}
+	},
+	listProjectFiles: async () => {
+		try {
+			const allKeys = await keys();
+			const projectKeys = allKeys.filter(k => typeof k === 'string' && k.startsWith("project_"));
+			
+			const projects = [];
+			for (const key of projectKeys) {
+				const project = await get(key) as any;
+				if (project) {
+					projects.push(project);
+				}
+			}
+			
+			projects.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+			
+			const entries = projects.map(p => ({
+				path: p.id,
+				name: p.name,
+				updatedAt: new Date(p.updated_at).getTime(),
+				thumbnailPath: p.thumbnail_url,
+				isCurrent: false,
+				isInProjectsDirectory: true
+			}));
+			return { success: true, entries, library: entries };
+		} catch (e: unknown) {
+			console.error("listProjectFiles error:", e);
+			return { success: true, entries: [], library: [] };
 		}
 	},
 	getProjectLibrary: async () => {
@@ -232,10 +294,10 @@ export const webElectronAPI: unknown = {
 				isCurrent: false,
 				isInProjectsDirectory: true
 			}));
-			return { success: true, library };
+			return { success: true, library, entries: library };
 		} catch (e: unknown) {
-			console.error(e);
-			return { success: true, library: [] };
+			console.error("getProjectLibrary error:", e);
+			return { success: true, library: [], entries: [] };
 		}
 	},
 	deleteProjectFile: async (_path: string) => {
@@ -246,10 +308,17 @@ export const webElectronAPI: unknown = {
 			return { success: false };
 		}
 	},
-	getProjectThumbnail: async (_path: string) => ({
-		success: false,
-		data: null,
-	}),
+	getProjectThumbnail: async (path: string) => {
+		try {
+			const projectRecord = await get(`project_${path}`) as any;
+			return {
+				success: Boolean(projectRecord?.thumbnail_url),
+				data: projectRecord?.thumbnail_url || null,
+			};
+		} catch {
+			return { success: false, data: null };
+		}
+	},
 
 	// ── File pickers (browser native) ────────────────────────────────────
 	uploadMediaFile: async (fileOrPath: File | string, options?: { prefix?: string }) => {
