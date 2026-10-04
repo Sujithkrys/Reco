@@ -13,6 +13,11 @@ dist-electron
 dist-ssr
 *.local
 
+# mcp-server (never commit real credentials)
+mcp-server/.env
+mcp-server/.env.*
+!mcp-server/.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -54,4 +59,3 @@ sample.mp4
 
 # Supabase CLI temp
 supabase/.temp/
-

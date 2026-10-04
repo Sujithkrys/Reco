@@ -8,6 +8,7 @@ import type {
 	CursorClickEffectStyle,
 	CursorStyle,
 	CursorTelemetryPoint,
+	GeneratedClipRegion,
 	Padding,
 	SourceAudioTrackSettings,
 	SpeedRegion,
@@ -122,6 +123,7 @@ interface VideoExporterConfig extends ExportConfig {
 	annotationRegions?: AnnotationRegion[];
 	autoCaptions?: CaptionCue[];
 	autoCaptionSettings?: AutoCaptionSettings;
+	generatedClipRegions?: GeneratedClipRegion[];
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
 	cursorStyle?: CursorStyle;
@@ -1757,6 +1759,9 @@ export class ModernVideoExporter {
 		}
 		if ((this.config.autoCaptions ?? []).length > 0) {
 			reasons.push("unsupported-caption-overlay");
+		}
+		if ((this.config.generatedClipRegions ?? []).length > 0) {
+			reasons.push("unsupported-generated-clip-overlay");
 		}
 		if (this.config.webcam?.enabled) {
 			// Native GPU compositors use a different corner and shadow model.

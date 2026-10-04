@@ -119,6 +119,7 @@ export function useProjectSnapshotModel({
 				clipRegions: timeline.clipRegions,
 				speedRegions: timeline.speedRegions,
 				annotationRegions: timeline.annotationRegions,
+				generatedClipRegions: timeline.generatedClipRegions,
 				audioRegions: timeline.audioRegions,
 				autoCaptions: timeline.autoCaptions,
 				autoCaptionSettings: timeline.autoCaptionSettings,

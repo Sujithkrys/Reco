@@ -1,4 +1,10 @@
 import type { Application, Container } from "pixi.js";
+import { WebGPURenderer } from "pixi.js";
+
+// Disable WebGPU globally by patching its test method to always fail silently,
+// preventing the "Failed to create WebGPU Context Provider" warning/error
+// from being thrown when PixiJS auto-detects renderers.
+(WebGPURenderer as any).test = () => Promise.resolve(false);
 
 type PixiInitializationState = "initializing" | "initialized" | "failed";
 type PixiInitOptions = Parameters<Application["init"]>[0];

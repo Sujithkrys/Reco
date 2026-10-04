@@ -8,6 +8,7 @@ import type {
 	CaptionCue,
 	ClipRegion,
 	CursorTelemetryPoint,
+	GeneratedClipRegion,
 	SpeedRegion,
 	TrimRegion,
 	ZoomFocus,
@@ -68,6 +69,11 @@ interface UseTimelineEditorRuntimeParams {
 	onCaptionAdded?: (span: Span) => void;
 	selectedCaptionId?: string | null;
 	onSelectCaption?: (id: string | null) => void;
+	generatedClipRegions: GeneratedClipRegion[];
+	onGeneratedClipSpanChange?: (id: string, span: Span) => void;
+	onGeneratedClipDelete?: (id: string) => void;
+	selectedGeneratedClipId?: string | null;
+	onSelectGeneratedClip?: (id: string | null) => void;
 	isMac: boolean;
 	keyShortcuts: TimelineShortcutBindings;
 	isTimelineFocusedRef: RefObject<boolean>;
@@ -120,6 +126,11 @@ export function useTimelineEditorRuntime({
 	onCaptionAdded,
 	selectedCaptionId,
 	onSelectCaption,
+	generatedClipRegions,
+	onGeneratedClipSpanChange,
+	onGeneratedClipDelete,
+	selectedGeneratedClipId,
+	onSelectGeneratedClip,
 	isMac,
 	keyShortcuts,
 	isTimelineFocusedRef,
@@ -148,6 +159,8 @@ export function useTimelineEditorRuntime({
 		handleSelectAnnotation,
 		handleSelectAudio,
 		handleSelectCaption,
+		handleSelectGeneratedClip,
+		deleteSelectedGeneratedClip,
 		cycleAnnotationsAtCurrentTime,
 	} = useTimelineSelection({
 		totalMs,
@@ -161,16 +174,19 @@ export function useTimelineEditorRuntime({
 		selectedAnnotationId,
 		selectedAudioId,
 		selectedCaptionId,
+		selectedGeneratedClipId,
 		onZoomDelete,
 		onClipDelete,
 		onAnnotationDelete,
 		onAudioDelete,
 		onCaptionDelete,
+		onGeneratedClipDelete,
 		onSelectZoom,
 		onSelectClip,
 		onSelectAnnotation,
 		onSelectAudio,
 		onSelectCaption,
+		onSelectGeneratedClip,
 	});
 
 	useTimelineNormalization({
@@ -200,6 +216,7 @@ export function useTimelineEditorRuntime({
 		speedRegions,
 		audioRegions,
 		captionCues,
+		generatedClipRegions,
 		onZoomSpanChange,
 		onTrimSpanChange,
 		onClipSpanChange,
@@ -207,6 +224,7 @@ export function useTimelineEditorRuntime({
 		onSpeedSpanChange,
 		onAudioSpanChange,
 		onCaptionSpanChange,
+		onGeneratedClipSpanChange,
 	});
 
 	const {
@@ -327,6 +345,8 @@ export function useTimelineEditorRuntime({
 		handleSelectAnnotation,
 		handleSelectAudio,
 		handleSelectCaption,
+		handleSelectGeneratedClip,
+		deleteSelectedGeneratedClip,
 		hasOverlap,
 		timelineItems,
 		allRegionSpans,

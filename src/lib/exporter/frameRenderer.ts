@@ -294,12 +294,7 @@ export class FrameRenderer {
 		};
 
 		const preferredRenderBackend = this.config.preferredRenderBackend;
-		const backendOrder =
-			preferredRenderBackend === "webgpu"
-				? (["webgpu", "webgl"] as const)
-				: preferredRenderBackend === "webgl"
-					? (["webgl", "webgpu"] as const)
-					: (["webgl", "webgpu"] as const);
+		const backendOrder = (["webgl"] as const);
 		const failures: PixiRendererAttempt[] = [];
 
 		for (const backend of backendOrder) {

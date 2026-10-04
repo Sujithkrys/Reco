@@ -18,6 +18,7 @@ import { useCursorTelemetry } from "./useCursorTelemetry";
 import { useEditorGlobalInteractions } from "./useEditorGlobalInteractions";
 import { useEditorPlaybackControls } from "./useEditorPlaybackControls";
 import { useFreshRecordingAutoZoom } from "./useFreshRecordingAutoZoom";
+import { useGeneratedClipRegionCommands } from "./useGeneratedClipRegionCommands";
 import { useTimelineProjection } from "./useTimelineProjection";
 import { useZoomRegionCommands } from "./useZoomRegionCommands";
 
@@ -143,11 +144,33 @@ export function useTimelineEditingController(input: Input) {
 				timeline.setSelectedZoomId(null);
 				timeline.setSelectedAudioId(null);
 				timeline.setSelectedCaptionId(null);
+				timeline.setSelectedGeneratedClipId(null);
 			}
 		},
 		[
 			timeline.setSelectedAnnotationId,
 			timeline.setSelectedZoomId,
+			timeline.setSelectedAudioId,
+			timeline.setSelectedCaptionId,
+			timeline.setSelectedGeneratedClipId,
+		],
+	);
+	const handleSelectGeneratedClip = useCallback(
+		(id: string | null) => {
+			timeline.setSelectedGeneratedClipId(id);
+			if (id) {
+				timeline.setSelectedZoomId(null);
+				timeline.setSelectedClipId(null);
+				timeline.setSelectedAnnotationId(null);
+				timeline.setSelectedAudioId(null);
+				timeline.setSelectedCaptionId(null);
+			}
+		},
+		[
+			timeline.setSelectedGeneratedClipId,
+			timeline.setSelectedZoomId,
+			timeline.setSelectedClipId,
+			timeline.setSelectedAnnotationId,
 			timeline.setSelectedAudioId,
 			timeline.setSelectedCaptionId,
 		],
@@ -205,6 +228,11 @@ export function useTimelineEditingController(input: Input) {
 		nextAnnotationIdRef: input.nextAnnotationIdRef,
 		nextAnnotationZIndexRef: input.nextAnnotationZIndexRef,
 	});
+	const generatedClipCommands = useGeneratedClipRegionCommands({
+		setGeneratedClipRegions: timeline.setGeneratedClipRegions,
+		selectedGeneratedClipId: timeline.selectedGeneratedClipId,
+		setSelectedGeneratedClipId: timeline.setSelectedGeneratedClipId,
+	});
 
 	useEditorGlobalInteractions({
 		timeline,
@@ -226,7 +254,9 @@ export function useTimelineEditingController(input: Input) {
 		clipCommands,
 		audioCommands,
 		annotationCommands,
+		generatedClipCommands,
 		handleSelectAnnotation,
+		handleSelectGeneratedClip,
 		handleAutoSuggestZoomsConsumed: freshZoom.handleAutoSuggestZoomsConsumed,
 	};
 }

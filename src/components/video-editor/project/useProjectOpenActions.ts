@@ -12,6 +12,7 @@ import { fromFileUrl, resolveVideoUrl, createProjectData } from "../projectPersi
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useProjectState } from "../state/useProjectState";
 import { DEFAULT_WEBCAM_TIME_OFFSET_MS } from "../types";
+import { cloneStructured } from "../videoEditorUtils";
 import type { VideoPlaybackRef } from "../VideoPlayback";
 
 type Set<T> = Dispatch<SetStateAction<T>>;
@@ -30,7 +31,7 @@ type UseProjectOpenActionsInput = {
 	openUnsavedChangesDialog: (actionLabel: string) => Promise<"save" | "discard" | "cancel">;
 	saveProject: (forceSaveAs: boolean) => Promise<boolean>;
 	refreshProjectLibrary: () => Promise<void>;
-	resetSourceScopedEditorState: () => void;
+	resetSourceScopedEditorState: (options?: { preserveGeneratedClips?: boolean }) => void;
 	applySessionPresentation: (session: null) => void;
 	handleSaveProject: () => Promise<unknown>;
 	handleSaveProjectAs: () => Promise<unknown>;
@@ -169,10 +170,28 @@ export function useProjectOpenActions({
 		project.setVideoSourcePath(sourcePath);
 		project.setVideoPath(sourceVideoUrl);
 		if (!opts?.preserveProject) {
-			project.setCurrentProjectPath(null);
+			// A direct "Import Video" (as opposed to going through "New Project"
+			// first) used to leave currentProjectPath null until the user hit
+			// Save explicitly -- so it never showed up in the dashboard's
+			// project library and never benefited from the existing autosave
+			// effect (which only runs once a project path exists). Mint an id
+			// immediately, mirroring handleCreateNewProject below, so this
+			// behaves the same way from the very first import.
+			const fileNameBase =
+				sourcePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") || "Untitled Project";
+			const initialProjectData = createProjectData(sourcePath, {});
+			const saveResult = await window.electronAPI.saveProjectFile(initialProjectData, fileNameBase);
+			if (saveResult.success && saveResult.path) {
+				project.setCurrentProjectPath(saveResult.path);
+				project.setLastSavedSnapshot(cloneStructured(initialProjectData));
+			} else {
+				project.setCurrentProjectPath(null);
+				project.setLastSavedSnapshot(null);
+			}
+		} else {
+			project.setLastSavedSnapshot(null);
 		}
-		project.setLastSavedSnapshot(null);
-		resetSourceScopedEditorState();
+		resetSourceScopedEditorState({ preserveGeneratedClips: Boolean(opts?.preserveProject) });
 		pendingFreshRecordingAutoZoomPathRef.current = appearance.autoApplyFreshRecordingAutoZooms
 			? sourceVideoUrl
 			: null;
@@ -267,5 +286,49 @@ export function useProjectOpenActions({
 		return result.path;
 	}, [confirmReplaceSourceWithUnsavedChanges, handleOpenProjectFromLibrary, doImportMediaOrProject]);
 
-	return { handleOpenProjectFromLibrary, handleImportMediaOrProject, handleOpenProjectBrowser, handleCreateNewProject, handleImportVideoForCurrentProject, handleImportDroppedFile };
+	const handleDeleteProject = useCallback(
+		async (projectPath: string) => {
+			const result = await window.electronAPI.deleteProjectFile(projectPath);
+			if (!result.success) {
+				toast.error(result.message || "Failed to delete project");
+				return false;
+			}
+			if (project.currentProjectPath === projectPath) {
+				project.setCurrentProjectPath(null);
+			}
+			await refreshProjectLibrary();
+			toast.success("Project deleted");
+			return true;
+		},
+		[project, refreshProjectLibrary],
+	);
+
+	const handleRenameProject = useCallback(
+		async (projectPath: string, newName: string) => {
+			const trimmed = newName.trim();
+			if (!trimmed) {
+				toast.error("Project name is required");
+				return false;
+			}
+			const result = await window.electronAPI.renameProjectFile(projectPath, trimmed);
+			if (!result.success) {
+				toast.error(result.message || "Failed to rename project");
+				return false;
+			}
+			await refreshProjectLibrary();
+			return true;
+		},
+		[refreshProjectLibrary],
+	);
+
+	return {
+		handleOpenProjectFromLibrary,
+		handleImportMediaOrProject,
+		handleOpenProjectBrowser,
+		handleCreateNewProject,
+		handleImportVideoForCurrentProject,
+		handleImportDroppedFile,
+		handleDeleteProject,
+		handleRenameProject,
+	};
 }

@@ -181,7 +181,9 @@ export function EditorLayout(props: Props) {
 		clipCommands,
 		audioCommands,
 		annotationCommands,
+		generatedClipCommands,
 		handleSelectAnnotation,
+		handleSelectGeneratedClip,
 		handleAutoSuggestZoomsConsumed,
 	} = editing;
 	
@@ -262,6 +264,8 @@ export function EditorLayout(props: Props) {
 				handleStartExportFromDropdown={dialogActions.handleStartExportFromDropdown}
 				revealExportedFile={dialogActions.revealExportedFile}
 				exportMessage={exportMessage}
+				currentTimeMs={ui.currentTime * 1000}
+				onInsertGeneratedClip={generatedClipCommands.handleGeneratedClipAdded}
 			/>
 			<EditorAnnouncementBanner />
 			<div className="relative flex min-h-0 flex-1 flex-col gap-3 p-4">
@@ -271,14 +275,33 @@ export function EditorLayout(props: Props) {
 						activeSection={safeActiveSection}
 						setActiveSection={ui.setActiveEffectSection}
 						onBack={() => {
-							ui.setActiveEffectSection("projects");
-							ui.setViewMode("dashboard");
+							void (async () => {
+								// Leaving without saving used to just discard whatever
+								// changed since the last save -- silently persist first
+								// (matching the autosave debounce's own options) so the
+								// project reflects the latest state in the dashboard.
+								if (hasUnsavedChanges) {
+									await saveActions.saveProject(false, {
+										silent: true,
+										remountPreviewAfterSave: false,
+										refreshLibraryAfterSave: true,
+										captureThumbnail: false,
+									});
+								}
+								// The save above (if it ran) just re-marked this project
+								// as "last open" for refresh-restore purposes -- clear
+								// that after it settles, so refreshing on the dashboard
+								// stays on the dashboard instead of jumping back in.
+								await window.electronAPI.clearCurrentProjectFile?.();
+								ui.setActiveEffectSection("projects");
+								ui.setViewMode("dashboard");
+							})();
 						}}
 					/>
 					<SettingsPanel
 						{...settingsPanelProps}
 						activeEffectSection={safeActiveSection}
-						onImportFile={openActions.handleImportMediaOrProject}
+						onImportFile={openActions.handleImportVideoForCurrentProject}
 						onRecordScreen={recordingActions.openLauncher}
 					/>
 						<EditorPreviewPanel
@@ -326,6 +349,7 @@ export function EditorLayout(props: Props) {
 						audioCommands={audioCommands}
 						captionCommands={captionCommands}
 						annotationCommands={annotationCommands}
+						generatedClipCommands={generatedClipCommands}
 						videoPath={project.videoPath || ""}
 						videoSourcePath={project.videoSourcePath || ""}
 						cursorTelemetrySourcePath={timeline.cursorTelemetrySourcePath}
@@ -335,6 +359,7 @@ export function EditorLayout(props: Props) {
 						disableSuggestedZooms={!appearance.autoApplyFreshRecordingAutoZooms}
 						currentTime={ui.currentTime}
 						handleSelectAnnotation={handleSelectAnnotation}
+						handleSelectGeneratedClip={handleSelectGeneratedClip}
 					/>
 			</div>
 			{editorDialogs}

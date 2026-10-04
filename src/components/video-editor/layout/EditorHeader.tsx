@@ -10,9 +10,11 @@ import type { useExportDimensions } from "../export/useExportDimensions";
 import type { useExportSession } from "../export/useExportSession";
 import type { useExportSettings } from "../export/useExportSettings";
 import type { useExportStatusViewModel } from "../export/useExportStatusViewModel";
+import { MotionGraphicsMenu } from "../motionGraphics/MotionGraphicsMenu";
 import type { useVideoEditorPresets } from "../presets/useVideoEditorPresets";
 import type { useProjectState } from "../state/useProjectState";
 import { APP_HEADER_ICON_BUTTON_CLASS, DiscordLinkButton, FeedbackDialog } from "../TutorialHelp";
+import type { GeneratedClipRegion } from "../types";
 import { EditorExportMenu } from "./EditorExportMenu";
 import { EditorPresetMenu } from "./EditorPresetMenu";
 
@@ -47,6 +49,8 @@ type Props = {
 	handleStartExportFromDropdown: () => void;
 	revealExportedFile: () => void;
 	exportMessage: string | null;
+	currentTimeMs: number;
+	onInsertGeneratedClip: (region: GeneratedClipRegion) => void;
 };
 
 export function EditorHeader(props: Props) {
@@ -81,6 +85,8 @@ export function EditorHeader(props: Props) {
 		handleStartExportFromDropdown,
 		revealExportedFile,
 		exportMessage,
+		currentTimeMs,
+		onInsertGeneratedClip,
 	} = props;
 	const {
 		isEditingProjectName,
@@ -198,6 +204,13 @@ export function EditorHeader(props: Props) {
 				className="flex items-center justify-self-end"
 				style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
 			>
+				<MotionGraphicsMenu
+					projectId={project.currentProjectPath}
+					projectDisplayName={projectDisplayName}
+					currentTimeMs={currentTimeMs}
+					onInsertGeneratedClip={onInsertGeneratedClip}
+				/>
+				<div className="mx-2 h-4 w-px shrink-0 bg-foreground/10" />
 				<EditorPresetMenu t={t} presets={presets} />
 				<div
 					aria-hidden="true"

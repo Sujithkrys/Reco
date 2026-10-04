@@ -159,6 +159,12 @@ export function useInitialEditorSource({
 					currentProject.project &&
 					(await applyLoadedProject(currentProject.project, currentProject.path ?? null))
 				) {
+					// applyLoadedProject only restores state; it never changes
+					// viewMode itself (handleOpenProjectFromLibrary, its other
+					// caller, does that explicitly too), so a restored project
+					// on launch/refresh needs it set here or the user lands back
+					// on the dashboard despite a project having just loaded.
+					setViewMode("editor");
 					return;
 				}
 

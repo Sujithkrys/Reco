@@ -5,6 +5,7 @@ import type {
 	AudioRegion,
 	CaptionCue,
 	ClipRegion,
+	GeneratedClipRegion,
 	SpeedRegion,
 	TrimRegion,
 	ZoomRegion,
@@ -27,6 +28,7 @@ interface UseTimelineDndBindingsParams {
 	speedRegions: SpeedRegion[];
 	audioRegions: AudioRegion[];
 	captionCues: CaptionCue[];
+	generatedClipRegions: GeneratedClipRegion[];
 	onZoomSpanChange: (id: string, span: Span) => void;
 	onTrimSpanChange?: (id: string, span: Span) => void;
 	onClipSpanChange?: (id: string, span: Span) => void;
@@ -34,6 +36,7 @@ interface UseTimelineDndBindingsParams {
 	onSpeedSpanChange?: (id: string, span: Span) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onCaptionSpanChange?: (id: string, span: Span) => void;
+	onGeneratedClipSpanChange?: (id: string, span: Span) => void;
 }
 
 type TimelineItemKind =
@@ -44,6 +47,7 @@ type TimelineItemKind =
 	| "speed"
 	| "audio"
 	| "caption"
+	| "generatedClip"
 	| null;
 
 export function useTimelineDndBindings({
@@ -54,6 +58,7 @@ export function useTimelineDndBindings({
 	speedRegions,
 	audioRegions,
 	captionCues,
+	generatedClipRegions,
 	onZoomSpanChange,
 	onTrimSpanChange,
 	onClipSpanChange,
@@ -61,6 +66,7 @@ export function useTimelineDndBindings({
 	onSpeedSpanChange,
 	onAudioSpanChange,
 	onCaptionSpanChange,
+	onGeneratedClipSpanChange,
 }: UseTimelineDndBindingsParams) {
 	const resolveItemKind = useCallback(
 		(id: string): TimelineItemKind => {
@@ -71,6 +77,7 @@ export function useTimelineDndBindings({
 			if (speedRegions.some((r) => r.id === id)) return "speed";
 			if (audioRegions.some((r) => r.id === id)) return "audio";
 			if (captionCues.some((c) => c.id === id)) return "caption";
+			if (generatedClipRegions.some((r) => r.id === id)) return "generatedClip";
 			return null;
 		},
 		[
@@ -81,6 +88,7 @@ export function useTimelineDndBindings({
 			speedRegions,
 			audioRegions,
 			captionCues,
+			generatedClipRegions,
 		],
 	);
 
@@ -126,6 +134,11 @@ export function useTimelineDndBindings({
 				);
 			}
 
+			// Generated clips visually replace the main recording's frame during
+			// their span rather than mixing alongside it, so they're allowed to
+			// freely overlap ClipRegion — only checked against each other.
+			if (itemKind === "generatedClip") return checkOverlap(generatedClipRegions);
+
 			return false;
 		},
 		[
@@ -137,6 +150,7 @@ export function useTimelineDndBindings({
 			audioRegions,
 			speedRegions,
 			captionCues,
+			generatedClipRegions,
 		],
 	);
 
@@ -148,8 +162,9 @@ export function useTimelineDndBindings({
 				annotationRegions,
 				audioRegions,
 				captionCues,
+				generatedClipRegions,
 			}),
-		[zoomRegions, clipRegions, annotationRegions, audioRegions, captionCues],
+		[zoomRegions, clipRegions, annotationRegions, audioRegions, captionCues, generatedClipRegions],
 	);
 
 	const allRegionSpans = useMemo(
@@ -186,6 +201,8 @@ export function useTimelineDndBindings({
 				onAudioSpanChange?.(id, span, nextTrackIndex);
 			} else if (itemKind === "caption") {
 				onCaptionSpanChange?.(id, span);
+			} else if (itemKind === "generatedClip") {
+				onGeneratedClipSpanChange?.(id, span);
 			}
 		},
 		[
@@ -198,6 +215,7 @@ export function useTimelineDndBindings({
 			onSpeedSpanChange,
 			onAudioSpanChange,
 			onCaptionSpanChange,
+			onGeneratedClipSpanChange,
 		],
 	);
 

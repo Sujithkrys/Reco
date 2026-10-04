@@ -61,6 +61,7 @@ export function buildExportRenderOptions({
 		annotationRegions: timeline.annotationRegions,
 		autoCaptions: timeline.autoCaptions,
 		autoCaptionSettings: timeline.autoCaptionSettings,
+		generatedClipRegions: timeline.generatedClipRegions,
 		zoomRegions: effectiveZoomRegions,
 		cursorTelemetry: effectiveCursorTelemetry,
 		showCursor: effectiveShowCursor,

@@ -663,6 +663,42 @@ export interface AudioRegion {
 	trackIndex?: number;
 }
 
+// Mirrors the shape remo-clone's /render endpoint accepts (server/index.ts +
+// server/codeValidation.ts) and mcp-server's src/motionGraphicSpec.ts. Kept
+// as plain TypeScript here (no Zod, matching the rest of this frontend) — a
+// third copy of the same shape across three separate deployables is an
+// accepted duplication for now, since there's no shared package between
+// them. `code` is a full Remotion component Claude writes itself (via the
+// create_motion_graphic/edit_motion_graphic MCP tools) — there is no fixed
+// template system on the other end of this any more.
+export interface GeneratedClipSpec {
+	code: string;
+	durationInFrames: number;
+	fps?: number;
+	width?: number;
+	height?: number;
+}
+
+/**
+ * A timeline clip backed by an AI-generated motion graphic: `spec` is the
+ * source of truth (editable via structured fields for a single-scene spec),
+ * `videoUrl` is the last rendered result. Unlike `ClipRegion` (a trim/speed
+ * segment of the one shared recording), this carries its own source video —
+ * closer to `AudioRegion` than to `ClipRegion`. It visually replaces the main
+ * recording's frame during its span rather than mixing alongside it, so it's
+ * allowed to freely overlap `ClipRegion` spans.
+ */
+export interface GeneratedClipRegion {
+	id: string;
+	startMs: number;
+	endMs: number;
+	videoUrl: string;
+	spec: GeneratedClipSpec;
+	/** The `motion_graphic_clips.id` row this clip persists to/re-renders against. */
+	clipId: string;
+	projectId: string;
+}
+
 export interface CaptionCue {
 	id: string;
 	startMs: number;

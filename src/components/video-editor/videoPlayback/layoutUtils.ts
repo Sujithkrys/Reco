@@ -156,6 +156,15 @@ interface LayoutParams {
 	padding?: Padding | number;
 	/** Screen insets from the active device frame, used to scale/center the full frame */
 	frameInsets?: { top: number; right: number; bottom: number; left: number } | null;
+	/**
+	 * Used only when there's no real video element to size from (a project
+	 * built entirely from AI-generated clips, with no imported/recorded main
+	 * video). Never applied while a real video is merely still loading --
+	 * callers only pass this when there is genuinely no video source at all,
+	 * so the stage/mask still get real dimensions for generated clips to
+	 * render into instead of the whole layout silently no-op'ing.
+	 */
+	fallbackSize?: { width: number; height: number } | null;
 }
 
 interface LayoutResult {
@@ -185,10 +194,13 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		borderRadius = 0,
 		padding = 0,
 		frameInsets,
+		fallbackSize,
 	} = params;
 
-	const videoWidth = lockedVideoDimensions?.width || videoElement.videoWidth;
-	const videoHeight = lockedVideoDimensions?.height || videoElement.videoHeight;
+	const videoWidth =
+		lockedVideoDimensions?.width || videoElement.videoWidth || fallbackSize?.width || 0;
+	const videoHeight =
+		lockedVideoDimensions?.height || videoElement.videoHeight || fallbackSize?.height || 0;
 
 	if (!videoWidth || !videoHeight) {
 		return null;

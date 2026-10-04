@@ -78,6 +78,7 @@ import {
 	DEFAULT_ZOOM_OUT_EASING,
 	findActiveClipTransition,
 	findClipAtTimelineTime,
+	type GeneratedClipRegion,
 	getDefaultCaptionFontFamily,
 	mapTimelineTimeToSourceTime,
 	type Padding,
@@ -95,6 +96,11 @@ import {
 import { createClipPlayback, findPreviewClipAtTimelineTime } from "./videoPlayback/clipPlayback";
 import { DEFAULT_FOCUS } from "./videoPlayback/constants";
 import {
+	findActiveGeneratedClip,
+	getGeneratedClipTargetTimeSeconds,
+	shouldSeekGeneratedClipMedia,
+} from "./videoPlayback/generatedClipSync";
+import {
 	type CursorFollowCameraState,
 	createCursorFollowCameraState,
 } from "./videoPlayback/cursorFollowCamera";
@@ -104,7 +110,11 @@ import {
 	preloadCursorAssets,
 } from "./videoPlayback/cursorRenderer";
 import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focusUtils";
-import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
+import {
+	BASE_PREVIEW_HEIGHT,
+	BASE_PREVIEW_WIDTH,
+	layoutVideoContent as layoutVideoContentUtil,
+} from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import {
 	createSpringState,
@@ -251,6 +261,7 @@ interface VideoPlaybackProps {
 	cropRegion?: import("./types").CropRegion;
 	webcam?: WebcamOverlaySettings;
 	webcamVideoPath?: string | null;
+	generatedClipRegions?: GeneratedClipRegion[];
 	aspectRatio: AspectRatio;
 	annotationRegions?: AnnotationRegion[];
 	autoCaptions?: CaptionCue[];
@@ -336,6 +347,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cropRegion,
 			webcam,
 			webcamVideoPath,
+			generatedClipRegions = [],
 			aspectRatio,
 			annotationRegions = [],
 			autoCaptions = [],
@@ -407,6 +419,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const cameraContainerRef = useRef<Container | null>(null);
 		const [pixiReady, setPixiReady] = useState(false);
 		const videoReady = usePreviewVideoReady(videoRef, videoPath);
+		// A project built entirely from AI-generated clips (no imported/recorded
+		// main video at all) never has real decoded video frames, so videoReady
+		// never becomes true -- but the layout/render pipeline below still needs
+		// to run for generated clips to have somewhere to play. Only bypasses
+		// videoReady when there is genuinely no video source configured, never
+		// while a real one is merely still loading.
+		const hasNoVideoSource = !videoPath;
+		const effectiveVideoReady = videoReady || hasNoVideoSource;
 
 		const [previewViewportWidth, setPreviewViewportWidth] = useState(640);
 		const [annotationSceneTransform, setAnnotationSceneTransform] =
@@ -457,6 +477,70 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			clipRegionsRef.current = clipRegions;
 			clipPlaybackRef.current?.refresh();
 		}, [clipRegions]);
+		const generatedClipRegionsRef = useRef<GeneratedClipRegion[]>(generatedClipRegions);
+		useEffect(() => {
+			generatedClipRegionsRef.current = generatedClipRegions;
+		}, [generatedClipRegions]);
+		// One <video> element per generated clip, created/destroyed as regions are
+		// added/removed/re-rendered (same lifecycle pattern as audio regions in
+		// useAudioPreviewSync). Only the active clip's video is ever playing.
+		const generatedClipVideoElementsRef = useRef<Map<string, HTMLVideoElement>>(new Map());
+		const generatedClipPreviewSourceRef = useRef(new PreviewVideoSource());
+		const generatedClipSpriteRef = useRef<Sprite | null>(null);
+		const activeGeneratedClipIdRef = useRef<string | null>(null);
+		useEffect(() => {
+			const elements = generatedClipVideoElementsRef.current;
+			const currentIds = new Set(generatedClipRegions.map((region) => region.id));
+
+			for (const [id, video] of elements) {
+				if (!currentIds.has(id)) {
+					video.pause();
+					video.src = "";
+					video.remove();
+					elements.delete(id);
+				}
+			}
+
+			for (const region of generatedClipRegions) {
+				let video = elements.get(region.id);
+				if (!video) {
+					video = document.createElement("video");
+					video.preload = "auto";
+					video.muted = true;
+					video.playsInline = true;
+					video.crossOrigin = "anonymous";
+					// A detached element (never inserted into the document) can decode
+					// unreliably across browsers -- hidden but attached matches how the
+					// main preview's own <video> element works, and is what actually
+					// gets it to reliably load/decode/play.
+					video.style.position = "absolute";
+					video.style.width = "0";
+					video.style.height = "0";
+					video.style.opacity = "0";
+					video.style.pointerEvents = "none";
+					document.body.appendChild(video);
+					elements.set(region.id, video);
+				}
+				if (video.src !== region.videoUrl) {
+					video.src = region.videoUrl;
+					video.load();
+				}
+			}
+		}, [generatedClipRegions]);
+		// True unmount only (empty deps) -- the effect above intentionally has no
+		// cleanup, since it runs on every regions change and a cleanup there would
+		// tear down/restart every element on each edit rather than only on unmount.
+		useEffect(() => {
+			const elements = generatedClipVideoElementsRef.current;
+			return () => {
+				for (const video of elements.values()) {
+					video.pause();
+					video.src = "";
+					video.remove();
+				}
+				elements.clear();
+			};
+		}, []);
 		const zoomRegionsRef = useRef<ZoomRegion[]>([]);
 		const selectedZoomIdRef = useRef<string | null>(null);
 		const animationStateRef = useRef<PlaybackAnimationState>(createPlaybackAnimationState());
@@ -547,7 +631,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			async (
 				container: HTMLDivElement,
 			): Promise<Application> => {
-				const backendOrder: PixiPreviewBackend[] = ["webgl", "webgpu"];
+				const backendOrder: PixiPreviewBackend[] = ["webgl"];
 				const attempts: PixiRendererAttempt[] = [];
 
 				for (const backend of backendOrder) {
@@ -1020,6 +1104,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				borderRadius,
 				padding,
 				frameInsets: null,
+				fallbackSize: hasNoVideoSource
+					? { width: BASE_PREVIEW_WIDTH, height: BASE_PREVIEW_HEIGHT }
+					: null,
 			});
 
 			if (result) {
@@ -1077,6 +1164,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			padding,
 			applyWebcamBubbleLayout,
 			syncPreviewMotionBlurQuality,
+			hasNoVideoSource,
 		]);
 
 		useEffect(() => {
@@ -1547,7 +1635,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [currentTime]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 
 			animationStateRef.current = createPlaybackAnimationState();
 			cursorOverlayRef.current?.reset();
@@ -1555,10 +1643,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			layoutVideoContent();
 			// The next ticker frame applies the current zoom; layout must never stop playback.
 			shouldSnapPausedFrameRef.current = true;
-		}, [pixiReady, videoReady, layoutVideoContent]);
+		}, [pixiReady, effectiveVideoReady, layoutVideoContent]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 			const container = containerRef.current;
 			if (!container) return;
 
@@ -1574,17 +1662,17 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			return () => {
 				observer.disconnect();
 			};
-		}, [pixiReady, videoReady, layoutVideoContent]);
+		}, [pixiReady, effectiveVideoReady, layoutVideoContent]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 			updateOverlayForRegion(selectedZoom);
-		}, [selectedZoom, pixiReady, videoReady, updateOverlayForRegion]);
+		}, [selectedZoom, pixiReady, effectiveVideoReady, updateOverlayForRegion]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 			applyWebcamBubbleLayout(animationStateRef.current.appliedScale || 1);
-		}, [applyWebcamBubbleLayout, pixiReady, videoReady]);
+		}, [applyWebcamBubbleLayout, pixiReady, effectiveVideoReady]);
 
 		const syncWebcamMedia = useCallback(() => {
 			const webcamVideo = webcamVideoRef.current;
@@ -1859,11 +1947,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [videoPath]);
 
 		useEffect(() => {
-			onPreviewReadyChange?.(videoReady);
-		}, [onPreviewReadyChange, videoReady]);
+			onPreviewReadyChange?.(effectiveVideoReady);
+		}, [onPreviewReadyChange, effectiveVideoReady]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 
 			const video = videoRef.current;
 			const app = appRef.current;
@@ -1881,10 +1969,23 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				!cameraContainer
 			)
 				return;
-			if (video.videoWidth === 0 || video.videoHeight === 0) return;
+			// With a real video source, wait for it to actually have decoded frames
+			// before creating a sprite/texture from it. With no video source at all
+			// (a project built entirely from generated clips), video.videoWidth can
+			// never become non-zero -- proceed anyway, since this sprite will just
+			// stay hidden behind whichever generated clip is active the whole time.
+			if (!hasNoVideoSource && (video.videoWidth === 0 || video.videoHeight === 0)) return;
 
-			const source = previewVideoSourceRef.current.getSource();
-			const videoTexture = Texture.from(source);
+			// A video-less project's <video> element intentionally always has an
+			// empty src (and therefore always fires a native 'error' event) -- never
+			// wrap it in a real VideoSource, since that attempts to load it and
+			// surfaces that error as an uncaught rejection. A plain empty texture is
+			// fine here: this sprite only exists to be toggled invisible behind
+			// whichever generated clip is active; it never needs to display anything
+			// itself in a project with no real video.
+			const videoTexture = hasNoVideoSource
+				? Texture.EMPTY
+				: Texture.from(previewVideoSourceRef.current.getSource());
 
 			const videoSprite = new Sprite(videoTexture);
 			videoSpriteRef.current = videoSprite;
@@ -1962,10 +2063,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				transitionVideoSourceRef.current.suspend();
 				transitionOverlaySeekedMsRef.current = null;
 			};
-		}, [onPlayStateChange, onTimeUpdate, pixiReady, videoReady]);
+		}, [onPlayStateChange, onTimeUpdate, pixiReady, effectiveVideoReady, hasNoVideoSource]);
 
 		useEffect(() => {
-			if (!pixiReady || !videoReady) return;
+			if (!pixiReady || !effectiveVideoReady) return;
 
 			const app = appRef.current;
 			const videoSprite = videoSpriteRef.current;
@@ -2103,6 +2204,84 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 			};
 
+			// A generated clip visually replaces the main recording's frame during
+			// its span (it's a full-screen insert, not an overlay like webcam/audio),
+			// so this hides the main video sprite and shows the active clip's video
+			// as its own full-frame sprite instead, sized to match exactly.
+			const syncGeneratedClipOverlay = (timelineMs: number) => {
+				const active = findActiveGeneratedClip(generatedClipRegionsRef.current, timelineMs);
+
+				if (!active) {
+					if (generatedClipSpriteRef.current) generatedClipSpriteRef.current.visible = false;
+					videoSprite.visible = true;
+					if (activeGeneratedClipIdRef.current) {
+						generatedClipVideoElementsRef.current
+							.get(activeGeneratedClipIdRef.current)
+							?.pause();
+					}
+					activeGeneratedClipIdRef.current = null;
+					return;
+				}
+
+				const video = generatedClipVideoElementsRef.current.get(active.id);
+				if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+					// Not decoded yet -- keep showing the main video rather than a blank frame.
+					return;
+				}
+
+				videoSprite.visible = false;
+
+				if (activeGeneratedClipIdRef.current !== active.id) {
+					generatedClipPreviewSourceRef.current.setVideo(video);
+					const source = generatedClipPreviewSourceRef.current.getSource();
+					const texture = Texture.from(source);
+					if (generatedClipSpriteRef.current) {
+						generatedClipSpriteRef.current.texture = texture;
+					} else {
+						const sprite = new Sprite(texture);
+						generatedClipSpriteRef.current = sprite;
+						videoContainer.addChild(sprite);
+					}
+					activeGeneratedClipIdRef.current = active.id;
+				}
+
+				const sprite = generatedClipSpriteRef.current;
+				if (!sprite) return;
+				sprite.visible = true;
+				// Sized from the mask rect (plain layout data, correct even with no
+				// real main video -- see layoutVideoContent's fallbackSize) rather
+				// than copied from videoSprite's own width/height, which reflects its
+				// *texture's* dimensions. In a video-less project that texture comes
+				// from an intentionally empty, always-erroring video element, so
+				// videoSprite.width/height is unreliable (0 or a stale placeholder)
+				// even though the mask rect itself is sized correctly.
+				sprite.anchor.set(0, 0);
+				sprite.x = baseMaskRef.current.x;
+				sprite.y = baseMaskRef.current.y;
+				sprite.width = baseMaskRef.current.width;
+				sprite.height = baseMaskRef.current.height;
+				sprite.mask = null;
+				sprite.alpha = 1;
+
+				const targetSeconds = getGeneratedClipTargetTimeSeconds(timelineMs, active);
+				if (
+					shouldSeekGeneratedClipMedia({
+						desiredTime: targetSeconds,
+						currentTime: video.currentTime,
+						isPlaying: isPlayingRef.current,
+					})
+				) {
+					video.currentTime = Number.isFinite(video.duration)
+						? Math.min(targetSeconds, Math.max(0, video.duration - 0.01))
+						: targetSeconds;
+				}
+				if (isPlayingRef.current && video.paused) {
+					video.play().catch(() => undefined);
+				} else if (!isPlayingRef.current && !video.paused) {
+					video.pause();
+				}
+			};
+
 			const ticker = () => {
 				if (suspendRenderingRef.current) {
 					return;
@@ -2234,6 +2413,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				}
 
 				syncTransitionOverlay(contentTimeMs);
+				syncGeneratedClipOverlay(contentTimeMs);
 			};
 
 			app.ticker.add(ticker);
@@ -2242,7 +2422,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					app.ticker.remove(ticker);
 				}
 			};
-		}, [pixiReady, videoReady, applyWebcamBubbleLayout]);
+		}, [pixiReady, effectiveVideoReady, applyWebcamBubbleLayout]);
 
 		useEffect(() => {
 			const overlay = cursorOverlayRef.current;
@@ -2496,7 +2676,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					}}
 				/>
 				{/* Only render overlay after PIXI and video are fully initialized */}
-				{pixiReady && videoReady && (
+				{pixiReady && effectiveVideoReady && (
 					<div
 						ref={overlayRef}
 						className="absolute inset-0 select-none"
@@ -2891,7 +3071,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					aria-hidden="true"
 					onLoadedMetadata={handleLoadedMetadata}
 					onDurationChange={(e) => {
-						onDurationChange(e.currentTarget.duration);
+						// An empty/no-op src (a video-less, generated-clips-only project)
+						// reports duration as NaN, not 0 -- passing that through makes
+						// every downstream Math.max/arithmetic involving it silently
+						// become NaN too (Math.max(NaN, x) is always NaN), which is
+						// falsy just like 0 is, so it looked like "no duration" was
+						// already handled when it actually broke differently downstream.
+						const nextDuration = e.currentTarget.duration;
+						onDurationChange(Number.isFinite(nextDuration) ? nextDuration : 0);
 					}}
 					onError={(e) => {
 						// No video path means there's nothing to load — an empty `src`

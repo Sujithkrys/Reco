@@ -81,6 +81,11 @@ async function restoreProjectMedia(projectData: unknown): Promise<unknown> {
 // ---------------------------------------------------------------------------
 
 const WEB_SETTINGS_KEY = "reco-web-settings";
+// Tracks which saved project should be restored on the next page load --
+// localStorage (not the in-memory currentVideoPath/currentRecordingSession
+// vars below) is the only thing that survives an actual page refresh, since
+// a refresh re-executes this whole module from scratch.
+const LAST_OPEN_PROJECT_KEY = "reco-last-open-project-id";
 
 function readSettings(): Record<string, unknown> {
 	try {
@@ -166,18 +171,36 @@ export const webElectronAPI: unknown = {
 	},
 
 	// ── Project persistence ──────────────────────────────────────────────
-	loadCurrentProjectFile: async () => ({
-		success: false,
-		project: null,
-		path: null,
-	}),
+	// Called when the user deliberately navigates back to the dashboard, so a
+	// refresh there stays on the dashboard instead of jumping back into the
+	// project that's still recorded as "last open" in localStorage.
+	clearCurrentProjectFile: async () => {
+		localStorage.removeItem(LAST_OPEN_PROJECT_KEY);
+		return { success: true };
+	},
+	loadCurrentProjectFile: async () => {
+		try {
+			const lastProjectId = localStorage.getItem(LAST_OPEN_PROJECT_KEY);
+			if (!lastProjectId) return { success: false, project: null, path: null };
+
+			const projectRecord = (await get(`project_${lastProjectId}`)) as any;
+			if (!projectRecord) return { success: false, project: null, path: null };
+
+			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
+			return { success: true, project: restoredData, path: lastProjectId };
+		} catch (e: unknown) {
+			console.error("Failed to restore last open project:", e);
+			return { success: false, project: null, path: null };
+		}
+	},
 	openProjectFileAtPath: async (_path: string) => {
 		try {
 			const projectRecord = await get(`project_${_path}`) as any;
 			if (!projectRecord) throw new Error("Project not found");
-			
+
 			const restoredData = await restoreProjectMedia(projectRecord.editor_state);
-			
+			localStorage.setItem(LAST_OPEN_PROJECT_KEY, _path);
+
 			return { success: true, project: restoredData, path: _path };
 		} catch (e: unknown) {
 			return { success: false, message: (e as Error).message, path: null };
@@ -202,18 +225,24 @@ export const webElectronAPI: unknown = {
 				thumbnail_url: thumbnail || null,
 				updated_at: new Date().toISOString()
 			});
-			
+			localStorage.setItem(LAST_OPEN_PROJECT_KEY, projectId);
+
 			return { success: true, path: projectId };
 		} catch (e: unknown) {
 			console.error(e);
 			return { success: false, path: null, message: (e as Error).message };
 		}
 	},
-	getProjectLibrary: async () => {
+	// Named to match useProjectLibraryController's refreshProjectLibrary(), the
+	// only caller -- this was previously named getProjectLibrary and returned
+	// `library` instead of `entries`, so that call has always thrown (caught
+	// and silently swallowed), leaving the dashboard's project list empty no
+	// matter how many projects were actually saved.
+	listProjectFiles: async () => {
 		try {
 			const allKeys = await keys();
 			const projectKeys = allKeys.filter(k => typeof k === 'string' && k.startsWith("project_"));
-			
+
 			const projects = [];
 			for (const key of projectKeys) {
 				const project = await get(key) as any;
@@ -221,10 +250,10 @@ export const webElectronAPI: unknown = {
 					projects.push(project);
 				}
 			}
-			
+
 			projects.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-			
-			const library = projects.map(p => ({
+
+			const entries = projects.map(p => ({
 				path: p.id,
 				name: p.name,
 				updatedAt: new Date(p.updated_at).getTime(),
@@ -232,18 +261,35 @@ export const webElectronAPI: unknown = {
 				isCurrent: false,
 				isInProjectsDirectory: true
 			}));
-			return { success: true, library };
+			return { success: true, entries };
 		} catch (e: unknown) {
 			console.error(e);
-			return { success: true, library: [] };
+			return { success: false, entries: [], error: (e as Error).message };
 		}
 	},
 	deleteProjectFile: async (_path: string) => {
 		try {
 			await del(`project_${_path}`);
+			if (localStorage.getItem(LAST_OPEN_PROJECT_KEY) === _path) {
+				localStorage.removeItem(LAST_OPEN_PROJECT_KEY);
+			}
 			return { success: true };
 		} catch {
 			return { success: false };
+		}
+	},
+	renameProjectFile: async (_path: string, newName: string) => {
+		try {
+			const projectRecord = (await get(`project_${_path}`)) as any;
+			if (!projectRecord) return { success: false, message: "Project not found" };
+			await set(`project_${_path}`, {
+				...projectRecord,
+				name: newName,
+				updated_at: new Date().toISOString(),
+			});
+			return { success: true };
+		} catch (e: unknown) {
+			return { success: false, message: (e as Error).message };
 		}
 	},
 	getProjectThumbnail: async (_path: string) => ({
