@@ -152,9 +152,12 @@ serve(async (req: Request) => {
     const transcriptionKey = useGroqTranscription ? groqApiKey : openAiApiKey;
     const transcriptionModel = useGroqTranscription ? "whisper-large-v3-turbo" : "whisper-1";
 
+    const prompt = (formData.get("prompt") as string) || "Reco is a screen recording and video editing app.";
+
     const whisperFormData = new FormData();
     whisperFormData.append("file", fileData, "audio.m4a");
     whisperFormData.append("model", transcriptionModel);
+    whisperFormData.append("prompt", prompt);
     whisperFormData.append("response_format", "verbose_json");
     whisperFormData.append("timestamp_granularities[]", "word");
     whisperFormData.append("timestamp_granularities[]", "segment");
