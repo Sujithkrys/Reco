@@ -35,14 +35,15 @@ serve(async (req: Request) => {
       const body = await req.json();
       const { action, transcript, provider: requestedProvider } = body;
 
-      const useOpenAiChat = requestedProvider === "groq"
-        ? false
-        : requestedProvider === "openai"
-          ? true
-          : Boolean(openAiApiKey);
+      const useOpenAiChat = requestedProvider === "openai"
+        ? true
+        : requestedProvider === "groq"
+          ? false
+          : !groqApiKey && Boolean(openAiApiKey);
       const chatUrl = useOpenAiChat
         ? "https://api.openai.com/v1/chat/completions"
         : "https://api.groq.com/openai/v1/chat/completions";
+      const chatKey = useOpenAiChat ? openAiApiKey : groqApiKey;
       const groqChatModel = (body.chatModel as string) || Deno.env.get("GROQ_CHAT_MODEL") || "openai/gpt-oss-120b";
       const chatModel = useOpenAiChat ? "gpt-4o-mini" : groqChatModel;
 
@@ -131,12 +132,12 @@ serve(async (req: Request) => {
       ? false
       : Boolean(groqApiKey);
 
-    // Translation & Chapters: OpenAI gpt-4o-mini if OPENAI_API_KEY present (unless overridden to groq), else Groq llama-3.3-70b-versatile
-    const useOpenAiChat = requestedProvider === "groq"
-      ? false
-      : requestedProvider === "openai"
-        ? true
-        : Boolean(openAiApiKey);
+    // Translation & Chapters: Groq if GROQ_API_KEY present (unless overridden to openai), else OpenAI gpt-4o-mini
+    const useOpenAiChat = requestedProvider === "openai"
+      ? true
+      : requestedProvider === "groq"
+        ? false
+        : !groqApiKey && Boolean(openAiApiKey);
     const chatUrl = useOpenAiChat
       ? "https://api.openai.com/v1/chat/completions"
       : "https://api.groq.com/openai/v1/chat/completions";
