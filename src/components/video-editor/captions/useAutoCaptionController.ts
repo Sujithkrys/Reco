@@ -33,6 +33,7 @@ interface UseAutoCaptionControllerParams {
 	setIsGeneratingCaptions: Dispatch<SetStateAction<boolean>>;
 	autoCaptionSettings: AutoCaptionSettings;
 	setAutoCaptionSettings: Dispatch<SetStateAction<AutoCaptionSettings>>;
+	autoCaptions?: CaptionCue[];
 	setAutoCaptions: Dispatch<SetStateAction<CaptionCue[]>>;
 	syncActiveVideoSource: (sourcePath: string, webcamPath?: string | null) => Promise<void>;
 }
@@ -57,6 +58,7 @@ export function useAutoCaptionController({
 	setIsGeneratingCaptions,
 	autoCaptionSettings,
 	setAutoCaptionSettings,
+	autoCaptions,
 	setAutoCaptions,
 	syncActiveVideoSource,
 }: UseAutoCaptionControllerParams) {
@@ -198,10 +200,24 @@ export function useAutoCaptionController({
 				toast.error(errorMessage || "Failed to generate captions");
 				return;
 			}
-			setAutoCaptions(result.cues);
-			if (result.cues.length > 0) {
-				setAutoCaptionSettings((current) => ({ ...current, enabled: true }));
+			if (result.cues.length === 0) {
+				let hadExisting = Boolean(autoCaptions && autoCaptions.length > 0);
+				if (!hadExisting) {
+					setAutoCaptions((current) => {
+						if (current && current.length > 0) {
+							hadExisting = true;
+						}
+						return current;
+					});
+				}
+				const toastMessage = hadExisting
+					? "No speech detected. Existing captions kept."
+					: "No speech detected";
+				toast.info(toastMessage);
+				return;
 			}
+			setAutoCaptions(result.cues);
+			setAutoCaptionSettings((current) => ({ ...current, enabled: true }));
 			toast.success(result.message || `Generated ${result.cues.length} captions`);
 		} catch (error) {
 			toast.error(getErrorMessage(error));
@@ -211,6 +227,7 @@ export function useAutoCaptionController({
 		}
 	}, [
 		autoCaptionSettings.language,
+		autoCaptions,
 		isGeneratingCaptions,
 		setAutoCaptionSettings,
 		setAutoCaptions,
