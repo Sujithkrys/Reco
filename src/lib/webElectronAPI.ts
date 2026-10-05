@@ -748,7 +748,18 @@ export const webElectronAPI: unknown = {
 				throw new Error(data?.error || "Edge function failed");
 			}
 
-			return { success: true, cues: data.cues, message: `Generated ${data.cues.length} captions` };
+			const cues = data.cues || [];
+			const noSpeechDetected = Boolean(data.noSpeechDetected || cues.length === 0);
+			const message = noSpeechDetected
+				? "No speech detected"
+				: `Generated ${cues.length} captions`;
+
+			return { 
+				success: true, 
+				cues, 
+				noSpeechDetected,
+				message 
+			};
 		} catch (error: any) {
 			console.error("[webElectronAPI] generateAutoCaptions error:", error);
 			return { success: false, error: error.message };

@@ -178,6 +178,32 @@ serve(async (req: Request) => {
     const whisperResult = await whisperResponse.json();
     let segments = whisperResult.segments || [];
 
+    // Filter out hallucinated or silent segments
+    const stockPhrases = ["thank you", "thanks for watching", "bye", "you"];
+    segments = segments.filter((seg: any) => {
+      const duration = (seg.end ?? 0) - (seg.start ?? 0);
+      const isHighNoSpeechProb = typeof seg.no_speech_prob === "number" && seg.no_speech_prob > 0.6;
+      const isLowConfidenceLongDuration = typeof seg.avg_logprob === "number" && seg.avg_logprob < -1.0 && duration > 10;
+      
+      const normalizedText = (seg.text || "").trim().toLowerCase().replace(/[.,!?;:\"'-]/g, "");
+      const isStockHallucination = stockPhrases.includes(normalizedText) && duration > 5;
+
+      return !isHighNoSpeechProb && !isLowConfidenceLongDuration && !isStockHallucination;
+    });
+
+    if (segments.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        noSpeechDetected: true,
+        transcriptionProvider: useGroqTranscription ? "groq" : "openai",
+        transcriptionModel,
+        cues: [], 
+        chapters: [],
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Optional translation via Chat Completions
     let translationUsage: any = undefined;
     if (targetLanguage && targetLanguage !== "auto" && targetLanguage !== whisperResult.language) {
@@ -304,6 +330,7 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
+      noSpeechDetected: cues.length === 0,
       transcriptionProvider: useGroqTranscription ? "groq" : "openai",
       transcriptionModel,
       cues, 
