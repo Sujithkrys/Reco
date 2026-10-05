@@ -227,9 +227,25 @@ export function EditorLayout(props: Props) {
 		);
 
 	// Ensure we are in a valid editor section
-	const safeActiveSection = ["scene", "cursor", "webcam", "captions"].includes(ui.activeEffectSection)
-		? ui.activeEffectSection
-		: "scene";
+	const validEditorSections: EditorEffectSection[] = [
+		"scene",
+		"cursor",
+		"webcam",
+		"captions",
+		"caption",
+		"audio",
+		"zoom",
+		"clip",
+		"settings",
+		"frame",
+		"crop",
+		"extensions",
+	];
+	const safeActiveSection =
+		validEditorSections.includes(ui.activeEffectSection) ||
+		ui.activeEffectSection.startsWith("ext:")
+			? ui.activeEffectSection
+			: "scene";
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-editor-bg text-foreground selection:bg-[#2563EB]/30">
