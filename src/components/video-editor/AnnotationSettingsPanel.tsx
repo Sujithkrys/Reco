@@ -13,6 +13,7 @@ import {
 	TextT as Type,
 	TextUnderline as Underline,
 	UploadSimple as Upload,
+	X,
 } from "@phosphor-icons/react";
 import Block from "@uiw/react-color-block";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -55,6 +56,7 @@ interface AnnotationSettingsPanelProps {
 	onDelete: () => void;
 	currentTimeMs?: number;
 	onSeek?: (seconds: number) => void;
+	onClose?: () => void;
 }
 
 export const FONT_FAMILY_VALUES = [
@@ -82,6 +84,7 @@ export function AnnotationSettingsPanel({
 	onDelete,
 	currentTimeMs,
 	onSeek,
+	onClose,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
 	const shape = annotation.shapeData ?? DEFAULT_SHAPE_DATA;
@@ -161,9 +164,23 @@ export function AnnotationSettingsPanel({
 						<span className="text-sm font-medium text-foreground">
 							{t("annotations.settings")}
 						</span>
-						<span className="text-[10px] uppercase tracking-wider font-medium text-[#2563EB] bg-[#2563EB]/10 px-2 py-1 rounded-full">
-							{t("annotations.active")}
-						</span>
+						<div className="flex items-center gap-2">
+							<span className="text-[10px] uppercase tracking-wider font-medium text-[#2563EB] bg-[#2563EB]/10 px-2 py-1 rounded-full">
+								{t("annotations.active")}
+							</span>
+							{onClose && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									onClick={onClose}
+									className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+									aria-label={t("common.actions.close", "Close")}
+								>
+									<X className="h-4 w-4" />
+								</Button>
+							)}
+						</div>
 					</div>
 
 					{currentTimeMs !== undefined &&

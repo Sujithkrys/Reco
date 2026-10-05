@@ -632,6 +632,10 @@ interface SettingsPanelProps {
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onSelectAnnotation?: (id: string | null) => void;
+	onSelectZoom?: (id: string | null) => void;
+	onSelectClip?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null) => void;
 	currentTimeMs?: number;
 	onSeek?: (seconds: number) => void;
 	autoCaptions?: CaptionCue[];
@@ -1083,6 +1087,10 @@ export function SettingsPanel({
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
 	onAnnotationDelete,
+	onSelectAnnotation,
+	onSelectZoom,
+	onSelectClip,
+	onSelectAudio,
 	currentTimeMs,
 	onSeek,
 	autoCaptions = [],
@@ -2050,6 +2058,7 @@ export function SettingsPanel({
 				annotation={selectedAnnotation}
 				currentTimeMs={currentTimeMs}
 				onSeek={onSeek}
+				onClose={() => onSelectAnnotation?.(null)}
 				onContentChange={(content) =>
 					onAnnotationContentChange(selectedAnnotation.id, content)
 				}
@@ -2926,15 +2935,27 @@ export function SettingsPanel({
 					<>
 						<div className="flex items-center justify-between gap-3">
 							<SectionLabel>{tSettings("sections.zoom", "Zoom")}</SectionLabel>
-							{selectedZoomDepth && (
-								<span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#2563EB]">
-									{
-										ZOOM_DEPTH_OPTIONS.find(
-											(o) => o.depth === selectedZoomDepth,
-										)?.label
-									}
-								</span>
-							)}
+							<div className="flex items-center gap-2">
+								{selectedZoomDepth && (
+									<span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#2563EB]">
+										{
+											ZOOM_DEPTH_OPTIONS.find(
+												(o) => o.depth === selectedZoomDepth,
+											)?.label
+										}
+									</span>
+								)}
+								{selectedZoomId && onSelectZoom && (
+									<button
+										type="button"
+										onClick={() => onSelectZoom(null)}
+										className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+										aria-label={t("common.actions.close", "Close")}
+									>
+										<X className="h-3.5 w-3.5" />
+									</button>
+								)}
+							</div>
 						</div>
 						<div className="mb-1">
 							<div className="flex rounded-lg border border-foreground/10 bg-foreground/5 p-0.5">
@@ -3048,16 +3069,28 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-3">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("audio.volumeTitle", "Audio")}</SectionLabel>
-					<button
-						type="button"
-						onClick={() => {
-							onAudioVolumeChange?.(1);
-							onAudioNormalizeChange?.(false);
-						}}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={() => {
+								onAudioVolumeChange?.(1);
+								onAudioNormalizeChange?.(false);
+							}}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+						{selectedAudioId && onSelectAudio && (
+							<button
+								type="button"
+								onClick={() => onSelectAudio(null)}
+								className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+								aria-label={t("common.actions.close", "Close")}
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+						)}
+					</div>
 				</div>
 				<SliderControl
 					label={tSettings("audio.volume", "Volume")}
@@ -3087,11 +3120,23 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("clip.title", "Clip")}</SectionLabel>
-					{selectedClipSpeed != null && selectedClipSpeed !== 1 && (
-						<span className="rounded-full bg-[#06b6d4]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#06b6d4]">
-							{selectedClipSpeed}×
-						</span>
-					)}
+					<div className="flex items-center gap-2">
+						{selectedClipSpeed != null && selectedClipSpeed !== 1 && (
+							<span className="rounded-full bg-[#06b6d4]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#06b6d4]">
+								{selectedClipSpeed}×
+							</span>
+						)}
+						{selectedClipId && onSelectClip && (
+							<button
+								type="button"
+								onClick={() => onSelectClip(null)}
+								className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+								aria-label={t("common.actions.close", "Close")}
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+						)}
+					</div>
 				</div>
 
 				<div className="flex items-center gap-3">
