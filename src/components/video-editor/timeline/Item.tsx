@@ -175,6 +175,8 @@ export default function Item({
 			{...attributes}
 			data-timeline-item="true"
 			onPointerDownCapture={handleSelect}
+			onMouseDown={(event) => event.stopPropagation()}
+			onClick={(event) => event.stopPropagation()}
 			className="group h-full"
 		>
 			<div

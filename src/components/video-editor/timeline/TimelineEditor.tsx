@@ -381,6 +381,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			videoDuration,
 			totalMs,
 			currentTimeMs,
+			onSeek,
 			safeMinDurationMs,
 			cursorTelemetry,
 			autoSuggestZoomsTrigger,

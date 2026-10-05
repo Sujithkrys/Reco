@@ -838,16 +838,8 @@ export default function TimelineCanvas({
 		(e: MouseEvent<HTMLDivElement>) => {
 			if (isSeeking) return;
 			if (!onSeek || videoDurationMs <= 0) return;
-
-			if (onClearBlockSelection) {
-				onClearBlockSelection();
-			} else {
-				onSelectZoom?.(null);
-				onSelectClip?.(null);
-				onSelectAnnotation?.(null);
-				onSelectAudio?.(null);
-				onSelectCaption?.(null);
-				onSelectGeneratedClip?.(null);
+			if ((e.target as HTMLElement).closest("[data-timeline-item]")) {
+				return;
 			}
 
 			const rect = e.currentTarget.getBoundingClientRect();
@@ -863,13 +855,6 @@ export default function TimelineCanvas({
 		[
 			isSeeking,
 			onSeek,
-			onSelectZoom,
-			onSelectClip,
-			onSelectAnnotation,
-			onSelectAudio,
-			onSelectCaption,
-			onSelectGeneratedClip,
-			onClearBlockSelection,
 			videoDurationMs,
 			sidebarWidth,
 			direction,
@@ -898,17 +883,6 @@ export default function TimelineCanvas({
 				return;
 			}
 
-			if (onClearBlockSelection) {
-				onClearBlockSelection();
-			} else {
-				onSelectZoom?.(null);
-				onSelectClip?.(null);
-				onSelectAnnotation?.(null);
-				onSelectAudio?.(null);
-				onSelectCaption?.(null);
-				onSelectGeneratedClip?.(null);
-			}
-
 			const rect = localTimelineRef.current.getBoundingClientRect();
 			onSeek(getAbsoluteMsFromClientX(e.clientX, rect) / 1000);
 			setIsSeeking(true);
@@ -916,14 +890,7 @@ export default function TimelineCanvas({
 		},
 		[
 			getAbsoluteMsFromClientX,
-			onClearBlockSelection,
 			onSeek,
-			onSelectAnnotation,
-			onSelectAudio,
-			onSelectCaption,
-			onSelectClip,
-			onSelectZoom,
-			onSelectGeneratedClip,
 			videoDurationMs,
 		],
 	);

@@ -369,6 +369,7 @@ export default function VideoEditor() {
 		setNativeCaptureUnavailableModalOpen,
 		handleUploadWebcam,
 		handleClearWebcam,
+		onSeek: editing.playback.handleTimelineSeek,
 	});
 	const commonProps = {
 		t,

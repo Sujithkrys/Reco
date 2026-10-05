@@ -38,6 +38,7 @@ type Input = {
 	setNativeCaptureUnavailableModalOpen: Dispatch<SetStateAction<boolean>>;
 	handleUploadWebcam: () => void;
 	handleClearWebcam: () => void;
+	onSeek?: (seconds: number) => void;
 };
 
 export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof SettingsPanel> {
@@ -226,5 +227,7 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onAnnotationBlurIntensityChange: annotationCommands.handleAnnotationBlurIntensityChange,
 		onAnnotationBlurColorChange: annotationCommands.handleAnnotationBlurColorChange,
 		onAnnotationDelete: annotationCommands.handleAnnotationDelete,
+		currentTimeMs: currentTime * 1000,
+		onSeek: input.onSeek,
 	};
 }

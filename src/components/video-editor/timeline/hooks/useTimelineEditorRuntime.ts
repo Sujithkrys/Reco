@@ -29,6 +29,7 @@ interface UseTimelineEditorRuntimeParams {
 	videoDuration: number;
 	totalMs: number;
 	currentTimeMs: number;
+	onSeek?: (timeInSeconds: number) => void;
 	safeMinDurationMs: number;
 	cursorTelemetry: CursorTelemetryPoint[];
 	autoSuggestZoomsTrigger: number;
@@ -86,6 +87,7 @@ export function useTimelineEditorRuntime({
 	videoDuration,
 	totalMs,
 	currentTimeMs,
+	onSeek,
 	safeMinDurationMs,
 	cursorTelemetry,
 	autoSuggestZoomsTrigger,
@@ -187,6 +189,7 @@ export function useTimelineEditorRuntime({
 		onSelectAudio,
 		onSelectCaption,
 		onSelectGeneratedClip,
+		onSeek,
 	});
 
 	useTimelineNormalization({

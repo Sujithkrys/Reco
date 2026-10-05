@@ -89,10 +89,7 @@ import {
 	type ZoomRegion,
 	type ZoomTransitionEasing,
 } from "./types";
-import {
-	isAnnotationActiveAtTime,
-	shouldClearSelectedAnnotation,
-} from "./videoPlayback/annotationVisibility";
+import { isAnnotationActiveAtTime } from "./videoPlayback/annotationVisibility";
 import { createClipPlayback, findPreviewClipAtTimelineTime } from "./videoPlayback/clipPlayback";
 import { DEFAULT_FOCUS } from "./videoPlayback/constants";
 import {
@@ -1328,21 +1325,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			selectedZoomIdRef.current = selectedZoomId;
 		}, [selectedZoomId]);
 
-		useEffect(() => {
-			if (!selectedAnnotationId || !onSelectAnnotation) {
-				return;
-			}
-
-			if (
-				shouldClearSelectedAnnotation(
-					annotationRegions ?? [],
-					selectedAnnotationId,
-					Math.round(timelineTime * 1000),
-				)
-			) {
-				onSelectAnnotation(null);
-			}
-		}, [annotationRegions, timelineTime, onSelectAnnotation, selectedAnnotationId]);
 
 		useEffect(() => {
 			isPlayingRef.current = isPlaying;

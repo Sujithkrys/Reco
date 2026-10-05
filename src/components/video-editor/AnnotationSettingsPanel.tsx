@@ -53,6 +53,8 @@ interface AnnotationSettingsPanelProps {
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
 	onDelete: () => void;
+	currentTimeMs?: number;
+	onSeek?: (seconds: number) => void;
 }
 
 export const FONT_FAMILY_VALUES = [
@@ -78,6 +80,8 @@ export function AnnotationSettingsPanel({
 	onBlurIntensityChange,
 	onBlurColorChange,
 	onDelete,
+	currentTimeMs,
+	onSeek,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
 	const shape = annotation.shapeData ?? DEFAULT_SHAPE_DATA;
@@ -161,6 +165,27 @@ export function AnnotationSettingsPanel({
 							{t("annotations.active")}
 						</span>
 					</div>
+
+					{currentTimeMs !== undefined &&
+						(currentTimeMs < annotation.startMs || currentTimeMs > annotation.endMs) && (
+							<div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-500 dark:text-amber-400">
+								<div className="flex items-center gap-2 min-w-0">
+									<Info className="h-4 w-4 shrink-0" />
+									<span className="truncate">This layer isn't visible at the current time</span>
+								</div>
+								{onSeek && (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										onClick={() => onSeek(annotation.startMs / 1000)}
+										className="h-7 shrink-0 text-xs px-2.5 border-amber-500/30 hover:bg-amber-500/20 text-amber-600 dark:text-amber-300"
+									>
+										Jump to layer
+									</Button>
+								)}
+							</div>
+						)}
 
 					{/* Type Selector */}
 					<Tabs

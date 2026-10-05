@@ -145,6 +145,14 @@ export function useTimelineEditingController(input: Input) {
 				timeline.setSelectedAudioId(null);
 				timeline.setSelectedCaptionId(null);
 				timeline.setSelectedGeneratedClipId(null);
+
+				const target = timeline.annotationRegions.find((a) => a.id === id);
+				if (target) {
+					const currentMs = projection.timelinePlayheadTime * 1000;
+					if (currentMs < target.startMs || currentMs > target.endMs) {
+						playback.handleTimelineSeek(target.startMs / 1000);
+					}
+				}
 			}
 		},
 		[
@@ -153,6 +161,9 @@ export function useTimelineEditingController(input: Input) {
 			timeline.setSelectedAudioId,
 			timeline.setSelectedCaptionId,
 			timeline.setSelectedGeneratedClipId,
+			timeline.annotationRegions,
+			projection.timelinePlayheadTime,
+			playback.handleTimelineSeek,
 		],
 	);
 	const handleSelectGeneratedClip = useCallback(

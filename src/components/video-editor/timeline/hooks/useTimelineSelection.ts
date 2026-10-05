@@ -26,6 +26,7 @@ interface UseTimelineSelectionParams {
 	onSelectAudio?: (id: string | null) => void;
 	onSelectCaption?: (id: string | null) => void;
 	onSelectGeneratedClip?: (id: string | null) => void;
+	onSeek?: (timeInSeconds: number) => void;
 }
 
 export function useTimelineSelection({
@@ -51,6 +52,7 @@ export function useTimelineSelection({
 	onSelectAudio,
 	onSelectCaption,
 	onSelectGeneratedClip,
+	onSeek,
 }: UseTimelineSelectionParams) {
 	const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
 	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
@@ -195,8 +197,14 @@ export function useTimelineSelection({
 		(id: string | null) => {
 			setSelectAllBlocksActive(false);
 			onSelectAnnotation?.(id);
+			if (id && onSeek) {
+				const target = annotationRegions.find((a) => a.id === id);
+				if (target && (currentTimeMs < target.startMs || currentTimeMs > target.endMs)) {
+					onSeek(target.startMs / 1000);
+				}
+			}
 		},
-		[onSelectAnnotation],
+		[onSelectAnnotation, onSeek, annotationRegions, currentTimeMs],
 	);
 
 	const handleSelectAudio = useCallback(

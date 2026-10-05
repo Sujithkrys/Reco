@@ -632,6 +632,8 @@ interface SettingsPanelProps {
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
 	onAnnotationDelete?: (id: string) => void;
+	currentTimeMs?: number;
+	onSeek?: (seconds: number) => void;
 	autoCaptions?: CaptionCue[];
 	autoCaptionSettings?: AutoCaptionSettings;
 	whisperExecutablePath?: string | null;
@@ -1081,6 +1083,8 @@ export function SettingsPanel({
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
 	onAnnotationDelete,
+	currentTimeMs,
+	onSeek,
 	autoCaptions = [],
 	autoCaptionSettings = DEFAULT_AUTO_CAPTION_SETTINGS,
 	whisperModelPath,
@@ -2044,6 +2048,8 @@ export function SettingsPanel({
 		return (
 			<AnnotationSettingsPanel
 				annotation={selectedAnnotation}
+				currentTimeMs={currentTimeMs}
+				onSeek={onSeek}
 				onContentChange={(content) =>
 					onAnnotationContentChange(selectedAnnotation.id, content)
 				}
