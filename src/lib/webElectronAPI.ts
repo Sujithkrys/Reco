@@ -688,12 +688,13 @@ export const webElectronAPI: unknown = {
 			const { WebDemuxer } = await import("web-demuxer");
 			
 			// dummy export config
-			const config = { frameRate: 30, width: 0, height: 0, bitRate: 0, sampleRate: 16000 };
+			const config = { frameRate: 30, width: 0, height: 0, bitrate: 0, sampleRate: 16000 };
 			const muxer = new VideoMuxer(config, true, "buffer", false);
 			await muxer.initialize();
 			
-			const demuxer = new WebDemuxer(videoPath);
-			await demuxer.load();
+			const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
+			const demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
+			await demuxer.load(videoPath);
 			
 			const audioProcessor = new AudioProcessor();
 			await audioProcessor.process(
