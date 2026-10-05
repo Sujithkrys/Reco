@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { useMemo, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -293,60 +294,77 @@ export function EditorPreviewPanel(props: Props) {
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<div className="mx-1 h-4 w-px bg-foreground/10" />
-					<Button
-						onClick={() => timelineRef.current?.addZoom()}
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-[#2563EB]/10 hover:text-[#2563EB]"
-						title={t("timeline.zoom.addZoom")}
-					>
-						<MagnifyingGlassPlus className="h-4 w-4" />
-					</Button>
-					<Button
-						onClick={() => timelineRef.current?.suggestZooms()}
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-[#2563EB]/10 hover:text-[#2563EB]"
-						title={t("timeline.zoom.suggestZooms")}
-					>
-						<MagicWand className="h-4 w-4" />
-					</Button>
-					<Button
-						onClick={() => timelineRef.current?.splitClip()}
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
-						title={t("editor.toolbar.splitClip")}
-					>
-						<Scissors className="h-4 w-4" />
-					</Button>
-					<Button
-						onClick={() => setSilenceModalOpen(true)}
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-emerald-500/10 hover:text-emerald-500"
-						title="Smart Cut / Silence Removal"
-					>
-						<Waveform className="h-4 w-4" />
-					</Button>
-					<Button
-						onClick={() => setChapterModalOpen(true)}
-						variant="ghost"
-						size="icon"
-						className={`h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400 ${
-							timeline.chapters && timeline.chapters.length > 0 ? "text-amber-400" : ""
-						}`}
-						title={
+					<Tooltip content={t("timeline.zoom.addZoom")} asChild>
+						<Button
+							onClick={() => timelineRef.current?.addZoom()}
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-[#2563EB]/10 hover:text-[#2563EB]"
+							aria-label={t("timeline.zoom.addZoom")}
+						>
+							<MagnifyingGlassPlus className="h-4 w-4" />
+						</Button>
+					</Tooltip>
+					<Tooltip content={t("timeline.zoom.suggestZooms")} asChild>
+						<Button
+							onClick={() => timelineRef.current?.suggestZooms()}
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-[#2563EB]/10 hover:text-[#2563EB]"
+							aria-label={t("timeline.zoom.suggestZooms")}
+						>
+							<MagicWand className="h-4 w-4" />
+						</Button>
+					</Tooltip>
+					<Tooltip content={t("editor.toolbar.splitClip")} asChild>
+						<Button
+							onClick={() => timelineRef.current?.splitClip()}
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
+							aria-label={t("editor.toolbar.splitClip")}
+						>
+							<Scissors className="h-4 w-4" />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Smart Cut / Silence Removal" asChild>
+						<Button
+							onClick={() => setSilenceModalOpen(true)}
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-emerald-500/10 hover:text-emerald-500"
+							aria-label="Smart Cut / Silence Removal"
+						>
+							<Waveform className="h-4 w-4" />
+						</Button>
+					</Tooltip>
+					<Tooltip
+						content={
 							timeline.chapters && timeline.chapters.length > 0
 								? `Video Chapters (${timeline.chapters.length})`
 								: "Video Chapters"
 						}
+						asChild
 					>
-						<BookmarkSimple
-							className="h-4 w-4"
-							weight={timeline.chapters && timeline.chapters.length > 0 ? "fill" : "regular"}
-						/>
-					</Button>
+						<Button
+							onClick={() => setChapterModalOpen(true)}
+							variant="ghost"
+							size="icon"
+							className={`h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-amber-500/10 hover:text-amber-400 ${
+								timeline.chapters && timeline.chapters.length > 0 ? "text-amber-400" : ""
+							}`}
+							aria-label={
+								timeline.chapters && timeline.chapters.length > 0
+									? `Video Chapters (${timeline.chapters.length})`
+									: "Video Chapters"
+							}
+						>
+							<BookmarkSimple
+								className="h-4 w-4"
+								weight={timeline.chapters && timeline.chapters.length > 0 ? "fill" : "regular"}
+							/>
+						</Button>
+					</Tooltip>
 				</div>
 
 				<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
@@ -359,37 +377,43 @@ export function EditorPreviewPanel(props: Props) {
 								</span>
 							)}
 						</span>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
-							title={t("editor.playback.skipBack")}
-							onClick={playback.handlePreviewSkipBack}
-						>
-							<SkipBack className="h-3.5 w-3.5" weight="fill" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon"
-							className={`h-7 w-7 rounded-full border border-foreground/10 shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition-all ${isPlaying ? "bg-foreground/10 text-foreground hover:bg-foreground/20" : "bg-neutral-800 text-white hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-white/90"}`}
-							onClick={playback.togglePlayPause}
-							title={isPlaying ? "Pause" : "Play"}
-						>
-							{isPlaying ? (
-								<Pause className="h-3.5 w-3.5" weight="fill" />
-							) : (
-								<Play className="h-3.5 w-3.5" weight="fill" />
-							)}
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
-							title={t("editor.playback.skipForward")}
-							onClick={playback.handlePreviewSkipForward}
-						>
-							<SkipForward className="h-3.5 w-3.5" weight="fill" />
-						</Button>
+						<Tooltip content={t("editor.playback.skipBack")} asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
+								aria-label={t("editor.playback.skipBack")}
+								onClick={playback.handlePreviewSkipBack}
+							>
+								<SkipBack className="h-3.5 w-3.5" weight="fill" />
+							</Button>
+						</Tooltip>
+						<Tooltip content={isPlaying ? "Pause" : "Play"} asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className={`h-7 w-7 rounded-full border border-foreground/10 shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition-all ${isPlaying ? "bg-foreground/10 text-foreground hover:bg-foreground/20" : "bg-neutral-800 text-white hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-white/90"}`}
+								onClick={playback.togglePlayPause}
+								aria-label={isPlaying ? "Pause" : "Play"}
+							>
+								{isPlaying ? (
+									<Pause className="h-3.5 w-3.5" weight="fill" />
+								) : (
+									<Play className="h-3.5 w-3.5" weight="fill" />
+								)}
+							</Button>
+						</Tooltip>
+						<Tooltip content={t("editor.playback.skipForward")} asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
+								aria-label={t("editor.playback.skipForward")}
+								onClick={playback.handlePreviewSkipForward}
+							>
+								<SkipForward className="h-3.5 w-3.5" weight="fill" />
+							</Button>
+						</Tooltip>
 						<span className="ml-1 text-[10px] font-medium tabular-nums text-muted-foreground/70">
 							{formatTime(projection.timelineDuration)}
 						</span>
@@ -398,20 +422,22 @@ export function EditorPreviewPanel(props: Props) {
 
 				<div className="z-10 ml-auto flex items-center gap-2">
 					<div className="flex items-center gap-1.5">
-						<button
-							type="button"
-							className="text-muted-foreground transition-colors hover:text-foreground"
-							title={t("editor.playback.muteUnmute")}
-							onClick={() => setPreviewVolume(previewVolume <= 0.001 ? 1 : 0)}
-						>
-							{previewVolume <= 0.001 ? (
-								<SpeakerX className="h-3.5 w-3.5" />
-							) : previewVolume < 0.5 ? (
-								<SpeakerLow className="h-3.5 w-3.5" />
-							) : (
-								<SpeakerHigh className="h-3.5 w-3.5" />
-							)}
-						</button>
+						<Tooltip content={t("editor.playback.muteUnmute")} asChild>
+							<button
+								type="button"
+								className="text-muted-foreground transition-colors hover:text-foreground"
+								aria-label={t("editor.playback.muteUnmute")}
+								onClick={() => setPreviewVolume(previewVolume <= 0.001 ? 1 : 0)}
+							>
+								{previewVolume <= 0.001 ? (
+									<SpeakerX className="h-3.5 w-3.5" />
+								) : previewVolume < 0.5 ? (
+									<SpeakerLow className="h-3.5 w-3.5" />
+								) : (
+									<SpeakerHigh className="h-3.5 w-3.5" />
+								)}
+							</button>
+						</Tooltip>
 						<div className="relative flex h-7 w-24 select-none items-center overflow-hidden rounded-full border border-foreground/[0.06] bg-editor-bg/80 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)]">
 							<div
 								className="absolute inset-y-[3px] left-[3px] right-auto rounded-[10px] bg-foreground/[0.08]"

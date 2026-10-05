@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getAssetPath, getRenderableVideoUrl, getWallpaperThumbnailUrl } from "@/lib/assetPath";
 import { cn } from "@/lib/utils";
@@ -1761,13 +1762,15 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("background.title")}</SectionLabel>
-					<button
-						type="button"
-						onClick={resetBackgroundSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={resetBackgroundSection}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				</div>
 				<SliderControl
 					label={tSettings("effects.backgroundBlur")}
@@ -2115,13 +2118,15 @@ export function SettingsPanel({
 		<section className="flex flex-col gap-2">
 			<div className="flex items-center justify-between gap-3">
 				<SectionLabel>{tSettings("sections.frame", "Frame")}</SectionLabel>
-				<button
-					type="button"
-					onClick={resetFrameSection}
-					className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-				>
-					{t("common.actions.reset", "Reset")}
-				</button>
+				<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+					<button
+						type="button"
+						onClick={resetFrameSection}
+						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+					>
+						{t("common.actions.reset", "Reset")}
+					</button>
+				</Tooltip>
 			</div>
 			<div className="flex flex-col gap-1.5">
 				<SliderControl
@@ -2250,13 +2255,15 @@ export function SettingsPanel({
 			<div className="flex items-center justify-between gap-3">
 				<SectionLabel>{tSettings("sections.crop", "Crop")}</SectionLabel>
 				{isCropped ? (
-					<button
-						type="button"
-						onClick={resetCropSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={resetCropSection}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				) : null}
 			</div>
 			<div className="flex flex-col gap-1.5">
@@ -2313,13 +2320,15 @@ export function SettingsPanel({
 			<div className="flex items-center justify-between gap-3">
 				<div className="flex items-center gap-3">
 					<SectionLabel>{tSettings("sections.captions", "Captions")}</SectionLabel>
-					<button
-						type="button"
-						onClick={() => onAutoCaptionSettingsChange?.(DEFAULT_AUTO_CAPTION_SETTINGS)}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={() => onAutoCaptionSettingsChange?.(DEFAULT_AUTO_CAPTION_SETTINGS)}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				</div>
 				<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
 					<span>{tSettings("captions.enabled", "Show")}</span>
@@ -2946,14 +2955,16 @@ export function SettingsPanel({
 									</span>
 								)}
 								{selectedZoomId && onSelectZoom && (
-									<button
-										type="button"
-										onClick={() => onSelectZoom(null)}
-										className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										aria-label={t("common.actions.close", "Close")}
-									>
-										<X className="h-3.5 w-3.5" />
-									</button>
+									<Tooltip content={t("common.actions.close", "Close")} asChild>
+										<button
+											type="button"
+											onClick={() => onSelectZoom(null)}
+											className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											aria-label={t("common.actions.close", "Close")}
+										>
+											<X className="h-3.5 w-3.5" />
+										</button>
+									</Tooltip>
 								)}
 							</div>
 						</div>
@@ -3023,13 +3034,15 @@ export function SettingsPanel({
 				)}
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("zoom.globalSettings", "Animation")}</SectionLabel>
-					<button
-						type="button"
-						onClick={resetZoomSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={resetZoomSection}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				</div>
 				<div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-1.5">
 					<span className="text-[10px] text-muted-foreground">
@@ -3070,25 +3083,29 @@ export function SettingsPanel({
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("audio.volumeTitle", "Audio")}</SectionLabel>
 					<div className="flex items-center gap-2">
-						<button
-							type="button"
-							onClick={() => {
-								onAudioVolumeChange?.(1);
-								onAudioNormalizeChange?.(false);
-							}}
-							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-						>
-							{t("common.actions.reset", "Reset")}
-						</button>
-						{selectedAudioId && onSelectAudio && (
+						<Tooltip content={t("common.actions.reset", "Reset")} asChild>
 							<button
 								type="button"
-								onClick={() => onSelectAudio(null)}
-								className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-								aria-label={t("common.actions.close", "Close")}
+								onClick={() => {
+									onAudioVolumeChange?.(1);
+									onAudioNormalizeChange?.(false);
+								}}
+								className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
 							>
-								<X className="h-3.5 w-3.5" />
+								{t("common.actions.reset", "Reset")}
 							</button>
+						</Tooltip>
+						{selectedAudioId && onSelectAudio && (
+							<Tooltip content={t("common.actions.close", "Close")} asChild>
+								<button
+									type="button"
+									onClick={() => onSelectAudio(null)}
+									className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+									aria-label={t("common.actions.close", "Close")}
+								>
+									<X className="h-3.5 w-3.5" />
+								</button>
+							</Tooltip>
 						)}
 					</div>
 				</div>
@@ -3127,14 +3144,16 @@ export function SettingsPanel({
 							</span>
 						)}
 						{selectedClipId && onSelectClip && (
-							<button
-								type="button"
-								onClick={() => onSelectClip(null)}
-								className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-								aria-label={t("common.actions.close", "Close")}
-							>
-								<X className="h-3.5 w-3.5" />
-							</button>
+							<Tooltip content={t("common.actions.close", "Close")} asChild>
+								<button
+									type="button"
+									onClick={() => onSelectClip(null)}
+									className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+									aria-label={t("common.actions.close", "Close")}
+								>
+									<X className="h-3.5 w-3.5" />
+								</button>
+							</Tooltip>
 						)}
 					</div>
 				</div>
@@ -3600,13 +3619,15 @@ export function SettingsPanel({
 					<section className="flex flex-col gap-2">
 						<div className="flex items-center justify-between gap-3">
 							<SectionLabel>{tSettings("sections.webcam", "Webcam")}</SectionLabel>
-							<button
-								type="button"
-								onClick={resetWebcamSection}
-								className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-							>
-								{t("common.actions.reset", "Reset")}
-							</button>
+							<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+								<button
+									type="button"
+									onClick={resetWebcamSection}
+									className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+								>
+									{t("common.actions.reset", "Reset")}
+								</button>
+							</Tooltip>
 						</div>
 						<div className="flex flex-col gap-1.5">
 							<div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-1.5">

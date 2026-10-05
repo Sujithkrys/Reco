@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
 	Select,
 	SelectContent,
@@ -169,16 +170,18 @@ export function AnnotationSettingsPanel({
 								{t("annotations.active")}
 							</span>
 							{onClose && (
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon"
-									onClick={onClose}
-									className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-									aria-label={t("common.actions.close", "Close")}
-								>
-									<X className="h-4 w-4" />
-								</Button>
+								<Tooltip content={t("common.actions.close", "Close")} side="left" asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										onClick={onClose}
+										className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+										aria-label={t("common.actions.close", "Close")}
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</Tooltip>
 							)}
 						</div>
 					</div>
@@ -211,53 +214,63 @@ export function AnnotationSettingsPanel({
 						className="mb-6"
 					>
 						<TabsList className="mb-4 bg-foreground/5 border border-foreground/5 p-1 w-full grid grid-cols-5 h-auto rounded-xl">
-							<TabsTrigger
-								value="text"
-								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
-							>
-								<Type className="w-4 h-4" />
-								{t("annotations.text")}
-							</TabsTrigger>
-							<TabsTrigger
-								value="image"
-								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
-							>
-								<ImageIcon className="w-4 h-4" />
-								{t("annotations.image")}
-							</TabsTrigger>
-							<TabsTrigger
-								value="figure"
-								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
-							>
-								<svg
-									className="w-4 h-4"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="2"
+							<Tooltip content={t("annotations.text")} asChild>
+								<TabsTrigger
+									value="text"
+									className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
 								>
-									<path
-										d="M4 12h16m0 0l-6-6m6 6l-6 6"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									/>
-								</svg>
-								{t("annotations.arrow")}
-							</TabsTrigger>
-							<TabsTrigger
-								value="shape"
-								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
-							>
-								<Square className="w-4 h-4" />
-								Shape
-							</TabsTrigger>
-							<TabsTrigger
-								value="blur"
-								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
-							>
-								<SquareDashed className="w-4 h-4" />
-								{t("annotations.blur")}
-							</TabsTrigger>
+									<Type className="w-4 h-4" />
+									{t("annotations.text")}
+								</TabsTrigger>
+							</Tooltip>
+							<Tooltip content={t("annotations.image")} asChild>
+								<TabsTrigger
+									value="image"
+									className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
+								>
+									<ImageIcon className="w-4 h-4" />
+									{t("annotations.image")}
+								</TabsTrigger>
+							</Tooltip>
+							<Tooltip content={t("annotations.arrow")} asChild>
+								<TabsTrigger
+									value="figure"
+									className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
+								>
+									<svg
+										className="w-4 h-4"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2"
+									>
+										<path
+											d="M4 12h16m0 0l-6-6m6 6l-6 6"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										/>
+									</svg>
+									{t("annotations.arrow")}
+								</TabsTrigger>
+							</Tooltip>
+							<Tooltip content="Shape" asChild>
+								<TabsTrigger
+									value="shape"
+									className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
+								>
+									<Square className="w-4 h-4" />
+									Shape
+								</TabsTrigger>
+							</Tooltip>
+							<Tooltip content={t("annotations.blur")} asChild>
+								<TabsTrigger
+									value="blur"
+									className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
+								>
+									<SquareDashed className="w-4 h-4" />
+									{t("annotations.blur")}
+								</TabsTrigger>
+							</Tooltip>
 						</TabsList>
 
 						{/* Text Content */}
@@ -365,67 +378,73 @@ export function AnnotationSettingsPanel({
 										type="multiple"
 										className="justify-start bg-foreground/5 p-1 rounded-lg border border-foreground/5"
 									>
-										<ToggleGroupItem
-											value="bold"
-											aria-label={t("annotations.toggleBold")}
-											data-state={
-												annotation.style.fontWeight === "bold"
-													? "on"
-													: "off"
-											}
-											onClick={() =>
-												onStyleChange({
-													fontWeight:
-														annotation.style.fontWeight === "bold"
-															? "normal"
-															: "bold",
-												})
-											}
-											className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										>
-											<Bold className="h-4 w-4" />
-										</ToggleGroupItem>
-										<ToggleGroupItem
-											value="italic"
-											aria-label={t("annotations.toggleItalic")}
-											data-state={
-												annotation.style.fontStyle === "italic"
-													? "on"
-													: "off"
-											}
-											onClick={() =>
-												onStyleChange({
-													fontStyle:
-														annotation.style.fontStyle === "italic"
-															? "normal"
-															: "italic",
-												})
-											}
-											className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										>
-											<Italic className="h-4 w-4" />
-										</ToggleGroupItem>
-										<ToggleGroupItem
-											value="underline"
-											aria-label={t("annotations.toggleUnderline")}
-											data-state={
-												annotation.style.textDecoration === "underline"
-													? "on"
-													: "off"
-											}
-											onClick={() =>
-												onStyleChange({
-													textDecoration:
-														annotation.style.textDecoration ===
-														"underline"
-															? "none"
-															: "underline",
-												})
-											}
-											className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										>
-											<Underline className="h-4 w-4" />
-										</ToggleGroupItem>
+										<Tooltip content={t("annotations.toggleBold")} asChild>
+											<ToggleGroupItem
+												value="bold"
+												aria-label={t("annotations.toggleBold")}
+												data-state={
+													annotation.style.fontWeight === "bold"
+														? "on"
+														: "off"
+												}
+												onClick={() =>
+													onStyleChange({
+														fontWeight:
+															annotation.style.fontWeight === "bold"
+																? "normal"
+																: "bold",
+													})
+												}
+												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											>
+												<Bold className="h-4 w-4" />
+											</ToggleGroupItem>
+										</Tooltip>
+										<Tooltip content={t("annotations.toggleItalic")} asChild>
+											<ToggleGroupItem
+												value="italic"
+												aria-label={t("annotations.toggleItalic")}
+												data-state={
+													annotation.style.fontStyle === "italic"
+														? "on"
+														: "off"
+												}
+												onClick={() =>
+													onStyleChange({
+														fontStyle:
+															annotation.style.fontStyle === "italic"
+																? "normal"
+																: "italic",
+													})
+												}
+												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											>
+												<Italic className="h-4 w-4" />
+											</ToggleGroupItem>
+										</Tooltip>
+										<Tooltip content={t("annotations.toggleUnderline")} asChild>
+											<ToggleGroupItem
+												value="underline"
+												aria-label={t("annotations.toggleUnderline")}
+												data-state={
+													annotation.style.textDecoration === "underline"
+														? "on"
+														: "off"
+												}
+												onClick={() =>
+													onStyleChange({
+														textDecoration:
+															annotation.style.textDecoration ===
+															"underline"
+																? "none"
+																: "underline",
+													})
+												}
+												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											>
+												<Underline className="h-4 w-4" />
+											</ToggleGroupItem>
+										</Tooltip>
 									</ToggleGroup>
 
 									<ToggleGroup
@@ -433,30 +452,36 @@ export function AnnotationSettingsPanel({
 										value={annotation.style.textAlign}
 										className="justify-start bg-foreground/5 p-1 rounded-lg border border-foreground/5"
 									>
-										<ToggleGroupItem
-											value="left"
-											aria-label={t("annotations.alignLeft")}
-											onClick={() => onStyleChange({ textAlign: "left" })}
-											className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										>
-											<AlignLeft className="h-4 w-4" />
-										</ToggleGroupItem>
-										<ToggleGroupItem
-											value="center"
-											aria-label={t("annotations.alignCenter")}
-											onClick={() => onStyleChange({ textAlign: "center" })}
-											className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										>
-											<AlignCenter className="h-4 w-4" />
-										</ToggleGroupItem>
-										<ToggleGroupItem
-											value="right"
-											aria-label={t("annotations.alignRight")}
-											onClick={() => onStyleChange({ textAlign: "right" })}
-											className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-										>
-											<AlignRight className="h-4 w-4" />
-										</ToggleGroupItem>
+										<Tooltip content={t("annotations.alignLeft")} asChild>
+											<ToggleGroupItem
+												value="left"
+												aria-label={t("annotations.alignLeft")}
+												onClick={() => onStyleChange({ textAlign: "left" })}
+												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											>
+												<AlignLeft className="h-4 w-4" />
+											</ToggleGroupItem>
+										</Tooltip>
+										<Tooltip content={t("annotations.alignCenter")} asChild>
+											<ToggleGroupItem
+												value="center"
+												aria-label={t("annotations.alignCenter")}
+												onClick={() => onStyleChange({ textAlign: "center" })}
+												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											>
+												<AlignCenter className="h-4 w-4" />
+											</ToggleGroupItem>
+										</Tooltip>
+										<Tooltip content={t("annotations.alignRight")} asChild>
+											<ToggleGroupItem
+												value="right"
+												aria-label={t("annotations.alignRight")}
+												onClick={() => onStyleChange({ textAlign: "right" })}
+												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											>
+												<AlignRight className="h-4 w-4" />
+											</ToggleGroupItem>
+										</Tooltip>
 									</ToggleGroup>
 								</div>
 
@@ -1007,15 +1032,17 @@ export function AnnotationSettingsPanel({
 				</div>
 			</div>
 			<div className="flex-shrink-0 border-t border-foreground/10 bg-editor-panel p-4 pt-3">
-				<Button
-					onClick={onDelete}
-					variant="destructive"
-					size="sm"
-					className="w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all"
-				>
-					<Trash2 className="w-4 h-4" />
-					{t("annotations.deleteAnnotation")}
-				</Button>
+				<Tooltip content={t("annotations.deleteAnnotation")} asChild>
+					<Button
+						onClick={onDelete}
+						variant="destructive"
+						size="sm"
+						className="w-full gap-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 transition-all"
+					>
+						<Trash2 className="w-4 h-4" />
+						{t("annotations.deleteAnnotation")}
+					</Button>
+				</Tooltip>
 			</div>
 		</div>
 	);
