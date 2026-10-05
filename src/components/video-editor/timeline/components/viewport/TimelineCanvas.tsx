@@ -79,7 +79,6 @@ interface TimelineCanvasProps {
 	selectedCaptionId?: string | null;
 	selectedGeneratedClipId?: string | null;
 	selectAllBlocksActive?: boolean;
-	onClearBlockSelection?: () => void;
 	keyframes?: { id: string; time: number }[];
 	sourceAudioTracks?: SourceAudioTrackWithPeaks[];
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
@@ -809,7 +808,6 @@ export default function TimelineCanvas({
 	selectedCaptionId,
 	selectedGeneratedClipId,
 	selectAllBlocksActive = false,
-	onClearBlockSelection,
 	keyframes = [],
 	sourceAudioTracks = [],
 	getSourceAudioTrackSettingsForClip,

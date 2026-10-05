@@ -359,7 +359,6 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			selectAllBlocksActive,
 			setSelectAllBlocksActive,
 			handleKeyframeMove,
-			clearSelectedBlocks,
 			handleSelectZoom,
 			handleSelectClip,
 			handleSelectAnnotation,
@@ -545,7 +544,6 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							selectedCaptionId={selectedCaptionId}
 							selectedGeneratedClipId={selectedGeneratedClipId}
 							selectAllBlocksActive={selectAllBlocksActive}
-							onClearBlockSelection={clearSelectedBlocks}
 							keyframes={keyframes}
 							sourceAudioTracks={sourceAudioTracks}
 							getSourceAudioTrackSettingsForClip={getSourceAudioTrackSettingsForClip}
