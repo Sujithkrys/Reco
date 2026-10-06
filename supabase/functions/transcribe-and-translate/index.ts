@@ -183,12 +183,16 @@ serve(async (req: Request) => {
     segments = segments.filter((seg: any) => {
       const duration = (seg.end ?? 0) - (seg.start ?? 0);
       const isHighNoSpeechProb = typeof seg.no_speech_prob === "number" && seg.no_speech_prob > 0.6;
-      const isLowConfidenceLongDuration = typeof seg.avg_logprob === "number" && seg.avg_logprob < -0.5 && duration > 10;
+      
+      const wordCount = (seg.text || "").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      const wordsPerSecond = duration > 0 ? wordCount / duration : 0;
+      const isLowWpsLongDuration = duration > 10 && wordsPerSecond < 0.4;
+      const isVeryLowConfidenceLongDuration = typeof seg.avg_logprob === "number" && seg.avg_logprob < -1.0 && duration > 10;
       
       const normalizedText = (seg.text || "").trim().toLowerCase().replace(/[.,!?;:\"'-]/g, "");
       const isStockHallucination = stockPhrases.includes(normalizedText) && duration > 5;
 
-      return !isHighNoSpeechProb && !isLowConfidenceLongDuration && !isStockHallucination;
+      return !isHighNoSpeechProb && !isLowWpsLongDuration && !isVeryLowConfidenceLongDuration && !isStockHallucination;
     });
 
     if (segments.length === 0) {
