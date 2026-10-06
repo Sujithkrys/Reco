@@ -183,7 +183,7 @@ serve(async (req: Request) => {
     segments = segments.filter((seg: any) => {
       const duration = (seg.end ?? 0) - (seg.start ?? 0);
       const isHighNoSpeechProb = typeof seg.no_speech_prob === "number" && seg.no_speech_prob > 0.6;
-      const isLowConfidenceLongDuration = typeof seg.avg_logprob === "number" && seg.avg_logprob < -1.0 && duration > 10;
+      const isLowConfidenceLongDuration = typeof seg.avg_logprob === "number" && seg.avg_logprob < -0.5 && duration > 10;
       
       const normalizedText = (seg.text || "").trim().toLowerCase().replace(/[.,!?;:\"'-]/g, "");
       const isStockHallucination = stockPhrases.includes(normalizedText) && duration > 5;
