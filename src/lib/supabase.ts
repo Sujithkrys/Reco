@@ -8,10 +8,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  global: {
-    headers: {
-      Authorization: ''
-    }
-  },
   realtime: typeof WebSocket === 'undefined' ? { transport: class {} as any } : undefined,
 })
