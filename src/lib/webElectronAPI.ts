@@ -329,6 +329,7 @@ export const webElectronAPI: unknown = {
 						retryDelays: [0, 3000, 5000, 10000, 20000],
 						headers: {
 							authorization: `Bearer ${token}`,
+							apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
 							'x-upsert': 'true',
 						},
 						uploadDataDuringCreation: true,

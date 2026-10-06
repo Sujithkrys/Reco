@@ -26,6 +26,7 @@ vi.mock("pixi.js", () => ({
 	Sprite: vi.fn(),
 	Graphics: vi.fn(),
 	BlurFilter: vi.fn(),
+	WebGPURenderer: vi.fn(),
 	Texture: {
 		from: vi.fn(() => ({ destroy: vi.fn() })),
 	},

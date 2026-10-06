@@ -3,4 +3,9 @@ import { env } from "./env.js";
 
 export const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
 	auth: { persistSession: false },
+	global: {
+		headers: {
+			Authorization: ''
+		}
+	}
 });
