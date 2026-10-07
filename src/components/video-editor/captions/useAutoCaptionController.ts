@@ -162,16 +162,31 @@ export function useAutoCaptionController({
 		captionGenerationInFlightRef.current = true;
 		setIsGeneratingCaptions(true);
 		try {
-			let sourcePath = resolveAutoCaptionSourcePath({ videoSourcePath, videoPath });
-			if (!sourcePath) {
+			let sourcePath = window.electronAPI.isWebMode
+				? (videoSourcePath ?? videoPath ?? null)
+				: resolveAutoCaptionSourcePath({ videoSourcePath, videoPath });
+
+			if (window.electronAPI.isWebMode) {
+				// TODO: remove temporary log
+				let shape = "empty";
+				if (sourcePath) {
+					if (sourcePath.startsWith("blob:")) shape = "blob:";
+					else if (sourcePath.startsWith("https:")) shape = "https:";
+					else if (sourcePath.startsWith("http:")) shape = "http:";
+					else shape = "other";
+				}
+				console.info("sourcePath shape:", shape);
+			}
+
+			if (!sourcePath && !window.electronAPI.isWebMode) {
 				const sessionResult = await window.electronAPI.getCurrentRecordingSession?.();
-				const currentVideoResult = await window.electronAPI.getCurrentVideoPath();
+				const currentVideoResult = await window.electronAPI.getCurrentVideoPath?.();
 				sourcePath = resolveAutoCaptionSourcePath({
 					recordingSessionVideoPath:
 						sessionResult?.success && sessionResult.session?.videoPath
 							? sessionResult.session.videoPath
 							: null,
-					currentVideoPath: currentVideoResult.success
+					currentVideoPath: currentVideoResult?.success
 						? (currentVideoResult.path ?? null)
 						: null,
 				});
