@@ -2341,16 +2341,18 @@ export function SettingsPanel({
 			</div>
 
 			<div className="rounded-lg bg-foreground/[0.03] px-2.5 py-2 space-y-3">
-				<div>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={onPickWhisperModel}
-						className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
-					>
-						{tSettings("captions.selectModel", "Select Model")}
-					</Button>
-				</div>
+				{!window.electronAPI.isWebMode && (
+					<div>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={onPickWhisperModel}
+							className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
+						>
+							{tSettings("captions.selectModel", "Select Model")}
+						</Button>
+					</div>
+				)}
 				<div className="flex items-center justify-between gap-3">
 					<div className="text-sm font-medium text-foreground">
 						{tSettings("captions.language", "Spoken Language")}
@@ -2392,33 +2394,35 @@ export function SettingsPanel({
 					</Select>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					<div className="grid w-full grid-cols-2 gap-2">
-						{whisperModelDownloadStatus === "downloading" ? (
-							<Button
-								type="button"
-								disabled
-								className="h-10 w-full rounded-xl bg-foreground/10 px-4 text-sm font-medium text-foreground hover:bg-foreground/10"
-							>
-								{tSettings("captions.downloading", "Downloading...")}{" "}
-								{Math.round(whisperModelDownloadProgress)}%
-							</Button>
-						) : whisperModelPath ? (
-							<Button
-								type="button"
-								variant="outline"
-								onClick={onDeleteWhisperSmallModel}
-								className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
-							>
-								{tSettings("captions.deleteModel", "Delete Model")}
-							</Button>
-						) : (
-							<Button
-								type="button"
-								onClick={onDownloadWhisperSmallModel}
-								className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90"
-							>
-								{tSettings("captions.downloadModel", "Download Model")}
-							</Button>
+					<div className={cn("grid w-full gap-2", window.electronAPI.isWebMode ? "grid-cols-1" : "grid-cols-2")}>
+						{!window.electronAPI.isWebMode && (
+							whisperModelDownloadStatus === "downloading" ? (
+								<Button
+									type="button"
+									disabled
+									className="h-10 w-full rounded-xl bg-foreground/10 px-4 text-sm font-medium text-foreground hover:bg-foreground/10"
+								>
+									{tSettings("captions.downloading", "Downloading...")}{" "}
+									{Math.round(whisperModelDownloadProgress)}%
+								</Button>
+							) : whisperModelPath ? (
+								<Button
+									type="button"
+									variant="outline"
+									onClick={onDeleteWhisperSmallModel}
+									className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
+								>
+									{tSettings("captions.deleteModel", "Delete Model")}
+								</Button>
+							) : (
+								<Button
+									type="button"
+									onClick={onDownloadWhisperSmallModel}
+									className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90"
+								>
+									{tSettings("captions.downloadModel", "Download Model")}
+								</Button>
+							)
 						)}
 						<Button
 							type="button"
@@ -2435,7 +2439,7 @@ export function SettingsPanel({
 					<Button
 						type="button"
 						onClick={onGenerateAutoCaptions}
-						disabled={isGeneratingCaptions || !whisperModelPath}
+						disabled={isGeneratingCaptions || (!whisperModelPath && !window.electronAPI.isWebMode)}
 						className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90 disabled:opacity-60"
 					>
 						{isGeneratingCaptions

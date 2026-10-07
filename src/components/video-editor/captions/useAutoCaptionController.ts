@@ -65,7 +65,7 @@ export function useAutoCaptionController({
 	const captionGenerationInFlightRef = useRef(false);
 
 	useEffect(() => {
-		const unsubscribe = window.electronAPI.onWhisperSmallModelDownloadProgress((state) => {
+		const unsubscribe = window.electronAPI.onWhisperSmallModelDownloadProgress?.((state) => {
 			setWhisperModelDownloadStatus(state.status);
 			setWhisperModelDownloadProgress(state.progress);
 			if (state.status === "downloaded") {
@@ -78,19 +78,21 @@ export function useAutoCaptionController({
 			}
 		});
 
-		void window.electronAPI.getWhisperSmallModelStatus().then((result) => {
-			if (!result.success) return;
-			if (result.exists && result.path) {
-				setDownloadedWhisperModelPath(result.path);
-				setWhisperModelPath((current) => current ?? result.path ?? null);
-				setWhisperModelDownloadStatus("downloaded");
-				setWhisperModelDownloadProgress(100);
-			} else {
-				setDownloadedWhisperModelPath(null);
-				setWhisperModelDownloadStatus("idle");
-				setWhisperModelDownloadProgress(0);
-			}
-		});
+		if (window.electronAPI.getWhisperSmallModelStatus) {
+			void window.electronAPI.getWhisperSmallModelStatus().then((result) => {
+				if (!result.success) return;
+				if (result.exists && result.path) {
+					setDownloadedWhisperModelPath(result.path);
+					setWhisperModelPath((current) => current ?? result.path ?? null);
+					setWhisperModelDownloadStatus("downloaded");
+					setWhisperModelDownloadProgress(100);
+				} else {
+					setDownloadedWhisperModelPath(null);
+					setWhisperModelDownloadStatus("idle");
+					setWhisperModelDownloadProgress(0);
+				}
+			});
+		}
 
 		return () => unsubscribe?.();
 	}, [
@@ -183,7 +185,7 @@ export function useAutoCaptionController({
 				setVideoSourcePath(sourcePath);
 				setVideoPath(await resolveVideoUrl(sourcePath));
 			}
-			if (!whisperModelPath) {
+			if (!whisperModelPath && !window.electronAPI.isWebMode) {
 				toast.error("Select a Whisper model or download the small model first");
 				return;
 			}

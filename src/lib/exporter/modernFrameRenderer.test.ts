@@ -68,6 +68,7 @@ vi.mock("pixi.js", () => ({
 	Texture: {
 		from: vi.fn(() => ({ source: { update: vi.fn() }, destroy: vi.fn() })),
 	},
+	WebGPURenderer: class {},
 }));
 
 vi.mock("pixi-filters/motion-blur", () => ({
