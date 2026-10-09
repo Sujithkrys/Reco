@@ -204,16 +204,20 @@ export default function Item({
 						event.stopPropagation();
 					}}
 				>
-					<div
-						className={cn(glassStyles.zoomEndCap, glassStyles.left)}
-						style={{ cursor: "col-resize", pointerEvents: "auto" }}
-						title="Resize left"
-					/>
-					<div
-						className={cn(glassStyles.zoomEndCap, glassStyles.right)}
-						style={{ cursor: "col-resize", pointerEvents: "auto" }}
-						title="Resize right"
-					/>
+					{!disabled && !isLoading && (
+						<>
+							<div
+								className={cn(glassStyles.zoomEndCap, glassStyles.left)}
+								style={{ cursor: "col-resize", pointerEvents: "auto" }}
+								title="Resize left"
+							/>
+							<div
+								className={cn(glassStyles.zoomEndCap, glassStyles.right)}
+								style={{ cursor: "col-resize", pointerEvents: "auto" }}
+								title="Resize right"
+							/>
+						</>
+					)}
 					{showAudioWaveform && waveformPeaks && (
 						<AudioWaveform
 							peaks={waveformPeaks}

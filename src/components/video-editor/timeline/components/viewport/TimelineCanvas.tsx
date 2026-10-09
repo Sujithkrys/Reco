@@ -665,7 +665,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					))}
 			</Row>
 
-			{(captionsEnabled || captionItems.length > 0) && (
+			{captionItems.length > 0 && (
 				<Row
 					id={CAPTION_ROW_ID}
 					isEmpty={captionItems.length === 0}
@@ -713,6 +713,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 							isSelected={item.id === selectedCaptionId}
 							onSelectId={onSelectCaption}
 							variant="caption"
+							disabled={true}
 						>
 							{item.label}
 						</Item>
@@ -954,9 +955,9 @@ export default function TimelineCanvas({
 		// exists), so count it whenever captionsEnabled — not only when a caption item is
 		// present — or the min-height/stretch math undersizes the empty lane.
 		const zoomRows = (zoomItems.length > 0 || isDragging) ? 1 : 0;
-		const captionRows = hasCaptionRow || captionsEnabled ? 1 : 0;
+		const captionRows = hasCaptionRow ? 1 : 0;
 		return 1 + zoomRows + sourceAudioRows + annotationRowIds.size + audioRowIds.size + captionRows;
-	}, [items, showSourceAudioTrack, sourceAudioTracks.length, captionsEnabled, zoomItems.length, isDragging]);
+	}, [items, showSourceAudioTrack, sourceAudioTracks.length, zoomItems.length, isDragging]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const timelineViewportStretchFactor = getTimelineViewportStretchFactor(timelineRowCount);
