@@ -5,6 +5,7 @@ import type {
 	ClipRegion,
 	ZoomRegion,
 } from "../types";
+import { getAudioSourceStartMs } from "../types";
 import type { SilenceInterval } from "./detectSilenceIntervals";
 
 export interface SilenceRemovalImpact {
@@ -288,10 +289,23 @@ export function planSilenceRemoval(params: PlanSilenceRemovalParams): SilenceRem
 			const mappedStart = mapTime(audio.startMs).newMs;
 			const mappedEnd = mapTime(audio.endMs).newMs;
 			if (mappedEnd > mappedStart) {
+				// Cuts covering the head of the region remove that audio too, so the
+				// region now starts reading where the first kept moment was.
+				let removedUntilMs = audio.startMs;
+				for (const cut of sortedCuts) {
+					if (cut.startMs <= removedUntilMs && cut.endMs > removedUntilMs) {
+						removedUntilMs = cut.endMs;
+					}
+				}
+				const headRemovedMs = Math.max(
+					0,
+					Math.min(removedUntilMs, audio.endMs) - audio.startMs,
+				);
 				newAudioRegions.push({
 					...audio,
 					startMs: mappedStart,
 					endMs: mappedEnd,
+					sourceStartMs: getAudioSourceStartMs(audio) + headRemovedMs,
 				});
 			}
 		}

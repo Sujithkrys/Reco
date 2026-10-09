@@ -99,4 +99,74 @@ describe("planSilenceRemoval", () => {
 		expect(plan.newAudioRegions[0].startMs).toBe(0);
 		expect(plan.newAudioRegions[0].endMs).toBe(8000);
 	});
+
+	describe("audio source offset", () => {
+		const silence = [{ startMs: 2000, endMs: 4000, durationMs: 2000 }];
+		const plan = (audio: AudioRegion, preserveContinuousAudio: boolean) =>
+			planSilenceRemoval({
+				clipRegions: [initialClip],
+				zoomRegions: [],
+				annotationRegions: [],
+				audioRegions: [audio],
+				silenceIntervals: silence,
+				totalDurationMs: 10000,
+				preserveContinuousAudio,
+			}).newAudioRegions[0];
+
+		it("keeps a trimmed region's offset when continuous audio is preserved", () => {
+			const audio: AudioRegion = {
+				id: "audio-1",
+				audioPath: "bgm.mp3",
+				volume: 1,
+				startMs: 3000,
+				endMs: 9000,
+				sourceStartMs: 1500,
+			};
+			expect(plan(audio, true).sourceStartMs).toBe(1500);
+		});
+
+		it("advances the offset when a sliced cut removes the head of the region", () => {
+			// The cut removes 3000-4000 of a region starting at 3000, i.e. its first 1000 ms.
+			const audio: AudioRegion = {
+				id: "audio-1",
+				audioPath: "bgm.mp3",
+				volume: 1,
+				startMs: 3000,
+				endMs: 9000,
+				sourceStartMs: 1500,
+			};
+			expect(plan(audio, false)).toMatchObject({
+				startMs: 2000,
+				endMs: 7000,
+				sourceStartMs: 2500,
+			});
+		});
+
+		it("leaves the offset alone when a sliced cut falls inside the region", () => {
+			const audio: AudioRegion = {
+				id: "audio-1",
+				audioPath: "bgm.mp3",
+				volume: 1,
+				startMs: 1000,
+				endMs: 9000,
+				sourceStartMs: 500,
+			};
+			expect(plan(audio, false)).toMatchObject({
+				startMs: 1000,
+				endMs: 7000,
+				sourceStartMs: 500,
+			});
+		});
+
+		it("treats an untrimmed region as offset 0 before advancing", () => {
+			const audio: AudioRegion = {
+				id: "audio-1",
+				audioPath: "bgm.mp3",
+				volume: 1,
+				startMs: 2500,
+				endMs: 9000,
+			};
+			expect(plan(audio, false).sourceStartMs).toBe(1500);
+		});
+	});
 });
