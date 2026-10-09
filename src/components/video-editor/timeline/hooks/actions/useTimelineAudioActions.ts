@@ -28,6 +28,7 @@ interface UseTimelineAudioActionsParams {
 		span: { start: number; end: number },
 		audioPath: string,
 		trackIndex?: number,
+		sourceDurationMs?: number,
 	) => void;
 	deps?: Partial<TimelineAudioActionsDeps>;
 }
@@ -135,6 +136,7 @@ export function useTimelineAudioActions({
 				{ start: startPos, end: startPos + placement.durationMs },
 				audioPath,
 				placement.trackIndex,
+				audioDurationMs,
 			);
 
 			// Client-direct upload to Supabase Storage in the background
