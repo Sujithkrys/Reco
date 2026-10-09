@@ -126,4 +126,55 @@ describe("normalizeProjectEditor", () => {
 		expect(editor.webcam.height).toBe(80);
 		expect(editor.webcam.roundness).toBeCloseTo(4.34, 1);
 	});
+
+	it("loads old audio regions with no source offset or file length", () => {
+		const editor = normalizeProjectEditor({
+			audioRegions: [
+				{ id: "audio-1", startMs: 1000, endMs: 4000, audioPath: "a.mp3", volume: 0.5 },
+			],
+		});
+
+		expect(editor.audioRegions[0].sourceStartMs).toBe(0);
+		expect(editor.audioRegions[0]).not.toHaveProperty("sourceDurationMs");
+		expect(editor.audioRegions[0].startMs).toBe(1000);
+		expect(editor.audioRegions[0].endMs).toBe(4000);
+	});
+
+	it("keeps audio trim offset and file length through save and load", () => {
+		const editor = normalizeProjectEditor({
+			audioRegions: [
+				{
+					id: "audio-1",
+					startMs: 1000,
+					endMs: 4000,
+					audioPath: "a.mp3",
+					volume: 1,
+					sourceStartMs: 2500.4,
+					sourceDurationMs: 9000,
+				},
+			],
+		});
+
+		expect(editor.audioRegions[0].sourceStartMs).toBe(2500);
+		expect(editor.audioRegions[0].sourceDurationMs).toBe(9000);
+	});
+
+	it("drops invalid audio trim values", () => {
+		const editor = normalizeProjectEditor({
+			audioRegions: [
+				{
+					id: "audio-1",
+					startMs: 0,
+					endMs: 1000,
+					audioPath: "a.mp3",
+					volume: 1,
+					sourceStartMs: -50,
+					sourceDurationMs: 0,
+				},
+			],
+		});
+
+		expect(editor.audioRegions[0].sourceStartMs).toBe(0);
+		expect(editor.audioRegions[0]).not.toHaveProperty("sourceDurationMs");
+	});
 });

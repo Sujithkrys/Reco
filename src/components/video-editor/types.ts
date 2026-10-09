@@ -661,6 +661,19 @@ export interface AudioRegion {
 	volume: number;
 	normalize?: boolean;
 	trackIndex?: number;
+	/**
+	 * Where playback starts inside the audio file. Defaults to 0; trimming the
+	 * left edge advances it so the region keeps reading the same audio.
+	 */
+	sourceStartMs?: number;
+	/** Length of the audio file, when known. Caps how far the right edge can extend. */
+	sourceDurationMs?: number;
+}
+
+export function getAudioSourceStartMs(region: Pick<AudioRegion, "sourceStartMs">): number {
+	return Number.isFinite(region.sourceStartMs) && (region.sourceStartMs as number) > 0
+		? (region.sourceStartMs as number)
+		: 0;
 }
 
 // Mirrors the shape remo-clone's /render endpoint accepts (server/index.ts +
