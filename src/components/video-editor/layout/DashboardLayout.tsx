@@ -136,7 +136,7 @@ function DashboardSidebar({
 						className="group flex items-center gap-3 w-full rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
 					>
 						<UserCircle className="h-[18px] w-[18px] text-foreground/60 group-hover:text-foreground/80" weight="regular" />
-						<span>Account</span>
+						<span>Sign in</span>
 					</button>
 				)}
 			</div>
