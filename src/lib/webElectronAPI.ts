@@ -683,81 +683,139 @@ export const webElectronAPI: unknown = {
 		try {
 			console.log("[webElectronAPI] Extracting audio for auto-captions...");
 			
-			// 1. Initialize Muxer for audio-only export
-			const { VideoMuxer } = await import("./exporter/muxer");
-			const { AudioProcessor } = await import("./exporter/audioEncoder");
-			const { WebDemuxer } = await import("web-demuxer");
-			
-			// dummy export config
-			const config = { frameRate: 30, width: 0, height: 0, bitrate: 0, sampleRate: 16000 };
-			const muxer = new VideoMuxer(config, true, "buffer", false);
-			await muxer.initialize();
-			
-			const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
-			const demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
-			await demuxer.load(videoPath);
-			
-			const audioProcessor = new AudioProcessor();
-			await audioProcessor.process(
-				demuxer,
-				muxer,
-				videoPath,
-				[], [], undefined, [], [], {}, undefined, []
-			);
-			
-			const muxResult = await muxer.finalize();
-			if (muxResult.mode !== "buffer" || !muxResult.blob) {
-				throw new Error("Failed to extract audio blob");
+			const sourceRes = await fetch(videoPath);
+			const sourceBlob = await sourceRes.blob();
+			const arrayBuf = await sourceBlob.arrayBuffer();
+			const ctx = new window.AudioContext();
+			let audioBuffer: AudioBuffer;
+			try {
+				audioBuffer = await ctx.decodeAudioData(arrayBuf);
+			} catch (e) {
+				throw new Error("The audio could not be read.");
 			}
+
+			const targetSampleRate = 16000;
+			const offlineCtx = new window.OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
+			const sourceNode = offlineCtx.createBufferSource();
+			sourceNode.buffer = audioBuffer;
+			sourceNode.connect(offlineCtx.destination);
+			sourceNode.start(0);
+			const resampledBuffer = await offlineCtx.startRendering();
+
+			function encodeWAV(buffer: AudioBuffer) {
+				const numChannels = buffer.numberOfChannels;
+				const sampleRate = buffer.sampleRate;
+				const format = 1; 
+				const bitDepth = 16;
+				const bytesPerSample = bitDepth / 8;
+				const blockAlign = numChannels * bytesPerSample;
+				const data = buffer.getChannelData(0);
+				const bufferLength = data.length * bytesPerSample;
+				const arrayBuffer = new ArrayBuffer(44 + bufferLength);
+				const view = new DataView(arrayBuffer);
+				
+				const writeString = (view: DataView, offset: number, string: string) => {
+					for (let i = 0; i < string.length; i++) {
+						view.setUint8(offset + i, string.charCodeAt(i));
+					}
+				};
+				writeString(view, 0, "RIFF");
+				view.setUint32(4, 36 + bufferLength, true);
+				writeString(view, 8, "WAVE");
+				writeString(view, 12, "fmt ");
+				view.setUint32(16, 16, true);
+				view.setUint16(20, format, true);
+				view.setUint16(22, numChannels, true);
+				view.setUint32(24, sampleRate, true);
+				view.setUint32(28, sampleRate * blockAlign, true);
+				view.setUint16(32, blockAlign, true);
+				view.setUint16(34, bitDepth, true);
+				writeString(view, 36, "data");
+				view.setUint32(40, bufferLength, true);
+				
+				let offset = 44;
+				for (let i = 0; i < data.length; i++) {
+					let s = Math.max(-1, Math.min(1, data[i]));
+					s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+					view.setInt16(offset, s, true);
+					offset += 2;
+				}
+				return new Blob([view], { type: "audio/wav" });
+			}
+
+			const MAX_BYTES = 24 * 1024 * 1024;
+			const BYTES_PER_SAMPLE = 2;
+			const MAX_SAMPLES = Math.floor((MAX_BYTES - 44) / BYTES_PER_SAMPLE);
+			const totalSamples = resampledBuffer.length;
+			const chunks: { blob: Blob, offsetMs: number }[] = [];
 			
-			const audioBlob = muxResult.blob;
-			console.log(`[webElectronAPI] Audio extracted. Size: ${Math.round(audioBlob.size / 1024)} KB`);
+			for (let i = 0; i < totalSamples; i += MAX_SAMPLES) {
+				const end = Math.min(i + MAX_SAMPLES, totalSamples);
+				const chunkLength = end - i;
+				const chunkBuffer = offlineCtx.createBuffer(1, chunkLength, 16000);
+				chunkBuffer.copyToChannel(resampledBuffer.getChannelData(0).subarray(i, end), 0);
+				chunks.push({
+					blob: encodeWAV(chunkBuffer),
+					offsetMs: (i / 16000) * 1000
+				});
+			}
 
 			// 2. Call Edge Function directly with FormData (Bypassing Supabase Storage)
 			const { supabase } = await import("./supabase");
-			
-			const formData = new FormData();
-			formData.append("file", audioBlob, "audio-extract.m4a");
-			if (targetLanguage) {
-				formData.append("targetLanguage", targetLanguage);
-			}
-
-			// Supabase JS library doesn't easily support FormData bodies in `invoke`, so we use standard fetch
 			const { data: sessionData } = await supabase.auth.getSession();
 			const token = sessionData?.session?.access_token;
 			if (!token) {
 				throw new Error("Please sign in to generate auto-captions.");
 			}
 			
-			const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-and-translate`, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-				},
-				body: formData,
-			});
+			let allCues: any[] = [];
+			let anySpeechDetected = false;
 
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(`Edge function failed: ${response.status} ${errorText}`);
+			for (const chunk of chunks) {
+				const formData = new FormData();
+				formData.append("file", chunk.blob, "audio-extract.wav");
+				if (targetLanguage) {
+					formData.append("targetLanguage", targetLanguage);
+				}
+
+				const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-and-translate`, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+					},
+					body: formData,
+				});
+
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(`Edge function failed: ${response.status} ${errorText}`);
+				}
+
+				const data = await response.json();
+				
+				if (!data?.success) {
+					throw new Error(data?.error || "Edge function failed");
+				}
+
+				if (data.cues) {
+					allCues.push(...data.cues.map((c: any) => ({
+						...c,
+						startMs: c.startMs + chunk.offsetMs,
+						endMs: c.endMs + chunk.offsetMs
+					})));
+				}
+				if (!data.noSpeechDetected) anySpeechDetected = true;
 			}
 
-			const data = await response.json();
-			
-			if (!data?.success) {
-				throw new Error(data?.error || "Edge function failed");
-			}
-
-			const cues = data.cues || [];
-			const noSpeechDetected = Boolean(data.noSpeechDetected || cues.length === 0);
+			const noSpeechDetected = !anySpeechDetected || allCues.length === 0;
 			const message = noSpeechDetected
 				? "No speech detected"
-				: `Generated ${cues.length} captions`;
+				: `Generated ${allCues.length} captions`;
 
 			return { 
 				success: true, 
-				cues, 
+				cues: allCues, 
 				noSpeechDetected,
 				message 
 			};
