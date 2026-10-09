@@ -945,19 +945,21 @@ export default function TimelineCanvas({
 		const annotationRowIds = new Set<string>();
 		const audioRowIds = new Set<string>();
 		let hasCaptionRow = false;
+		let hasZoomRow = false;
 		for (const item of items) {
 			if (isAnnotationTrackRowId(item.rowId)) annotationRowIds.add(item.rowId);
 			if (isAudioTrackRowId(item.rowId)) audioRowIds.add(item.rowId);
 			if (item.rowId === CAPTION_ROW_ID) hasCaptionRow = true;
+			if (item.rowId === ZOOM_ROW_ID) hasZoomRow = true;
 		}
 		const sourceAudioRows = showSourceAudioTrack ? sourceAudioTracks.length : 0;
 		// The caption lane is always shown when captions are enabled (even before any cue
 		// exists), so count it whenever captionsEnabled — not only when a caption item is
 		// present — or the min-height/stretch math undersizes the empty lane.
-		const zoomRows = (zoomItems.length > 0 || isDragging) ? 1 : 0;
+		const zoomRows = (hasZoomRow || isDragging) ? 1 : 0;
 		const captionRows = hasCaptionRow ? 1 : 0;
 		return 1 + zoomRows + sourceAudioRows + annotationRowIds.size + audioRowIds.size + captionRows;
-	}, [items, showSourceAudioTrack, sourceAudioTracks.length, zoomItems.length, isDragging]);
+	}, [items, showSourceAudioTrack, sourceAudioTracks.length, isDragging]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const timelineViewportStretchFactor = getTimelineViewportStretchFactor(timelineRowCount);
