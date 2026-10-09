@@ -57,6 +57,27 @@ describe("timeline model", () => {
 		expect(items).toHaveLength(4);
 		expect(items.find((i) => i.id === "a1")?.rowId).toBe("row-annotation-1");
 		expect(items.find((i) => i.id === "au1")?.label).toBe("foo");
+		expect(items.find((i) => i.id === "au1")?.sourceSpan).toEqual({ start: 0, end: 1500 });
+	});
+
+	it("exposes the trimmed audio window as the item's source span", () => {
+		const items = buildTimelineItems({
+			zoomRegions: [],
+			clipRegions: [],
+			annotationRegions: [],
+			audioRegions: [
+				{
+					id: "au1",
+					startMs: 500,
+					endMs: 2000,
+					audioPath: "/tmp/foo.mp3",
+					volume: 1,
+					sourceStartMs: 3000,
+				},
+			],
+		});
+
+		expect(items[0].sourceSpan).toEqual({ start: 3000, end: 4500 });
 	});
 
 	it("exposes clip speed for non-default speed labels", () => {

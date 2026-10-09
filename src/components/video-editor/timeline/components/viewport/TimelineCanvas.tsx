@@ -10,6 +10,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { rememberAudioFileDurationMs } from "@/components/video-editor/audio/audioFileDurations";
 import type {
 	SourceAudioTrackSettings,
 	SourceAudioTrackWithPeaks,
@@ -424,10 +425,20 @@ function AudioItemWithWaveform({
 	onSelectAudio,
 }: AudioItemWithWaveformProps) {
 	const { peaks } = useTimelineAudioPeaks(item.audioPath ?? null);
+	useEffect(() => {
+		if (item.audioPath && peaks) rememberAudioFileDurationMs(item.audioPath, peaks.durationMs);
+	}, [item.audioPath, peaks]);
+	const sourceStartMs = item.sourceSpan?.start ?? 0;
 	const normalizedWaveformSpan = useMemo(() => {
 		const duration = Math.max(0, waveformSpan.end - waveformSpan.start);
-		return { start: 0, end: duration };
-	}, [waveformSpan.end, waveformSpan.start]);
+		// While the left edge is being dragged the source in-point follows it; a
+		// whole-item move shifts both edges equally and keeps the same audio.
+		const startDelta = waveformSpan.start - span.start;
+		const endDelta = waveformSpan.end - span.end;
+		const isMove = Math.abs(startDelta - endDelta) < 1;
+		const start = Math.max(0, sourceStartMs + (isMove ? 0 : startDelta));
+		return { start, end: start + duration };
+	}, [sourceStartMs, span.end, span.start, waveformSpan.end, waveformSpan.start]);
 	return (
 		<Item
 			id={item.id}
