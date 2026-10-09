@@ -83,22 +83,21 @@ export function AnnotationOverlay({
 		const nextSceneWidth = rect.width / sceneTransform.scale;
 		const nextSceneHeight = rect.height / sceneTransform.scale;
 
+		const minX = -(safeRecordingRect.x / Math.max(1, safeRecordingRect.width)) * 100;
+		const maxX = ((containerWidth - safeRecordingRect.x) / Math.max(1, safeRecordingRect.width)) * 100;
+		const minY = -(safeRecordingRect.y / Math.max(1, safeRecordingRect.height)) * 100;
+		const maxY = ((containerHeight - safeRecordingRect.y) / Math.max(1, safeRecordingRect.height)) * 100;
+
+		const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+
 		return {
 			position: {
-				x: clampPercent(
-					((nextSceneX - safeRecordingRect.x) / Math.max(1, safeRecordingRect.width)) *
-						100,
-				),
-				y: clampPercent(
-					((nextSceneY - safeRecordingRect.y) / Math.max(1, safeRecordingRect.height)) *
-						100,
-				),
+				x: clamp(((nextSceneX - safeRecordingRect.x) / Math.max(1, safeRecordingRect.width)) * 100, minX, maxX),
+				y: clamp(((nextSceneY - safeRecordingRect.y) / Math.max(1, safeRecordingRect.height)) * 100, minY, maxY),
 			},
 			size: {
-				width: clampPercent((nextSceneWidth / Math.max(1, safeRecordingRect.width)) * 100),
-				height: clampPercent(
-					(nextSceneHeight / Math.max(1, safeRecordingRect.height)) * 100,
-				),
+				width: Math.max(0, (nextSceneWidth / Math.max(1, safeRecordingRect.width)) * 100),
+				height: Math.max(0, (nextSceneHeight / Math.max(1, safeRecordingRect.height)) * 100),
 			},
 		};
 	};
@@ -264,7 +263,6 @@ export function AnnotationOverlay({
 				if (isDraggingRef.current) return;
 				onClick(annotation.id);
 			}}
-			bounds="parent"
 			className={cn(
 				"cursor-move transition-all",
 				isSelected && "ring-2 ring-[#2563EB] ring-offset-2 ring-offset-transparent",

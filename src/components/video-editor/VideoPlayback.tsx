@@ -2956,6 +2956,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								className="absolute"
 								style={{
 									pointerEvents: "none",
+									overflow: "visible",
 									left: annotationRecordingRect.x || 0,
 									top: annotationRecordingRect.y || 0,
 									width:
