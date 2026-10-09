@@ -6,6 +6,7 @@ import type {
 	SpeedRegion,
 } from "@/components/video-editor/types";
 import {
+	getAudioSourceStartMs,
 	getClipSourceEndMs,
 	getClipSourceStartMs,
 	getTimelineDurationMs,
@@ -411,10 +412,10 @@ export class OfflineAudioProcessor extends AudioMediaProcessor {
 		// Skip if region doesn't overlap with this chunk
 		if (localEndSec <= 0 || localStartSec >= chunkDurationSec) return;
 
-		// Clip to chunk bounds
-		let bufferOffsetSec = 0;
+		// Clip to chunk bounds. A left-trimmed region starts reading part-way into its file.
+		let bufferOffsetSec = getAudioSourceStartMs(region) / 1000;
 		if (localStartSec < 0) {
-			bufferOffsetSec = -localStartSec;
+			bufferOffsetSec += -localStartSec;
 			localStartSec = 0;
 		}
 		if (localEndSec > chunkDurationSec) {
