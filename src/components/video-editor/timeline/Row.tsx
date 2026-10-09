@@ -6,6 +6,7 @@ interface RowProps extends RowDefinition {
 	label?: string;
 	hint?: string;
 	isEmpty?: boolean;
+	isThin?: boolean;
 	labelColor?: string;
 	onMouseEnter?: React.MouseEventHandler<HTMLDivElement>;
 	onMouseMove?: React.MouseEventHandler<HTMLDivElement>;
@@ -20,6 +21,7 @@ export default function Row({
 	label,
 	hint,
 	isEmpty,
+	isThin,
 	labelColor = "#666",
 	onMouseEnter,
 	onMouseMove,
@@ -31,10 +33,12 @@ export default function Row({
 
 	return (
 		<div
-			className="bg-transparent relative flex-1 min-h-[26px]"
+			className={`bg-transparent relative transition-all duration-200 ${
+				isThin ? 'h-1.5 hover:min-h-[26px] flex-none' : 'flex-1 min-h-[26px]'
+			}`}
 			style={{ ...rowWrapperStyle, marginBottom: 2 }}
 		>
-			{label && (
+			{label && !isThin && (
 				<div
 					className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold uppercase tracking-widest z-20 pointer-events-none select-none"
 					style={{ color: labelColor, writingMode: "horizontal-tb" }}
@@ -42,14 +46,14 @@ export default function Row({
 					{label}
 				</div>
 			)}
-			{isEmpty && hint && (
+			{isEmpty && hint && !isThin && (
 				<div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10">
 					<span className="text-[11px] text-foreground/15 font-medium">{hint}</span>
 				</div>
 			)}
 			<div
 				ref={setNodeRef}
-				className="relative h-full min-h-[26px] overflow-hidden"
+				className={`relative h-full overflow-hidden ${isThin ? '' : 'min-h-[26px]'}`}
 				style={rowStyle}
 				onMouseEnter={onMouseEnter}
 				onMouseMove={onMouseMove}

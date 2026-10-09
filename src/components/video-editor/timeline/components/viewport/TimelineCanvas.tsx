@@ -405,6 +405,7 @@ interface TimelineCanvasRowsProps {
 	onCaptionRowMouseLeave: MouseEventHandler<HTMLDivElement>;
 	onCaptionRowMouseDown: MouseEventHandler<HTMLDivElement>;
 	onCaptionRowClick: MouseEventHandler<HTMLDivElement>;
+	isDragging?: boolean;
 }
 
 interface AudioItemWithWaveformProps {
@@ -486,6 +487,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	onCaptionRowMouseLeave,
 	onCaptionRowMouseDown,
 	onCaptionRowClick,
+	isDragging,
 }: TimelineCanvasRowsProps) {
 	const hiddenIds = useMemo(() => new Set(liveHiddenItemIds ?? []), [liveHiddenItemIds]);
 	const { clipItems, zoomItems, captionItems, generatedClipItems, annotationRows, audioRows } =
@@ -606,6 +608,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 			<Row
 				id={ZOOM_ROW_ID}
 				isEmpty={zoomItems.length === 0}
+				isThin={zoomItems.length === 0 && !isDragging}
 				onMouseEnter={onZoomRowMouseEnter}
 				onMouseMove={onZoomRowMouseMove}
 				onMouseLeave={onZoomRowMouseLeave}
@@ -950,9 +953,10 @@ export default function TimelineCanvas({
 		// The caption lane is always shown when captions are enabled (even before any cue
 		// exists), so count it whenever captionsEnabled — not only when a caption item is
 		// present — or the min-height/stretch math undersizes the empty lane.
+		const zoomRows = (zoomItems.length > 0 || isDragging) ? 1 : 0;
 		const captionRows = hasCaptionRow || captionsEnabled ? 1 : 0;
-		return 2 + sourceAudioRows + annotationRowIds.size + audioRowIds.size + captionRows;
-	}, [items, showSourceAudioTrack, sourceAudioTracks.length, captionsEnabled]);
+		return 1 + zoomRows + sourceAudioRows + annotationRowIds.size + audioRowIds.size + captionRows;
+	}, [items, showSourceAudioTrack, sourceAudioTracks.length, captionsEnabled, zoomItems.length, isDragging]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const timelineViewportStretchFactor = getTimelineViewportStretchFactor(timelineRowCount);
@@ -1091,6 +1095,7 @@ export default function TimelineCanvas({
 					onCaptionRowMouseLeave={handleCaptionRowMouseLeave}
 					onCaptionRowMouseDown={handleCaptionRowMouseDown}
 					onCaptionRowClick={handleCaptionRowClick}
+					isDragging={isDragging}
 				/>
 			</div>
 		</div>
