@@ -157,3 +157,56 @@ describe("source preview playback ownership", () => {
 		if (plays) expect(audio.currentTime).toBeCloseTo(time - delay / 1000);
 	});
 });
+
+describe("user audio preview seek", () => {
+	it.each([
+		{ name: "untrimmed region", sourceStartMs: undefined, expected: 2 },
+		{ name: "left-trimmed region", sourceStartMs: 2500, expected: 4.5 },
+	])("seeks the $name to the right point in the file", ({ sourceStartMs, expected }) => {
+		const audio = {
+			src: "",
+			preload: "",
+			dataset: {},
+			duration: 30,
+			currentTime: 0,
+			playbackRate: 1,
+			paused: true,
+			volume: 1,
+			load: vi.fn(),
+			pause: vi.fn(),
+			play: vi.fn().mockResolvedValue(undefined),
+		};
+		vi.stubGlobal("Audio", function () {
+			return audio;
+		});
+		useAudioPreviewSync({
+			audioRegions: [
+				{
+					id: "audio-1",
+					startMs: 1000,
+					endMs: 9000,
+					audioPath: "/music.mp3",
+					volume: 1,
+					sourceStartMs,
+				},
+			],
+			previewVolume: 1,
+			isPlaying: true,
+			currentTime: 3,
+			// Playhead 3 s into the timeline is 2 s into the region.
+			timelineTime: 3,
+			duration: 10,
+			sourcePlaybackRate: 1,
+			previewSourceAudioFallbackPaths: [],
+			sourceAudioFallbackStartDelayMsByPath: {},
+			sourceAudioResourceVersion: 0,
+			isCurrentClipMuted: false,
+			getSourceTrackPreviewGain: () => 1,
+			onSourceFallbackLoadError: vi.fn(),
+		});
+		for (const effect of harness.effects) effect();
+
+		expect(audio.currentTime).toBeCloseTo(expected);
+		expect(audio.play).toHaveBeenCalledOnce();
+	});
+});
