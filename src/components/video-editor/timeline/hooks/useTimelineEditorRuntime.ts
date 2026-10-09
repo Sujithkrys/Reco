@@ -29,6 +29,7 @@ interface UseTimelineEditorRuntimeParams {
 	videoDuration: number;
 	totalMs: number;
 	currentTimeMs: number;
+	onSeek?: (timeInSeconds: number) => void;
 	safeMinDurationMs: number;
 	cursorTelemetry: CursorTelemetryPoint[];
 	autoSuggestZoomsTrigger: number;
@@ -58,7 +59,12 @@ interface UseTimelineEditorRuntimeParams {
 	speedRegions: SpeedRegion[];
 	onSpeedSpanChange?: (id: string, span: Span) => void;
 	audioRegions: AudioRegion[];
-	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number) => void;
+	onAudioAdded?: (
+		span: Span,
+		audioPath: string,
+		trackIndex?: number,
+		sourceDurationMs?: number,
+	) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
@@ -86,6 +92,7 @@ export function useTimelineEditorRuntime({
 	videoDuration,
 	totalMs,
 	currentTimeMs,
+	onSeek,
 	safeMinDurationMs,
 	cursorTelemetry,
 	autoSuggestZoomsTrigger,
@@ -187,6 +194,7 @@ export function useTimelineEditorRuntime({
 		onSelectAudio,
 		onSelectCaption,
 		onSelectGeneratedClip,
+		onSeek,
 	});
 
 	useTimelineNormalization({
@@ -292,6 +300,10 @@ export function useTimelineEditorRuntime({
 		zoomTimelineIn,
 		zoomTimelineOut,
 		annotationCount: annotationRegions.length,
+		currentTimeMs,
+		annotationRegions,
+		audioRegions,
+		captionCues,
 		selectedKeyframeId,
 		selectedZoomId,
 		selectedClipId,

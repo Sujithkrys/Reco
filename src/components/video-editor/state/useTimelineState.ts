@@ -12,6 +12,7 @@ import type {
 	TrimRegion,
 	ZoomRegion,
 } from "../types";
+import type { ChapterMarker } from "../chapters/chapterTypes";
 import { DEFAULT_AUTO_CAPTION_SETTINGS } from "../types";
 
 export function useTimelineState() {
@@ -30,6 +31,8 @@ export function useTimelineState() {
 	const [generatedClipRegions, setGeneratedClipRegions] = useState<GeneratedClipRegion[]>([]);
 	const [selectedGeneratedClipId, setSelectedGeneratedClipId] = useState<string | null>(null);
 	const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
+	const [chapters, setChapters] = useState<ChapterMarker[]>([]);
+	const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
 	const [sourceAudioTrackSettingsByClip, setSourceAudioTrackSettingsByClip] = useState<
 		Record<string, SourceAudioTrackSettings>
 	>({});
@@ -85,5 +88,9 @@ export function useTimelineState() {
 		setAutoCaptions,
 		autoCaptionSettings,
 		setAutoCaptionSettings,
+		chapters,
+		setChapters,
+		selectedChapterId,
+		setSelectedChapterId,
 	};
 }

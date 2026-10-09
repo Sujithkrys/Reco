@@ -38,6 +38,7 @@ type Input = {
 	setNativeCaptureUnavailableModalOpen: Dispatch<SetStateAction<boolean>>;
 	handleUploadWebcam: () => void;
 	handleClearWebcam: () => void;
+	onSeek?: (seconds: number) => void;
 };
 
 export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof SettingsPanel> {
@@ -193,6 +194,10 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		aspectRatio,
 		onAspectRatioChange: setAspectRatio,
 		selectedAnnotationId: timeline.selectedAnnotationId,
+		onSelectAnnotation: timeline.setSelectedAnnotationId,
+		onSelectZoom: zoomCommands.handleSelectZoom,
+		onSelectClip: clipCommands.handleSelectClip,
+		onSelectAudio: audioCommands.handleSelectAudio,
 		annotationRegions: timeline.annotationRegions,
 		autoCaptions: timeline.autoCaptions,
 		autoCaptionSettings: timeline.autoCaptionSettings,
@@ -226,5 +231,7 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onAnnotationBlurIntensityChange: annotationCommands.handleAnnotationBlurIntensityChange,
 		onAnnotationBlurColorChange: annotationCommands.handleAnnotationBlurColorChange,
 		onAnnotationDelete: annotationCommands.handleAnnotationDelete,
+		currentTimeMs: currentTime * 1000,
+		onSeek: input.onSeek,
 	};
 }

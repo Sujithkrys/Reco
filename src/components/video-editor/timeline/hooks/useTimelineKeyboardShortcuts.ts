@@ -1,4 +1,5 @@
-import { type RefObject, useEffect } from "react";
+import { type RefObject, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { matchesShortcut } from "@/lib/shortcuts";
 import type { TimelineShortcutBindings } from "../core/timelineTypes";
 import { resolveDeleteSelectionTarget } from "./utils/timelineSelectionUtils";
@@ -12,6 +13,10 @@ interface UseTimelineKeyboardShortcutsParams {
 	zoomTimelineIn: () => void;
 	zoomTimelineOut: () => void;
 	annotationCount: number;
+	currentTimeMs?: number;
+	annotationRegions?: Array<{ id: string; startMs: number; endMs: number }>;
+	audioRegions?: Array<{ id: string; startMs: number; endMs: number }>;
+	captionCues?: Array<{ id: string; startMs: number; endMs: number }>;
 	selectedKeyframeId: string | null;
 	selectedZoomId: string | null;
 	selectedClipId?: string | null;
@@ -41,6 +46,10 @@ export function useTimelineKeyboardShortcuts({
 	zoomTimelineIn,
 	zoomTimelineOut,
 	annotationCount,
+	currentTimeMs,
+	annotationRegions,
+	audioRegions,
+	captionCues,
 	selectedKeyframeId,
 	selectedZoomId,
 	selectedClipId,
@@ -60,6 +69,15 @@ export function useTimelineKeyboardShortcuts({
 	deleteSelectedCaption,
 	cycleAnnotationsAtCurrentTime,
 }: UseTimelineKeyboardShortcutsParams) {
+	const currentTimeMsRef = useRef(currentTimeMs);
+	currentTimeMsRef.current = currentTimeMs;
+	const annotationRegionsRef = useRef(annotationRegions);
+	annotationRegionsRef.current = annotationRegions;
+	const audioRegionsRef = useRef(audioRegions);
+	audioRegionsRef.current = audioRegions;
+	const captionCuesRef = useRef(captionCues);
+	captionCuesRef.current = captionCues;
+
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.defaultPrevented) return;
@@ -131,6 +149,7 @@ export function useTimelineKeyboardShortcuts({
 				if (target !== "none") {
 					e.preventDefault();
 				}
+				const currentTime = currentTimeMsRef.current;
 				if (target === "keyframe") {
 					deleteSelectedKeyframe();
 				} else if (target === "zoom") {
@@ -138,10 +157,31 @@ export function useTimelineKeyboardShortcuts({
 				} else if (target === "clip") {
 					deleteSelectedClip();
 				} else if (target === "annotation") {
+					if (selectedAnnotationId && currentTime !== undefined && annotationRegionsRef.current) {
+						const item = annotationRegionsRef.current.find((a) => a.id === selectedAnnotationId);
+						if (item && (currentTime < item.startMs || currentTime > item.endMs)) {
+							toast("Move the playhead onto the layer to delete it, or use the Delete button in its settings.");
+							return;
+						}
+					}
 					deleteSelectedAnnotation();
 				} else if (target === "audio") {
+					if (selectedAudioId && currentTime !== undefined && audioRegionsRef.current) {
+						const item = audioRegionsRef.current.find((a) => a.id === selectedAudioId);
+						if (item && (currentTime < item.startMs || currentTime > item.endMs)) {
+							toast("Move the playhead onto the layer to delete it, or use the Delete button in its settings.");
+							return;
+						}
+					}
 					deleteSelectedAudio();
 				} else if (target === "caption") {
+					if (selectedCaptionId && currentTime !== undefined && captionCuesRef.current) {
+						const item = captionCuesRef.current.find((c) => c.id === selectedCaptionId);
+						if (item && (currentTime < item.startMs || currentTime > item.endMs)) {
+							toast("Move the playhead onto the layer to delete it, or use the Delete button in its settings.");
+							return;
+						}
+					}
 					deleteSelectedCaption();
 				}
 			}

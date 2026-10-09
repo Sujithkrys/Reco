@@ -10,6 +10,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { rememberAudioFileDurationMs } from "@/components/video-editor/audio/audioFileDurations";
 import type {
 	SourceAudioTrackSettings,
 	SourceAudioTrackWithPeaks,
@@ -79,7 +80,6 @@ interface TimelineCanvasProps {
 	selectedCaptionId?: string | null;
 	selectedGeneratedClipId?: string | null;
 	selectAllBlocksActive?: boolean;
-	onClearBlockSelection?: () => void;
 	keyframes?: { id: string; time: number }[];
 	sourceAudioTracks?: SourceAudioTrackWithPeaks[];
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
@@ -406,6 +406,7 @@ interface TimelineCanvasRowsProps {
 	onCaptionRowMouseLeave: MouseEventHandler<HTMLDivElement>;
 	onCaptionRowMouseDown: MouseEventHandler<HTMLDivElement>;
 	onCaptionRowClick: MouseEventHandler<HTMLDivElement>;
+	isDragging?: boolean;
 }
 
 interface AudioItemWithWaveformProps {
@@ -424,10 +425,20 @@ function AudioItemWithWaveform({
 	onSelectAudio,
 }: AudioItemWithWaveformProps) {
 	const { peaks } = useTimelineAudioPeaks(item.audioPath ?? null);
+	useEffect(() => {
+		if (item.audioPath && peaks) rememberAudioFileDurationMs(item.audioPath, peaks.durationMs);
+	}, [item.audioPath, peaks]);
+	const sourceStartMs = item.sourceSpan?.start ?? 0;
 	const normalizedWaveformSpan = useMemo(() => {
 		const duration = Math.max(0, waveformSpan.end - waveformSpan.start);
-		return { start: 0, end: duration };
-	}, [waveformSpan.end, waveformSpan.start]);
+		// While the left edge is being dragged the source in-point follows it; a
+		// whole-item move shifts both edges equally and keeps the same audio.
+		const startDelta = waveformSpan.start - span.start;
+		const endDelta = waveformSpan.end - span.end;
+		const isMove = Math.abs(startDelta - endDelta) < 1;
+		const start = Math.max(0, sourceStartMs + (isMove ? 0 : startDelta));
+		return { start, end: start + duration };
+	}, [sourceStartMs, span.end, span.start, waveformSpan.end, waveformSpan.start]);
 	return (
 		<Item
 			id={item.id}
@@ -487,6 +498,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	onCaptionRowMouseLeave,
 	onCaptionRowMouseDown,
 	onCaptionRowClick,
+	isDragging,
 }: TimelineCanvasRowsProps) {
 	const hiddenIds = useMemo(() => new Set(liveHiddenItemIds ?? []), [liveHiddenItemIds]);
 	const { clipItems, zoomItems, captionItems, generatedClipItems, annotationRows, audioRows } =
@@ -607,6 +619,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 			<Row
 				id={ZOOM_ROW_ID}
 				isEmpty={zoomItems.length === 0}
+				isThin={zoomItems.length === 0 && !isDragging}
 				onMouseEnter={onZoomRowMouseEnter}
 				onMouseMove={onZoomRowMouseMove}
 				onMouseLeave={onZoomRowMouseLeave}
@@ -663,7 +676,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					))}
 			</Row>
 
-			{(captionsEnabled || captionItems.length > 0) && (
+			{captionItems.length > 0 && (
 				<Row
 					id={CAPTION_ROW_ID}
 					isEmpty={captionItems.length === 0}
@@ -711,6 +724,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 							isSelected={item.id === selectedCaptionId}
 							onSelectId={onSelectCaption}
 							variant="caption"
+							disabled={true}
 						>
 							{item.label}
 						</Item>
@@ -809,7 +823,6 @@ export default function TimelineCanvas({
 	selectedCaptionId,
 	selectedGeneratedClipId,
 	selectAllBlocksActive = false,
-	onClearBlockSelection,
 	keyframes = [],
 	sourceAudioTracks = [],
 	getSourceAudioTrackSettingsForClip,
@@ -838,16 +851,8 @@ export default function TimelineCanvas({
 		(e: MouseEvent<HTMLDivElement>) => {
 			if (isSeeking) return;
 			if (!onSeek || videoDurationMs <= 0) return;
-
-			if (onClearBlockSelection) {
-				onClearBlockSelection();
-			} else {
-				onSelectZoom?.(null);
-				onSelectClip?.(null);
-				onSelectAnnotation?.(null);
-				onSelectAudio?.(null);
-				onSelectCaption?.(null);
-				onSelectGeneratedClip?.(null);
+			if ((e.target as HTMLElement).closest("[data-timeline-item]")) {
+				return;
 			}
 
 			const rect = e.currentTarget.getBoundingClientRect();
@@ -863,13 +868,6 @@ export default function TimelineCanvas({
 		[
 			isSeeking,
 			onSeek,
-			onSelectZoom,
-			onSelectClip,
-			onSelectAnnotation,
-			onSelectAudio,
-			onSelectCaption,
-			onSelectGeneratedClip,
-			onClearBlockSelection,
 			videoDurationMs,
 			sidebarWidth,
 			direction,
@@ -898,17 +896,6 @@ export default function TimelineCanvas({
 				return;
 			}
 
-			if (onClearBlockSelection) {
-				onClearBlockSelection();
-			} else {
-				onSelectZoom?.(null);
-				onSelectClip?.(null);
-				onSelectAnnotation?.(null);
-				onSelectAudio?.(null);
-				onSelectCaption?.(null);
-				onSelectGeneratedClip?.(null);
-			}
-
 			const rect = localTimelineRef.current.getBoundingClientRect();
 			onSeek(getAbsoluteMsFromClientX(e.clientX, rect) / 1000);
 			setIsSeeking(true);
@@ -916,14 +903,7 @@ export default function TimelineCanvas({
 		},
 		[
 			getAbsoluteMsFromClientX,
-			onClearBlockSelection,
 			onSeek,
-			onSelectAnnotation,
-			onSelectAudio,
-			onSelectCaption,
-			onSelectClip,
-			onSelectZoom,
-			onSelectGeneratedClip,
 			videoDurationMs,
 		],
 	);
@@ -976,18 +956,21 @@ export default function TimelineCanvas({
 		const annotationRowIds = new Set<string>();
 		const audioRowIds = new Set<string>();
 		let hasCaptionRow = false;
+		let hasZoomRow = false;
 		for (const item of items) {
 			if (isAnnotationTrackRowId(item.rowId)) annotationRowIds.add(item.rowId);
 			if (isAudioTrackRowId(item.rowId)) audioRowIds.add(item.rowId);
 			if (item.rowId === CAPTION_ROW_ID) hasCaptionRow = true;
+			if (item.rowId === ZOOM_ROW_ID) hasZoomRow = true;
 		}
 		const sourceAudioRows = showSourceAudioTrack ? sourceAudioTracks.length : 0;
 		// The caption lane is always shown when captions are enabled (even before any cue
 		// exists), so count it whenever captionsEnabled — not only when a caption item is
 		// present — or the min-height/stretch math undersizes the empty lane.
-		const captionRows = hasCaptionRow || captionsEnabled ? 1 : 0;
-		return 2 + sourceAudioRows + annotationRowIds.size + audioRowIds.size + captionRows;
-	}, [items, showSourceAudioTrack, sourceAudioTracks.length, captionsEnabled]);
+		const zoomRows = (hasZoomRow || isDragging) ? 1 : 0;
+		const captionRows = hasCaptionRow ? 1 : 0;
+		return 1 + zoomRows + sourceAudioRows + annotationRowIds.size + audioRowIds.size + captionRows;
+	}, [items, showSourceAudioTrack, sourceAudioTracks.length, isDragging]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const timelineViewportStretchFactor = getTimelineViewportStretchFactor(timelineRowCount);
@@ -1126,6 +1109,7 @@ export default function TimelineCanvas({
 					onCaptionRowMouseLeave={handleCaptionRowMouseLeave}
 					onCaptionRowMouseDown={handleCaptionRowMouseDown}
 					onCaptionRowClick={handleCaptionRowClick}
+					isDragging={isDragging}
 				/>
 			</div>
 		</div>

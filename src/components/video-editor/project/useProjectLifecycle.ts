@@ -181,6 +181,7 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setDefaultSourceAudioTrackSettings(editor.defaultSourceAudioTrackSettings ?? {});
 		timeline.setAutoCaptions(editor.autoCaptions);
 		timeline.setAutoCaptionSettings(editor.autoCaptionSettings);
+		timeline.setChapters(editor.chapters ?? []);
 		current.setAspectRatio(editor.aspectRatio);
 		exportSettings.setExportEncodingMode(editor.exportEncodingMode);
 		exportSettings.setExportBackendPreference(editor.exportBackendPreference);
@@ -353,6 +354,8 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setHasClipSourceAudio(false);
 		timeline.setAutoCaptions([]);
 		timeline.setAutoCaptionSettings((previous) => ({ ...previous, enabled: false }));
+		timeline.setChapters([]);
+		timeline.setSelectedChapterId(null);
 		timeline.setSelectedZoomId(null);
 		timeline.setSelectedClipId(null);
 		timeline.setSelectedAnnotationId(null);

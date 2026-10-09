@@ -1,4 +1,4 @@
-import type { AudioRegion } from "@/components/video-editor/types";
+import { type AudioRegion, getAudioSourceStartMs } from "@/components/video-editor/types";
 import { SOURCE_AUDIO_NORMALIZE_GAIN } from "@/components/video-editor/audio/audioTypes";
 import { resolveSourceAudioFallbackPaths } from "./sourceAudioFallback";
 
@@ -16,6 +16,8 @@ export interface ResolvedAudioTrack {
 	timelineBinding: {
 		startMs: number;
 		endMs: number;
+		/** Position in the audio file that plays at `startMs` (trimmed user audio). */
+		sourceStartMs?: number;
 	};
 }
 
@@ -83,6 +85,7 @@ export function buildResolvedAudioPlan(input: {
 		timelineBinding: {
 			startMs: Math.max(0, region.startMs),
 			endMs: Math.max(0, region.endMs),
+			sourceStartMs: getAudioSourceStartMs(region),
 		},
 	}));
 

@@ -1,9 +1,9 @@
-import { useEffect } from "react";
 import type { ComponentProps } from "react";
 import { ArrowLeft, Camera, ClosedCaptioning, Cursor, Sparkle } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { EditorAnnouncementBanner } from "@/components/announcements/EditorAnnouncementBanner";
 import { Toaster } from "@/components/ui/sonner";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { useI18n } from "@/contexts/I18nContext";
 import { SettingsPanel } from "../SettingsPanel";
 import type { useEditorExportController } from "../export/useEditorExportController";
@@ -48,17 +48,19 @@ function EditorRail({ t, activeSection, setActiveSection, onBack }: EditorRailPr
 
 	return (
 		<div className="flex flex-shrink-0 flex-col items-center gap-0.5 px-2 py-2">
-			<motion.button
-				type="button"
-				onClick={onBack}
-				title={t("editor.back", "Back to Projects")}
-				className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none mb-2"
-				whileHover={{ opacity: 1 }}
-				initial={{ opacity: 0.55 }}
-			>
-				<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
-				<ArrowLeft className="relative z-10 h-[22px] w-[22px]" />
-			</motion.button>
+			<Tooltip content={t("editor.back", "Back to Projects")} side="right" asChild>
+				<motion.button
+					type="button"
+					onClick={onBack}
+					aria-label={t("editor.back", "Back to Projects")}
+					className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none mb-2"
+					whileHover={{ opacity: 1 }}
+					initial={{ opacity: 0.55 }}
+				>
+					<motion.span className="absolute inset-0 rounded-lg bg-foreground/[0.04] opacity-0 transition group-hover:opacity-100" />
+					<ArrowLeft className="relative z-10 h-[22px] w-[22px]" />
+				</motion.button>
+			</Tooltip>
 			
 			<div className="h-px w-6 bg-foreground/10 mb-2" />
 
@@ -66,34 +68,36 @@ function EditorRail({ t, activeSection, setActiveSection, onBack }: EditorRailPr
 				const isActive = activeSection === section.id;
 				return (
 					<div key={section.id} className="flex items-center">
-						<motion.button
-							type="button"
-							onClick={() => setActiveSection(section.id)}
-							title={section.label}
-							className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none"
-							animate={{ opacity: isActive ? 1 : 0.55 }}
-							transition={{ duration: 0.14 }}
-						>
-							{isActive ? (
-								<motion.span
-									layoutId="editor-rail-active-bg"
-									className="absolute inset-0 rounded-lg bg-foreground/[0.08]"
-									transition={{ type: "spring", stiffness: 450, damping: 35 }}
-								/>
-							) : null}
-							<motion.span
-								className="relative z-10"
-								animate={{
-									color: isActive ? "#2563EB" : "hsl(var(--foreground))",
-								}}
+						<Tooltip content={section.label} side="right" asChild>
+							<motion.button
+								type="button"
+								onClick={() => setActiveSection(section.id)}
+								aria-label={section.label}
+								className="group relative flex h-9 w-9 items-center justify-center rounded-lg outline-none focus:outline-none focus-visible:outline-none"
+								animate={{ opacity: isActive ? 1 : 0.55 }}
 								transition={{ duration: 0.14 }}
 							>
-								<section.icon
-									className="h-[27px] w-[27px]"
-									weight={isActive ? "fill" : "regular"}
-								/>
-							</motion.span>
-						</motion.button>
+								{isActive ? (
+									<motion.span
+										layoutId="editor-rail-active-bg"
+										className="absolute inset-0 rounded-lg bg-foreground/[0.08]"
+										transition={{ type: "spring", stiffness: 450, damping: 35 }}
+									/>
+								) : null}
+								<motion.span
+									className="relative z-10"
+									animate={{
+										color: isActive ? "#2563EB" : "hsl(var(--foreground))",
+									}}
+									transition={{ duration: 0.14 }}
+								>
+									<section.icon
+										className="h-[27px] w-[27px]"
+										weight={isActive ? "fill" : "regular"}
+									/>
+								</motion.span>
+							</motion.button>
+						</Tooltip>
 						<div className="ml-1.5 h-1.5 w-1.5 flex-shrink-0">
 							{isActive ? (
 								<motion.span
@@ -227,9 +231,25 @@ export function EditorLayout(props: Props) {
 		);
 
 	// Ensure we are in a valid editor section
-	const safeActiveSection = ["scene", "cursor", "webcam", "captions"].includes(ui.activeEffectSection)
-		? ui.activeEffectSection
-		: "scene";
+	const validEditorSections: EditorEffectSection[] = [
+		"scene",
+		"cursor",
+		"webcam",
+		"captions",
+		"caption",
+		"audio",
+		"zoom",
+		"clip",
+		"settings",
+		"frame",
+		"crop",
+		"extensions",
+	];
+	const safeActiveSection =
+		validEditorSections.includes(ui.activeEffectSection) ||
+		ui.activeEffectSection.startsWith("ext:")
+			? ui.activeEffectSection
+			: "scene";
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-editor-bg text-foreground selection:bg-[#2563EB]/30">

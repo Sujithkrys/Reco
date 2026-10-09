@@ -70,6 +70,51 @@ describe("clip audio timeline", () => {
 		);
 		expect(starts[0]).toHaveBeenCalledWith(0.5, 0, 3);
 	});
+	it("reads a left-trimmed region from its source offset", () => {
+		const processor = new TestAudioProcessor();
+		const { starts, ctx } = context();
+		processor.scheduleOverlay(
+			ctx,
+			buffer,
+			{ startMs: 500, endMs: 3500, volume: 1, sourceStartMs: 4000 } as AudioRegion,
+			[],
+			0,
+			4,
+			true,
+		);
+		// when = 0.5 s on the timeline, offset = 4 s into the file, duration = 3 s.
+		expect(starts[0]).toHaveBeenCalledWith(0.5, 4, 3);
+	});
+	it("adds the chunk overlap to the source offset when a trimmed region spans chunks", () => {
+		const processor = new TestAudioProcessor();
+		const { starts, ctx } = context();
+		processor.scheduleOverlay(
+			ctx,
+			buffer,
+			{ startMs: 500, endMs: 3500, volume: 1, sourceStartMs: 4000 } as AudioRegion,
+			[],
+			2,
+			4,
+			true,
+		);
+		// Chunk starts 1.5 s into the region, so reading resumes at 4 + 1.5 = 5.5 s for 1.5 s.
+		expect(starts[0]).toHaveBeenCalledWith(0, 5.5, 1.5);
+	});
+	it("never reads past the end of a trimmed file", () => {
+		const processor = new TestAudioProcessor();
+		const { starts, ctx } = context();
+		processor.scheduleOverlay(
+			ctx,
+			buffer,
+			{ startMs: 0, endMs: 5000, volume: 1, sourceStartMs: 10000 } as AudioRegion,
+			[],
+			0,
+			30,
+			true,
+		);
+		// 12 s buffer minus a 10 s offset leaves 2 s to play.
+		expect(starts[0]).toHaveBeenCalledWith(0, 10, 2);
+	});
 	it("schedules a clip correctly when its audio straddles an offline chunk boundary", async () => {
 		const processor = new TestAudioProcessor();
 		const prepared = await processor.prepare(

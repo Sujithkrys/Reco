@@ -22,6 +22,8 @@ import type {
 	ZoomFocus,
 	ZoomRegion,
 } from "../types";
+import type { ChapterMarker } from "../chapters/chapterTypes";
+import ChapterMarkers from "./components/markers/ChapterMarkers";
 import KeyframeMarkers from "./components/markers/KeyframeMarkers";
 import TimelineCanvas from "./components/viewport/TimelineCanvas";
 import TimelineWrapper from "./components/wrapper/TimelineWrapper";
@@ -68,7 +70,12 @@ export interface TimelineEditorProps {
 	speedRegions?: SpeedRegion[];
 	onSpeedSpanChange?: (id: string, span: Span) => void;
 	audioRegions?: AudioRegion[];
-	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number) => void;
+	onAudioAdded?: (
+		span: Span,
+		audioPath: string,
+		trackIndex?: number,
+		sourceDurationMs?: number,
+	) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
@@ -81,6 +88,9 @@ export interface TimelineEditorProps {
 	captionQuickAddEnabled?: boolean;
 	selectedCaptionId?: string | null;
 	onSelectCaption?: (id: string | null) => void;
+	chapters?: ChapterMarker[];
+	selectedChapterId?: string | null;
+	onSelectChapter?: (id: string | null) => void;
 	generatedClipRegions?: GeneratedClipRegion[];
 	onGeneratedClipSpanChange?: (id: string, span: Span) => void;
 	onGeneratedClipDelete?: (id: string) => void;
@@ -170,6 +180,9 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			captionQuickAddEnabled = true,
 			selectedCaptionId,
 			onSelectCaption,
+			chapters = [],
+			selectedChapterId = null,
+			onSelectChapter = () => {},
 			generatedClipRegions = [],
 			onGeneratedClipSpanChange,
 			onGeneratedClipDelete,
@@ -351,7 +364,6 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			selectAllBlocksActive,
 			setSelectAllBlocksActive,
 			handleKeyframeMove,
-			clearSelectedBlocks,
 			handleSelectZoom,
 			handleSelectClip,
 			handleSelectAnnotation,
@@ -373,6 +385,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			videoDuration,
 			totalMs,
 			currentTimeMs,
+			onSeek,
 			safeMinDurationMs,
 			cursorTelemetry,
 			autoSuggestZoomsTrigger,
@@ -502,6 +515,13 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							videoDurationMs={totalMs}
 							timelineRef={timelineContainerRef}
 						/>
+						<ChapterMarkers
+							chapters={chapters}
+							selectedChapterId={selectedChapterId}
+							onSelectChapter={onSelectChapter}
+							onSeek={onSeek}
+							timelineRef={timelineContainerRef}
+						/>
 						<TimelineCanvas
 							items={timelineItems}
 							clipRegions={clipRegions}
@@ -529,7 +549,6 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							selectedCaptionId={selectedCaptionId}
 							selectedGeneratedClipId={selectedGeneratedClipId}
 							selectAllBlocksActive={selectAllBlocksActive}
-							onClearBlockSelection={clearSelectedBlocks}
 							keyframes={keyframes}
 							sourceAudioTracks={sourceAudioTracks}
 							getSourceAudioTrackSettingsForClip={getSourceAudioTrackSettingsForClip}

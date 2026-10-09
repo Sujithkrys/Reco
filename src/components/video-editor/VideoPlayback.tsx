@@ -89,10 +89,7 @@ import {
 	type ZoomRegion,
 	type ZoomTransitionEasing,
 } from "./types";
-import {
-	isAnnotationActiveAtTime,
-	shouldClearSelectedAnnotation,
-} from "./videoPlayback/annotationVisibility";
+import { isAnnotationActiveAtTime } from "./videoPlayback/annotationVisibility";
 import { createClipPlayback, findPreviewClipAtTimelineTime } from "./videoPlayback/clipPlayback";
 import { DEFAULT_FOCUS } from "./videoPlayback/constants";
 import {
@@ -1328,21 +1325,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			selectedZoomIdRef.current = selectedZoomId;
 		}, [selectedZoomId]);
 
-		useEffect(() => {
-			if (!selectedAnnotationId || !onSelectAnnotation) {
-				return;
-			}
-
-			if (
-				shouldClearSelectedAnnotation(
-					annotationRegions ?? [],
-					selectedAnnotationId,
-					Math.round(timelineTime * 1000),
-				)
-			) {
-				onSelectAnnotation(null);
-			}
-		}, [annotationRegions, timelineTime, onSelectAnnotation, selectedAnnotationId]);
 
 		useEffect(() => {
 			isPlayingRef.current = isPlaying;
@@ -2974,6 +2956,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								className="absolute"
 								style={{
 									pointerEvents: "none",
+									overflow: "visible",
 									left: annotationRecordingRect.x || 0,
 									top: annotationRecordingRect.y || 0,
 									width:
@@ -3029,6 +3012,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 												overlayRef.current?.clientHeight ||
 												600
 											}
+											canvasWidth={overlayRef.current?.clientWidth || 800}
+											canvasHeight={overlayRef.current?.clientHeight || 600}
+											videoRectX={annotationRecordingRect.x || 0}
+											videoRectY={annotationRecordingRect.y || 0}
 											recordingRect={{
 												x: 0,
 												y: 0,

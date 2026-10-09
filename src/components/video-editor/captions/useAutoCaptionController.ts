@@ -33,6 +33,7 @@ interface UseAutoCaptionControllerParams {
 	setIsGeneratingCaptions: Dispatch<SetStateAction<boolean>>;
 	autoCaptionSettings: AutoCaptionSettings;
 	setAutoCaptionSettings: Dispatch<SetStateAction<AutoCaptionSettings>>;
+	autoCaptions?: CaptionCue[];
 	setAutoCaptions: Dispatch<SetStateAction<CaptionCue[]>>;
 	syncActiveVideoSource: (sourcePath: string, webcamPath?: string | null) => Promise<void>;
 }
@@ -57,13 +58,14 @@ export function useAutoCaptionController({
 	setIsGeneratingCaptions,
 	autoCaptionSettings,
 	setAutoCaptionSettings,
+	autoCaptions,
 	setAutoCaptions,
 	syncActiveVideoSource,
 }: UseAutoCaptionControllerParams) {
 	const captionGenerationInFlightRef = useRef(false);
 
 	useEffect(() => {
-		const unsubscribe = window.electronAPI.onWhisperSmallModelDownloadProgress((state) => {
+		const unsubscribe = window.electronAPI.onWhisperSmallModelDownloadProgress?.((state) => {
 			setWhisperModelDownloadStatus(state.status);
 			setWhisperModelDownloadProgress(state.progress);
 			if (state.status === "downloaded") {
@@ -76,19 +78,21 @@ export function useAutoCaptionController({
 			}
 		});
 
-		void window.electronAPI.getWhisperSmallModelStatus().then((result) => {
-			if (!result.success) return;
-			if (result.exists && result.path) {
-				setDownloadedWhisperModelPath(result.path);
-				setWhisperModelPath((current) => current ?? result.path ?? null);
-				setWhisperModelDownloadStatus("downloaded");
-				setWhisperModelDownloadProgress(100);
-			} else {
-				setDownloadedWhisperModelPath(null);
-				setWhisperModelDownloadStatus("idle");
-				setWhisperModelDownloadProgress(0);
-			}
-		});
+		if (window.electronAPI.getWhisperSmallModelStatus) {
+			void window.electronAPI.getWhisperSmallModelStatus().then((result) => {
+				if (!result.success) return;
+				if (result.exists && result.path) {
+					setDownloadedWhisperModelPath(result.path);
+					setWhisperModelPath((current) => current ?? result.path ?? null);
+					setWhisperModelDownloadStatus("downloaded");
+					setWhisperModelDownloadProgress(100);
+				} else {
+					setDownloadedWhisperModelPath(null);
+					setWhisperModelDownloadStatus("idle");
+					setWhisperModelDownloadProgress(0);
+				}
+			});
+		}
 
 		return () => unsubscribe?.();
 	}, [
@@ -158,16 +162,31 @@ export function useAutoCaptionController({
 		captionGenerationInFlightRef.current = true;
 		setIsGeneratingCaptions(true);
 		try {
-			let sourcePath = resolveAutoCaptionSourcePath({ videoSourcePath, videoPath });
-			if (!sourcePath) {
+			let sourcePath = window.electronAPI.isWebMode
+				? (videoSourcePath ?? videoPath ?? null)
+				: resolveAutoCaptionSourcePath({ videoSourcePath, videoPath });
+
+			if (window.electronAPI.isWebMode) {
+				// TODO: remove temporary log
+				let shape = "empty";
+				if (sourcePath) {
+					if (sourcePath.startsWith("blob:")) shape = "blob:";
+					else if (sourcePath.startsWith("https:")) shape = "https:";
+					else if (sourcePath.startsWith("http:")) shape = "http:";
+					else shape = "other";
+				}
+				console.info("sourcePath shape:", shape);
+			}
+
+			if (!sourcePath && !window.electronAPI.isWebMode) {
 				const sessionResult = await window.electronAPI.getCurrentRecordingSession?.();
-				const currentVideoResult = await window.electronAPI.getCurrentVideoPath();
+				const currentVideoResult = await window.electronAPI.getCurrentVideoPath?.();
 				sourcePath = resolveAutoCaptionSourcePath({
 					recordingSessionVideoPath:
 						sessionResult?.success && sessionResult.session?.videoPath
 							? sessionResult.session.videoPath
 							: null,
-					currentVideoPath: currentVideoResult.success
+					currentVideoPath: currentVideoResult?.success
 						? (currentVideoResult.path ?? null)
 						: null,
 				});
@@ -181,7 +200,7 @@ export function useAutoCaptionController({
 				setVideoSourcePath(sourcePath);
 				setVideoPath(await resolveVideoUrl(sourcePath));
 			}
-			if (!whisperModelPath) {
+			if (!whisperModelPath && !window.electronAPI.isWebMode) {
 				toast.error("Select a Whisper model or download the small model first");
 				return;
 			}
@@ -191,16 +210,31 @@ export function useAutoCaptionController({
 				whisperExecutablePath: whisperExecutablePath ?? undefined,
 				whisperModelPath,
 				language: autoCaptionSettings.language,
+				targetLanguage: autoCaptionSettings.targetLanguage,
 			});
 			if (!result.success || !result.cues) {
 				const errorMessage = result.error ? getErrorMessage(result.error) : result.message;
 				toast.error(errorMessage || "Failed to generate captions");
 				return;
 			}
-			setAutoCaptions(result.cues);
-			if (result.cues.length > 0) {
-				setAutoCaptionSettings((current) => ({ ...current, enabled: true }));
+			if (result.cues.length === 0) {
+				let hadExisting = Boolean(autoCaptions && autoCaptions.length > 0);
+				if (!hadExisting) {
+					setAutoCaptions((current) => {
+						if (current && current.length > 0) {
+							hadExisting = true;
+						}
+						return current;
+					});
+				}
+				const toastMessage = hadExisting
+					? "No speech detected. Existing captions kept."
+					: "No speech detected";
+				toast.info(toastMessage);
+				return;
 			}
+			setAutoCaptions(result.cues);
+			setAutoCaptionSettings((current) => ({ ...current, enabled: true }));
 			toast.success(result.message || `Generated ${result.cues.length} captions`);
 		} catch (error) {
 			toast.error(getErrorMessage(error));
@@ -210,6 +244,7 @@ export function useAutoCaptionController({
 		}
 	}, [
 		autoCaptionSettings.language,
+		autoCaptions,
 		isGeneratingCaptions,
 		setAutoCaptionSettings,
 		setAutoCaptions,

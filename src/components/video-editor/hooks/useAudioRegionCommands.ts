@@ -1,5 +1,10 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
+import {
+	getKnownAudioFileDurationMs,
+	rememberAudioFileDurationMs,
+} from "../audio/audioFileDurations";
+import { changeAudioSpan } from "../audioSpanChange";
 import type { AudioRegion, EditorEffectSection } from "../types";
 
 interface UseAudioRegionCommandsParams {
@@ -43,8 +48,17 @@ export function useAudioRegionCommands({
 	);
 
 	const handleAudioAdded = useCallback(
-		(span: Span, audioPath: string, trackIndex?: number) => {
+		(span: Span, audioPath: string, trackIndex?: number, sourceDurationMs?: number) => {
 			const id = `audio-${nextAudioIdRef.current++}`;
+			const knownDurationMs =
+				typeof sourceDurationMs === "number" &&
+				Number.isFinite(sourceDurationMs) &&
+				sourceDurationMs > 0
+					? Math.round(sourceDurationMs)
+					: undefined;
+			if (knownDurationMs !== undefined) {
+				rememberAudioFileDurationMs(audioPath, knownDurationMs);
+			}
 			const newRegion: AudioRegion = {
 				id,
 				startMs: Math.round(span.start),
@@ -53,6 +67,8 @@ export function useAudioRegionCommands({
 				volume: 1,
 				normalize: false,
 				trackIndex,
+				sourceStartMs: 0,
+				...(knownDurationMs === undefined ? {} : { sourceDurationMs: knownDurationMs }),
 			};
 			setAudioRegions((current) => [...current, newRegion]);
 			setSelectedAudioId(id);
@@ -79,18 +95,18 @@ export function useAudioRegionCommands({
 					? Math.max(0, Math.floor(trackIndex))
 					: undefined;
 			setAudioRegions((current) =>
-				current.map((region) =>
-					region.id === id
-						? {
-								...region,
-								startMs: Math.round(span.start),
-								endMs: Math.round(span.end),
-								...(normalizedTrackIndex === undefined
-									? {}
-									: { trackIndex: normalizedTrackIndex }),
-							}
-						: region,
-				),
+				current.map((region) => {
+					if (region.id !== id) return region;
+					const next = changeAudioSpan(
+						region,
+						span.start,
+						span.end,
+						region.sourceDurationMs ?? getKnownAudioFileDurationMs(region.audioPath),
+					);
+					return normalizedTrackIndex === undefined
+						? next
+						: { ...next, trackIndex: normalizedTrackIndex };
+				}),
 			);
 		},
 		[setAudioRegions],

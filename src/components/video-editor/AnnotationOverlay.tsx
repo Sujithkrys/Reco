@@ -27,6 +27,10 @@ interface AnnotationOverlayProps {
 	isSelected: boolean;
 	containerWidth: number;
 	containerHeight: number;
+	canvasWidth: number;
+	canvasHeight: number;
+	videoRectX: number;
+	videoRectY: number;
 	recordingRect: Rect;
 	sceneTransform: SceneTransform;
 	interactionScale?: number;
@@ -37,20 +41,16 @@ interface AnnotationOverlayProps {
 	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
 }
 
-function clampPercent(value: number) {
-	if (!Number.isFinite(value)) {
-		return 0;
-	}
-
-	return Math.min(100, Math.max(0, value));
-}
-
 /** Render an annotation in preview space with editor drag and resize controls. */
 export function AnnotationOverlay({
 	annotation,
 	isSelected,
 	containerWidth,
 	containerHeight,
+	canvasWidth,
+	canvasHeight,
+	videoRectX,
+	videoRectY,
 	recordingRect,
 	sceneTransform,
 	interactionScale = 1,
@@ -83,22 +83,37 @@ export function AnnotationOverlay({
 		const nextSceneWidth = rect.width / sceneTransform.scale;
 		const nextSceneHeight = rect.height / sceneTransform.scale;
 
+		const widthPercent = Math.max(0, (nextSceneWidth / Math.max(1, safeRecordingRect.width)) * 100);
+		const heightPercent = Math.max(
+			0,
+			(nextSceneHeight / Math.max(1, safeRecordingRect.height)) * 100,
+		);
+
+		// Bounds are the full outer canvas expressed in recording-rect percent, so
+		// positions can go below 0 / above 100 while the whole layer stays on canvas.
+		const minX = -(videoRectX / Math.max(1, safeRecordingRect.width)) * 100;
+		const maxX =
+			((canvasWidth - videoRectX) / Math.max(1, safeRecordingRect.width)) * 100 - widthPercent;
+		const minY = -(videoRectY / Math.max(1, safeRecordingRect.height)) * 100;
+		const maxY =
+			((canvasHeight - videoRectY) / Math.max(1, safeRecordingRect.height)) * 100 -
+			heightPercent;
+
+		const clamp = (val: number, min: number, max: number) => {
+			if (!Number.isFinite(val)) {
+				return min;
+			}
+			return Math.max(min, Math.min(max, val));
+		};
+
 		return {
 			position: {
-				x: clampPercent(
-					((nextSceneX - safeRecordingRect.x) / Math.max(1, safeRecordingRect.width)) *
-						100,
-				),
-				y: clampPercent(
-					((nextSceneY - safeRecordingRect.y) / Math.max(1, safeRecordingRect.height)) *
-						100,
-				),
+				x: clamp(((nextSceneX - safeRecordingRect.x) / Math.max(1, safeRecordingRect.width)) * 100, minX, maxX),
+				y: clamp(((nextSceneY - safeRecordingRect.y) / Math.max(1, safeRecordingRect.height)) * 100, minY, maxY),
 			},
 			size: {
-				width: clampPercent((nextSceneWidth / Math.max(1, safeRecordingRect.width)) * 100),
-				height: clampPercent(
-					(nextSceneHeight / Math.max(1, safeRecordingRect.height)) * 100,
-				),
+				width: widthPercent,
+				height: heightPercent,
 			},
 		};
 	};
@@ -264,7 +279,6 @@ export function AnnotationOverlay({
 				if (isDraggingRef.current) return;
 				onClick(annotation.id);
 			}}
-			bounds="parent"
 			className={cn(
 				"cursor-move transition-all",
 				isSelected && "ring-2 ring-[#2563EB] ring-offset-2 ring-offset-transparent",

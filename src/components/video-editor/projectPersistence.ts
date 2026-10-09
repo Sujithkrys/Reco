@@ -1,4 +1,6 @@
 import type { SourceAudioTrackSettings } from "@/components/video-editor/audio/audioTypes";
+import type { ChapterMarker } from "./chapters/chapterTypes";
+import { sanitizeChapterMarkers } from "./chapters/chapterUtils";
 import type {
 	ExportBackendPreference,
 	ExportEncodingMode,
@@ -143,6 +145,7 @@ export interface ProjectEditorState {
 	audioRegions: AudioRegion[];
 	autoCaptions: CaptionCue[];
 	autoCaptionSettings: AutoCaptionSettings;
+	chapters?: ChapterMarker[];
 	webcam: WebcamOverlaySettings;
 	aspectRatio: AspectRatio;
 	sourceAudioTrackSettingsByClip?: Record<string, SourceAudioTrackSettings>;
@@ -585,20 +588,22 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							typeof region.imageContent === "string"
 								? region.imageContent
 								: undefined,
+						// Percent of the video rect; layers may sit on the background
+						// around the video, so allow values outside 0-100.
 						position: {
 							x: clamp(
 								isFiniteNumber(region.position?.x)
 									? region.position.x
 									: DEFAULT_ANNOTATION_POSITION.x,
-								0,
-								100,
+								-1000,
+								1000,
 							),
 							y: clamp(
 								isFiniteNumber(region.position?.y)
 									? region.position.y
 									: DEFAULT_ANNOTATION_POSITION.y,
-								0,
-								100,
+								-1000,
+								1000,
 							),
 						},
 						size: {
@@ -703,6 +708,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						trackIndex: isFiniteNumber(region.trackIndex)
 							? Math.max(0, Math.floor(region.trackIndex))
 							: 0,
+						sourceStartMs: isFiniteNumber(region.sourceStartMs)
+							? Math.max(0, Math.round(region.sourceStartMs))
+							: 0,
+						...(isFiniteNumber(region.sourceDurationMs) && region.sourceDurationMs > 0
+							? { sourceDurationMs: Math.round(region.sourceDurationMs) }
+							: {}),
 					};
 				})
 		: [];
@@ -1098,6 +1109,9 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			typeof editor.defaultSourceAudioTrackSettings === "object"
 				? editor.defaultSourceAudioTrackSettings
 				: {},
+		chapters: Array.isArray((editor as Partial<ProjectEditorState>).chapters)
+			? sanitizeChapterMarkers((editor as Partial<ProjectEditorState>).chapters as any[])
+			: [],
 		aspectRatio:
 			typeof editor.aspectRatio === "string" &&
 			(validAspectRatios.has(editor.aspectRatio as AspectRatio) ||

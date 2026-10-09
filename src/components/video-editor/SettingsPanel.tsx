@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getAssetPath, getRenderableVideoUrl, getWallpaperThumbnailUrl } from "@/lib/assetPath";
 import { cn } from "@/lib/utils";
@@ -632,6 +633,12 @@ interface SettingsPanelProps {
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onSelectAnnotation?: (id: string | null) => void;
+	onSelectZoom?: (id: string | null) => void;
+	onSelectClip?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null) => void;
+	currentTimeMs?: number;
+	onSeek?: (seconds: number) => void;
 	autoCaptions?: CaptionCue[];
 	autoCaptionSettings?: AutoCaptionSettings;
 	whisperExecutablePath?: string | null;
@@ -1081,6 +1088,12 @@ export function SettingsPanel({
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
 	onAnnotationDelete,
+	onSelectAnnotation,
+	onSelectZoom,
+	onSelectClip,
+	onSelectAudio,
+	currentTimeMs,
+	onSeek,
 	autoCaptions = [],
 	autoCaptionSettings = DEFAULT_AUTO_CAPTION_SETTINGS,
 	whisperModelPath,
@@ -1749,13 +1762,15 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("background.title")}</SectionLabel>
-					<button
-						type="button"
-						onClick={resetBackgroundSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={resetBackgroundSection}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				</div>
 				<SliderControl
 					label={tSettings("effects.backgroundBlur")}
@@ -2044,6 +2059,9 @@ export function SettingsPanel({
 		return (
 			<AnnotationSettingsPanel
 				annotation={selectedAnnotation}
+				currentTimeMs={currentTimeMs}
+				onSeek={onSeek}
+				onClose={() => onSelectAnnotation?.(null)}
 				onContentChange={(content) =>
 					onAnnotationContentChange(selectedAnnotation.id, content)
 				}
@@ -2100,13 +2118,15 @@ export function SettingsPanel({
 		<section className="flex flex-col gap-2">
 			<div className="flex items-center justify-between gap-3">
 				<SectionLabel>{tSettings("sections.frame", "Frame")}</SectionLabel>
-				<button
-					type="button"
-					onClick={resetFrameSection}
-					className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-				>
-					{t("common.actions.reset", "Reset")}
-				</button>
+				<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+					<button
+						type="button"
+						onClick={resetFrameSection}
+						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+					>
+						{t("common.actions.reset", "Reset")}
+					</button>
+				</Tooltip>
 			</div>
 			<div className="flex flex-col gap-1.5">
 				<SliderControl
@@ -2235,13 +2255,15 @@ export function SettingsPanel({
 			<div className="flex items-center justify-between gap-3">
 				<SectionLabel>{tSettings("sections.crop", "Crop")}</SectionLabel>
 				{isCropped ? (
-					<button
-						type="button"
-						onClick={resetCropSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={resetCropSection}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				) : null}
 			</div>
 			<div className="flex flex-col gap-1.5">
@@ -2298,13 +2320,15 @@ export function SettingsPanel({
 			<div className="flex items-center justify-between gap-3">
 				<div className="flex items-center gap-3">
 					<SectionLabel>{tSettings("sections.captions", "Captions")}</SectionLabel>
-					<button
-						type="button"
-						onClick={() => onAutoCaptionSettingsChange?.(DEFAULT_AUTO_CAPTION_SETTINGS)}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={() => onAutoCaptionSettingsChange?.(DEFAULT_AUTO_CAPTION_SETTINGS)}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				</div>
 				<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
 					<span>{tSettings("captions.enabled", "Show")}</span>
@@ -2317,19 +2341,21 @@ export function SettingsPanel({
 			</div>
 
 			<div className="rounded-lg bg-foreground/[0.03] px-2.5 py-2 space-y-3">
-				<div>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={onPickWhisperModel}
-						className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
-					>
-						{tSettings("captions.selectModel", "Select Model")}
-					</Button>
-				</div>
+				{!window.electronAPI.isWebMode && (
+					<div>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={onPickWhisperModel}
+							className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
+						>
+							{tSettings("captions.selectModel", "Select Model")}
+						</Button>
+					</div>
+				)}
 				<div className="flex items-center justify-between gap-3">
 					<div className="text-sm font-medium text-foreground">
-						{tSettings("captions.language", "Language")}
+						{tSettings("captions.language", "Spoken Language")}
 					</div>
 					<Select
 						value={autoCaptionSettings.language || "auto"}
@@ -2347,34 +2373,56 @@ export function SettingsPanel({
 						</SelectContent>
 					</Select>
 				</div>
+				<div className="flex items-center justify-between gap-3">
+					<div className="text-sm font-medium text-foreground">
+						{tSettings("captions.targetLanguage", "Target Language")}
+					</div>
+					<Select
+						value={autoCaptionSettings.targetLanguage || "auto"}
+						onValueChange={(value) => updateAutoCaptionSettings({ targetLanguage: value })}
+					>
+						<SelectTrigger className="h-10 w-[180px] rounded-xl border-foreground/10 bg-foreground/5 text-sm text-foreground hover:bg-foreground/10">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent className="border-foreground/10 bg-editor-surface-alt text-foreground">
+							{CAPTION_LANGUAGE_OPTIONS.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					<div className="grid w-full grid-cols-2 gap-2">
-						{whisperModelDownloadStatus === "downloading" ? (
-							<Button
-								type="button"
-								disabled
-								className="h-10 w-full rounded-xl bg-foreground/10 px-4 text-sm font-medium text-foreground hover:bg-foreground/10"
-							>
-								{tSettings("captions.downloading", "Downloading...")}{" "}
-								{Math.round(whisperModelDownloadProgress)}%
-							</Button>
-						) : whisperModelPath ? (
-							<Button
-								type="button"
-								variant="outline"
-								onClick={onDeleteWhisperSmallModel}
-								className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
-							>
-								{tSettings("captions.deleteModel", "Delete Model")}
-							</Button>
-						) : (
-							<Button
-								type="button"
-								onClick={onDownloadWhisperSmallModel}
-								className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90"
-							>
-								{tSettings("captions.downloadModel", "Download Model")}
-							</Button>
+					<div className={cn("grid w-full gap-2", window.electronAPI.isWebMode ? "grid-cols-1" : "grid-cols-2")}>
+						{!window.electronAPI.isWebMode && (
+							whisperModelDownloadStatus === "downloading" ? (
+								<Button
+									type="button"
+									disabled
+									className="h-10 w-full rounded-xl bg-foreground/10 px-4 text-sm font-medium text-foreground hover:bg-foreground/10"
+								>
+									{tSettings("captions.downloading", "Downloading...")}{" "}
+									{Math.round(whisperModelDownloadProgress)}%
+								</Button>
+							) : whisperModelPath ? (
+								<Button
+									type="button"
+									variant="outline"
+									onClick={onDeleteWhisperSmallModel}
+									className="h-10 w-full rounded-xl border-foreground/10 bg-foreground/5 px-4 text-sm text-foreground hover:bg-foreground/10 hover:text-foreground"
+								>
+									{tSettings("captions.deleteModel", "Delete Model")}
+								</Button>
+							) : (
+								<Button
+									type="button"
+									onClick={onDownloadWhisperSmallModel}
+									className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90"
+								>
+									{tSettings("captions.downloadModel", "Download Model")}
+								</Button>
+							)
 						)}
 						<Button
 							type="button"
@@ -2391,7 +2439,7 @@ export function SettingsPanel({
 					<Button
 						type="button"
 						onClick={onGenerateAutoCaptions}
-						disabled={isGeneratingCaptions || !whisperModelPath}
+						disabled={isGeneratingCaptions || (!whisperModelPath && !window.electronAPI.isWebMode)}
 						className="h-10 w-full rounded-xl bg-[#2563EB] px-4 text-sm font-medium text-white hover:bg-[#2563EB]/90 disabled:opacity-60"
 					>
 						{isGeneratingCaptions
@@ -2900,15 +2948,29 @@ export function SettingsPanel({
 					<>
 						<div className="flex items-center justify-between gap-3">
 							<SectionLabel>{tSettings("sections.zoom", "Zoom")}</SectionLabel>
-							{selectedZoomDepth && (
-								<span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#2563EB]">
-									{
-										ZOOM_DEPTH_OPTIONS.find(
-											(o) => o.depth === selectedZoomDepth,
-										)?.label
-									}
-								</span>
-							)}
+							<div className="flex items-center gap-2">
+								{selectedZoomDepth && (
+									<span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#2563EB]">
+										{
+											ZOOM_DEPTH_OPTIONS.find(
+												(o) => o.depth === selectedZoomDepth,
+											)?.label
+										}
+									</span>
+								)}
+								{selectedZoomId && onSelectZoom && (
+									<Tooltip content={t("common.actions.close", "Close")} asChild>
+										<button
+											type="button"
+											onClick={() => onSelectZoom(null)}
+											className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+											aria-label={t("common.actions.close", "Close")}
+										>
+											<X className="h-3.5 w-3.5" />
+										</button>
+									</Tooltip>
+								)}
+							</div>
 						</div>
 						<div className="mb-1">
 							<div className="flex rounded-lg border border-foreground/10 bg-foreground/5 p-0.5">
@@ -2976,13 +3038,15 @@ export function SettingsPanel({
 				)}
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("zoom.globalSettings", "Animation")}</SectionLabel>
-					<button
-						type="button"
-						onClick={resetZoomSection}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+						<button
+							type="button"
+							onClick={resetZoomSection}
+							className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+						>
+							{t("common.actions.reset", "Reset")}
+						</button>
+					</Tooltip>
 				</div>
 				<div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-1.5">
 					<span className="text-[10px] text-muted-foreground">
@@ -3022,16 +3086,32 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-3">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("audio.volumeTitle", "Audio")}</SectionLabel>
-					<button
-						type="button"
-						onClick={() => {
-							onAudioVolumeChange?.(1);
-							onAudioNormalizeChange?.(false);
-						}}
-						className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-					>
-						{t("common.actions.reset", "Reset")}
-					</button>
+					<div className="flex items-center gap-2">
+						<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+							<button
+								type="button"
+								onClick={() => {
+									onAudioVolumeChange?.(1);
+									onAudioNormalizeChange?.(false);
+								}}
+								className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+							>
+								{t("common.actions.reset", "Reset")}
+							</button>
+						</Tooltip>
+						{selectedAudioId && onSelectAudio && (
+							<Tooltip content={t("common.actions.close", "Close")} asChild>
+								<button
+									type="button"
+									onClick={() => onSelectAudio(null)}
+									className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+									aria-label={t("common.actions.close", "Close")}
+								>
+									<X className="h-3.5 w-3.5" />
+								</button>
+							</Tooltip>
+						)}
+					</div>
 				</div>
 				<SliderControl
 					label={tSettings("audio.volume", "Volume")}
@@ -3061,11 +3141,25 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("clip.title", "Clip")}</SectionLabel>
-					{selectedClipSpeed != null && selectedClipSpeed !== 1 && (
-						<span className="rounded-full bg-[#06b6d4]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#06b6d4]">
-							{selectedClipSpeed}×
-						</span>
-					)}
+					<div className="flex items-center gap-2">
+						{selectedClipSpeed != null && selectedClipSpeed !== 1 && (
+							<span className="rounded-full bg-[#06b6d4]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#06b6d4]">
+								{selectedClipSpeed}×
+							</span>
+						)}
+						{selectedClipId && onSelectClip && (
+							<Tooltip content={t("common.actions.close", "Close")} asChild>
+								<button
+									type="button"
+									onClick={() => onSelectClip(null)}
+									className="rounded-lg p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+									aria-label={t("common.actions.close", "Close")}
+								>
+									<X className="h-3.5 w-3.5" />
+								</button>
+							</Tooltip>
+						)}
+					</div>
 				</div>
 
 				<div className="flex items-center gap-3">
@@ -3529,13 +3623,15 @@ export function SettingsPanel({
 					<section className="flex flex-col gap-2">
 						<div className="flex items-center justify-between gap-3">
 							<SectionLabel>{tSettings("sections.webcam", "Webcam")}</SectionLabel>
-							<button
-								type="button"
-								onClick={resetWebcamSection}
-								className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
-							>
-								{t("common.actions.reset", "Reset")}
-							</button>
+							<Tooltip content={t("common.actions.reset", "Reset")} asChild>
+								<button
+									type="button"
+									onClick={resetWebcamSection}
+									className="text-[10px] text-[#2563EB] transition-opacity hover:opacity-80"
+								>
+									{t("common.actions.reset", "Reset")}
+								</button>
+							</Tooltip>
 						</div>
 						<div className="flex flex-col gap-1.5">
 							<div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-1.5">
