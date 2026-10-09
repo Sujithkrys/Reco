@@ -3012,6 +3012,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 												overlayRef.current?.clientHeight ||
 												600
 											}
+											canvasWidth={overlayRef.current?.clientWidth || 800}
+											canvasHeight={overlayRef.current?.clientHeight || 600}
+											videoRectX={annotationRecordingRect.x || 0}
+											videoRectY={annotationRecordingRect.y || 0}
 											recordingRect={{
 												x: 0,
 												y: 0,

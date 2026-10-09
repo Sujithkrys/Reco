@@ -588,20 +588,22 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							typeof region.imageContent === "string"
 								? region.imageContent
 								: undefined,
+						// Percent of the video rect; layers may sit on the background
+						// around the video, so allow values outside 0-100.
 						position: {
 							x: clamp(
 								isFiniteNumber(region.position?.x)
 									? region.position.x
 									: DEFAULT_ANNOTATION_POSITION.x,
-								0,
-								100,
+								-1000,
+								1000,
 							),
 							y: clamp(
 								isFiniteNumber(region.position?.y)
 									? region.position.y
 									: DEFAULT_ANNOTATION_POSITION.y,
-								0,
-								100,
+								-1000,
+								1000,
 							),
 						},
 						size: {
