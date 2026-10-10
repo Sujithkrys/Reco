@@ -90,7 +90,7 @@ function NumberField({
 	value: number;
 	min: number;
 	max: number;
-	onCommit: (value: number) => void;
+	onCommit: (value: number, stepped: boolean) => void;
 }) {
 	const [text, setText] = useState(String(Math.round(value)));
 	const [focused, setFocused] = useState(false);
@@ -105,7 +105,7 @@ function NumberField({
 			return;
 		}
 		setText(String(parsed));
-		if (parsed !== Math.round(value)) onCommit(parsed);
+		if (parsed !== Math.round(value)) onCommit(parsed, false);
 	};
 	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (event.key === "Enter") {
@@ -118,7 +118,7 @@ function NumberField({
 		const step = (event.shiftKey ? 10 : 1) * (event.key === "ArrowUp" ? 1 : -1);
 		const next = Math.round(clamp(current + step, min, max));
 		setText(String(next));
-		if (next !== Math.round(value)) onCommit(next);
+		if (next !== Math.round(value)) onCommit(next, true);
 	};
 	return (
 		<input
@@ -266,12 +266,13 @@ export function ColorPicker({
 	}, [currentHex, hexFocused]);
 
 	const commit = useCallback(
-		(next: Hsva) => {
+		(next: Hsva, remember = true) => {
 			const hex = hsvaToHex(next, allowAlpha);
 			liveRef.current = next;
 			setHsva(next);
 			onPreview?.(null);
-			setRecent(addRecentColor(hex));
+			// Arrow-key stepping would flood the recent list, so only deliberate picks are remembered.
+			if (remember) setRecent(addRecentColor(hex));
 			if (hex !== normalizedValue) onChange(hex);
 		},
 		[allowAlpha, normalizedValue, onChange, onPreview],
@@ -328,7 +329,7 @@ export function ColorPicker({
 		else if (event.key === "ArrowDown") v -= step;
 		else return;
 		event.preventDefault();
-		commit({ ...hsva, s: clamp(s, 0, 100), v: clamp(v, 0, 100) });
+		commit({ ...hsva, s: clamp(s, 0, 100), v: clamp(v, 0, 100) }, false);
 	};
 	const onHueKey = (event: KeyboardEvent<HTMLElement>) => {
 		const step = event.shiftKey ? 10 : 1;
@@ -339,7 +340,7 @@ export function ColorPicker({
 		else if (event.key === "End") h = 359;
 		else return;
 		event.preventDefault();
-		commit({ ...hsva, h: ((h % 360) + 360) % 360 });
+		commit({ ...hsva, h: ((h % 360) + 360) % 360 }, false);
 	};
 	const onAlphaKey = (event: KeyboardEvent<HTMLElement>) => {
 		const step = event.shiftKey ? 0.1 : 0.01;
@@ -348,7 +349,7 @@ export function ColorPicker({
 		else if (event.key === "ArrowRight" || event.key === "ArrowUp") a += step;
 		else return;
 		event.preventDefault();
-		commit({ ...hsva, a: clamp(a, 0, 1) });
+		commit({ ...hsva, a: clamp(a, 0, 1) }, false);
 	};
 
 	const commitHexText = (raw: string) => {
@@ -358,6 +359,7 @@ export function ColorPicker({
 			return;
 		}
 		const next = withRgba(allowAlpha ? parsed : { ...parsed, a: 1 });
+		setHexText(hsvaToHex(next, allowAlpha).replace(/^#/, ""));
 		commit(next);
 	};
 
@@ -542,21 +544,21 @@ export function ColorPicker({
 							value={rgb.r}
 							min={0}
 							max={255}
-							onCommit={(r) => commit(withRgba({ ...rgb, r }))}
+							onCommit={(r, stepped) => commit(withRgba({ ...rgb, r }), !stepped)}
 						/>
 						<NumberField
 							label={t("colorPicker.green", "Green")}
 							value={rgb.g}
 							min={0}
 							max={255}
-							onCommit={(g) => commit(withRgba({ ...rgb, g }))}
+							onCommit={(g, stepped) => commit(withRgba({ ...rgb, g }), !stepped)}
 						/>
 						<NumberField
 							label={t("colorPicker.blue", "Blue")}
 							value={rgb.b}
 							min={0}
 							max={255}
-							onCommit={(b) => commit(withRgba({ ...rgb, b }))}
+							onCommit={(b, stepped) => commit(withRgba({ ...rgb, b }), !stepped)}
 						/>
 					</>
 				) : (
@@ -566,21 +568,21 @@ export function ColorPicker({
 							value={hsl.h}
 							min={0}
 							max={360}
-							onCommit={(h) => commit(withRgba(hslToRgb({ ...hsl, h })))}
+							onCommit={(h, stepped) => commit(withRgba(hslToRgb({ ...hsl, h })), !stepped)}
 						/>
 						<NumberField
 							label={t("colorPicker.saturation", "Saturation")}
 							value={hsl.s}
 							min={0}
 							max={100}
-							onCommit={(s) => commit(withRgba(hslToRgb({ ...hsl, s })))}
+							onCommit={(s, stepped) => commit(withRgba(hslToRgb({ ...hsl, s })), !stepped)}
 						/>
 						<NumberField
 							label={t("colorPicker.lightness", "Lightness")}
 							value={hsl.l}
 							min={0}
 							max={100}
-							onCommit={(l) => commit(withRgba(hslToRgb({ ...hsl, l })))}
+							onCommit={(l, stepped) => commit(withRgba(hslToRgb({ ...hsl, l })), !stepped)}
 						/>
 					</>
 				)}
@@ -590,7 +592,7 @@ export function ColorPicker({
 						value={hsva.a * 100}
 						min={0}
 						max={100}
-						onCommit={(a) => commit({ ...hsva, a: a / 100 })}
+						onCommit={(a, stepped) => commit({ ...hsva, a: a / 100 }, !stepped)}
 					/>
 				) : null}
 				<button
