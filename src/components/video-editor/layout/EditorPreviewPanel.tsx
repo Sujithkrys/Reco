@@ -331,6 +331,8 @@ export function EditorPreviewPanel(props: Props) {
 									{ type: "text", label: "Text" },
 									{ type: "image", label: "Image" },
 									{ type: "shape", label: "Shape" },
+									{ type: "figure", label: "Arrow" },
+									{ type: "blur", label: "Blur" },
 								] as const
 							).map((option) => (
 								<DropdownMenuItem
