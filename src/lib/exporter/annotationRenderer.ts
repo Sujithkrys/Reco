@@ -5,6 +5,11 @@ import {
 	BLUR_ANNOTATION_STRENGTH,
 	DEFAULT_SHAPE_DATA,
 } from "@/components/video-editor/types";
+import {
+	hasTextBackground,
+	layoutTextBox,
+	textLayerFont,
+} from "@/components/video-editor/annotationTextLayout";
 
 export interface AnnotationRenderAssets {
 	imageCache: Map<string, HTMLImageElement>;
@@ -258,77 +263,6 @@ function renderShape(
 	ctx.restore();
 }
 
-/**
- * Lay text out the way the preview does (AnnotationOverlay): a box with 8px
- * padding holding one block with 0.1em/0.2em padding and 1.4 line height. The
- * block is as wide as the widest line, capped at the box, and is centred
- * vertically and aligned horizontally per textAlign.
- */
-export function layoutTextBlock(
-	ctx: Pick<CanvasRenderingContext2D, "measureText">,
-	content: string,
-	textAlign: AnnotationRegion["style"]["textAlign"],
-	box: { x: number; y: number; width: number; height: number; fontSize: number; scaleFactor: number },
-) {
-	const containerPadding = 8 * box.scaleFactor;
-	const horizontalPadding = box.fontSize * 0.2;
-	const verticalPadding = box.fontSize * 0.1;
-	const lineHeight = box.fontSize * 1.4;
-	const wrapWidth = Math.max(0, box.width - containerPadding * 2 - horizontalPadding * 2);
-
-	const rawLines = content.split("\n");
-	// pre-wrap renders no extra line for a trailing newline.
-	if (rawLines.length > 1 && rawLines[rawLines.length - 1] === "") rawLines.pop();
-
-	const lines: string[] = [];
-	for (const rawLine of rawLines) {
-		if (!rawLine) {
-			lines.push("");
-			continue;
-		}
-		const words = rawLine.split(/(\s+)/);
-		let current = "";
-		for (const word of words) {
-			const test = current + word;
-			if (current && ctx.measureText(test).width > wrapWidth) {
-				lines.push(current);
-				current = word.trimStart();
-			} else {
-				current = test;
-			}
-		}
-		if (current) lines.push(current);
-	}
-
-	const widestRawLine = rawLines.reduce(
-		(widest, line) => Math.max(widest, ctx.measureText(line).width),
-		0,
-	);
-	const blockWidth = Math.min(widestRawLine, wrapWidth) + horizontalPadding * 2;
-	const blockHeight = lines.length * lineHeight + verticalPadding * 2;
-	const blockX =
-		textAlign === "center"
-			? box.x + box.width / 2 - blockWidth / 2
-			: textAlign === "right"
-				? box.x + box.width - containerPadding - blockWidth
-				: box.x + containerPadding;
-	const blockY = box.y + box.height / 2 - blockHeight / 2;
-	const textX =
-		textAlign === "center"
-			? blockX + blockWidth / 2
-			: textAlign === "right"
-				? blockX + blockWidth - horizontalPadding
-				: blockX + horizontalPadding;
-
-	return {
-		lines,
-		lineHeight,
-		textX,
-		firstLineY: blockY + verticalPadding + lineHeight / 2,
-		block: { x: blockX, y: blockY, width: blockWidth, height: blockHeight },
-	};
-}
-
 function renderText(
 	ctx: CanvasRenderingContext2D,
 	annotation: AnnotationRegion,
@@ -346,28 +280,24 @@ function renderText(
 	ctx.rect(x, y, width, height);
 	ctx.clip();
 
-	const fontWeight = style.fontWeight === "bold" ? "bold" : "normal";
-	const fontStyle = style.fontStyle === "italic" ? "italic" : "normal";
 	const scaledFontSize = style.fontSize * scaleFactor;
-	ctx.font = `${fontStyle} ${fontWeight} ${scaledFontSize}px ${style.fontFamily}`;
+	ctx.font = textLayerFont(style, scaledFontSize);
 	ctx.textBaseline = "middle";
 
-	const layout = layoutTextBlock(ctx, annotation.content || "", style.textAlign, {
-		x,
-		y,
-		width,
-		height,
-		fontSize: scaledFontSize,
-		scaleFactor,
-	});
-	const { lines, textX, block } = layout;
+	const layout = layoutTextBox(
+		(text) => ctx.measureText(text).width,
+		annotation.content || "",
+		style.textAlign,
+		{ x, y, width, height, fontSize: scaledFontSize, scale: scaleFactor },
+	);
+	const { lines, textX, background } = layout;
 	ctx.textAlign = style.textAlign === "center" || style.textAlign === "right" ? style.textAlign : "left";
 
-	// One solid block behind all lines, matching the preview's text box.
-	if (style.backgroundColor && style.backgroundColor !== "transparent" && lines.length > 0) {
+	// The background fills the whole layer box, as in the preview.
+	if (hasTextBackground(style)) {
 		ctx.fillStyle = style.backgroundColor;
 		ctx.beginPath();
-		ctx.roundRect(block.x, block.y, block.width, block.height, 4 * scaleFactor);
+		ctx.roundRect(background.x, background.y, background.width, background.height, background.radius);
 		ctx.fill();
 	}
 

@@ -5,7 +5,8 @@ import {
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
 } from "@/components/video-editor/types";
-import { layoutTextBlock, renderAnnotations } from "./annotationRenderer";
+import { layoutTextBox, wrapTextLines } from "@/components/video-editor/annotationTextLayout";
+import { renderAnnotations } from "./annotationRenderer";
 
 // Every character measures 10px, so widths are easy to reason about.
 const CHAR_WIDTH = 10;
@@ -54,36 +55,58 @@ function textAnnotation(content: string, style: Partial<AnnotationRegion["style"
 	};
 }
 
+const roundRects = (calls: { name: string; args: unknown[] }[]) =>
+	calls.filter((call) => call.name === "roundRect").map((call) => call.args as number[]);
+const texts = (calls: { name: string; args: unknown[] }[]) =>
+	calls.filter((call) => call.name === "fillText").map((call) => call.args as [string, number, number]);
+
 describe("export text background", () => {
-	it("draws one block behind all lines, as wide as the widest line", async () => {
+	it("fills the whole layer box with the 4px radius", async () => {
 		const { ctx, calls } = createRecordingContext();
 
 		// 50% of a 1000x500 canvas: a 500x250 box at (0, 0).
 		await renderAnnotations(ctx, [textAnnotation("Hello world\nHi")], 1000, 500, 500, 1);
 
-		const blocks = calls.filter((call) => call.name === "roundRect");
-		expect(blocks).toHaveLength(1);
-		const [x, y, width, height] = blocks[0].args as number[];
-		// Widest line 110px + 0.2em (4px) padding each side; 2 lines × 28px + 0.1em (2px) each side.
-		expect(width).toBeCloseTo(118);
-		expect(height).toBeCloseTo(60);
-		// Centred text: the block is centred in the box, vertically and horizontally.
-		expect(x).toBeCloseTo(250 - 59);
-		expect(y).toBeCloseTo(125 - 30);
-		expect(calls.filter((call) => call.name === "fillText")).toHaveLength(2);
+		expect(roundRects(calls)).toEqual([[0, 0, 500, 250, 4]]);
 	});
 
-	it("covers an empty middle line inside the same block", async () => {
+	it("centres two-line text in the box", async () => {
 		const { ctx, calls } = createRecordingContext();
 
-		await renderAnnotations(ctx, [textAnnotation("One\n\nThree")], 1000, 500, 500, 1);
+		await renderAnnotations(
+			ctx,
+			[textAnnotation("Hello world\nHi", { textAlign: "center" })],
+			1000,
+			500,
+			500,
+			1,
+		);
 
-		const blocks = calls.filter((call) => call.name === "roundRect");
-		expect(blocks).toHaveLength(1);
-		expect((blocks[0].args as number[])[3]).toBeCloseTo(3 * 28 + 4);
+		const [first, second] = texts(calls);
+		expect(texts(calls)).toHaveLength(2);
+		// Horizontally on the box centre; the two 28px lines sit evenly around its middle.
+		expect(first[1]).toBeCloseTo(250);
+		expect(second[1]).toBeCloseTo(250);
+		expect(first[2]).toBeCloseTo(125 - 14);
+		expect(second[2]).toBeCloseTo(125 + 14);
 	});
 
-	it("draws no block without a background colour", async () => {
+	it("grows the background with a larger box", async () => {
+		const small = createRecordingContext();
+		const large = createRecordingContext();
+		const text = "Hello world\nHi";
+
+		await renderAnnotations(small.ctx, [textAnnotation(text)], 1000, 500, 500, 1);
+		const bigger = { ...textAnnotation(text), size: { width: 80, height: 80 } };
+		await renderAnnotations(large.ctx, [bigger], 1000, 500, 500, 1);
+
+		expect(roundRects(small.calls)[0]).toEqual([0, 0, 500, 250, 4]);
+		expect(roundRects(large.calls)[0]).toEqual([0, 0, 800, 400, 4]);
+		// Text size does not change with the box.
+		expect(small.ctx.font).toBe(large.ctx.font);
+	});
+
+	it("draws no background without a background colour", async () => {
 		const { ctx, calls } = createRecordingContext();
 
 		await renderAnnotations(
@@ -100,28 +123,31 @@ describe("export text background", () => {
 	});
 });
 
-describe("text block layout", () => {
-	const measure = { measureText: (text: string) => ({ width: text.length * CHAR_WIDTH }) };
-	const box = { x: 0, y: 0, width: 200, height: 100, fontSize: 20, scaleFactor: 1 };
+describe("text box layout", () => {
+	const measure = (text: string) => text.length * CHAR_WIDTH;
+	const box = { x: 0, y: 0, width: 200, height: 100, fontSize: 20, scale: 1 };
 
-	it("caps the block at the box width when text wraps", () => {
-		// Wrap width: 200 - 2×8 padding - 2×4 block padding = 176px.
-		const layout = layoutTextBlock(measure, "aaaa bbbb cccc dddd eeee", "left", box);
+	it("wraps to the box width minus padding", () => {
+		// Wrap width: 200 - 2×8 padding - 2×4 (0.2em) inset = 176px, i.e. 17 characters.
+		const layout = layoutTextBox(measure, "aaaa bbbb cccc dddd eeee", "left", box);
 
-		expect(layout.lines.length).toBeGreaterThan(1);
-		expect(layout.block.width).toBeCloseTo(176 + 8);
-		expect(layout.block.x).toBeCloseTo(8);
+		expect(layout.lines).toEqual(["aaaa bbbb cccc", "dddd eeee"]);
 		expect(layout.textX).toBeCloseTo(12);
 	});
 
 	it("does not add a line for a trailing newline", () => {
-		expect(layoutTextBlock(measure, "Hello\n", "left", box).lines).toEqual(["Hello"]);
+		expect(layoutTextBox(measure, "Hello\n", "left", box).lines).toEqual(["Hello"]);
 	});
 
-	it("right-aligns the block against the box padding", () => {
-		const layout = layoutTextBlock(measure, "Hi", "right", box);
+	it("right-aligns against the box padding", () => {
+		expect(layoutTextBox(measure, "Hi", "right", box).textX).toBeCloseTo(200 - 8 - 4);
+	});
 
-		expect(layout.block.x + layout.block.width).toBeCloseTo(200 - 8);
-		expect(layout.textX).toBeCloseTo(200 - 8 - 4);
+	it("breaks a word longer than the line", () => {
+		expect(wrapTextLines(measure, "abcdefghij", 40)).toEqual(["abcd", "efgh", "ij"]);
+	});
+
+	it("keeps empty lines and drops spaces at a wrap", () => {
+		expect(wrapTextLines(measure, "aa bb\n\ncc", 30)).toEqual(["aa", "bb", "", "cc"]);
 	});
 });
