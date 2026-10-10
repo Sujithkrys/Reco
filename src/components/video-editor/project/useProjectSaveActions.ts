@@ -6,6 +6,18 @@ import { cloneStructured, getErrorMessage } from "../videoEditorUtils";
 import { useAuth } from "@/lib/auth";
 
 const PROJECT_AUTOSAVE_DELAY_MS = 1_000;
+export const PROJECT_STORAGE_FAILURE_MESSAGE =
+	"Couldn't save to this browser's storage (it may be full). Autosave is paused; use Save to try again.";
+
+// Page-session state: once a silent save hits a storage failure, autosave stops
+// retrying until a manual save succeeds, and the warning is shown only once.
+let autosavePausedForStorage = false;
+let storageFailureWarningShown = false;
+
+export function resetProjectStorageFailureStateForTests() {
+	autosavePausedForStorage = false;
+	storageFailureWarningShown = false;
+}
 
 type SaveProjectOptions = {
 	silent?: boolean;
@@ -76,7 +88,7 @@ export function useProjectSaveActions({
 	const saveProject = useCallback(
 		async (forceSaveAs: boolean, options?: SaveProjectOptions) => {
 			return new Promise<boolean>((resolve) => {
-				requireAuth(() => {
+				const run = () => {
 					clearPendingAutosave();
 					queueSave(async () => {
 						if (!currentSourcePath) {
@@ -136,12 +148,20 @@ export function useProjectSaveActions({
 								return false;
 							}
 							if (!result.success) {
-								if (!options?.silent)
+								if (!options?.silent) {
 									toast.error(result.message || "Failed to save project");
+								} else if (result.storageError) {
+									autosavePausedForStorage = true;
+									if (!storageFailureWarningShown) {
+										storageFailureWarningShown = true;
+										toast.warning(PROJECT_STORAGE_FAILURE_MESSAGE);
+									}
+								}
 								resolve(false);
 								return false;
 							}
 
+							if (!options?.silent) autosavePausedForStorage = false;
 							if (result.path) setCurrentProjectPath(result.path);
 							setLastSavedSnapshot(
 								cloneStructured(
@@ -164,7 +184,11 @@ export function useProjectSaveActions({
 							if (remount) remountPreview();
 						}
 					});
-				});
+				};
+				// Silent saves (autosave, leaving the editor) only write to this
+				// browser's storage, so they never ask the user to sign in.
+				if (options?.silent) run();
+				else requireAuth(run);
 			});
 		},
 		[
@@ -194,12 +218,13 @@ export function useProjectSaveActions({
 		[saveProject],
 	);
 	useEffect(() => {
-		if (!currentProjectPath || !hasUnsavedChanges) {
+		if (!currentProjectPath || !hasUnsavedChanges || autosavePausedForStorage) {
 			clearPendingAutosave();
 			return;
 		}
 		autosaveTimeoutRef.current = window.setTimeout(() => {
 			autosaveTimeoutRef.current = null;
+			if (autosavePausedForStorage) return;
 			void saveProject(false, {
 				silent: true,
 				remountPreviewAfterSave: false,

@@ -48,17 +48,21 @@ async function persistProjectMedia(projectData: unknown): Promise<unknown> {
 			jsonString = jsonString.split(blobUrl).join(`idb://${existingKey}`);
 			continue;
 		}
+		let blob: Blob;
 		try {
 			const response = await fetch(blobUrl);
 			if (!response.ok) continue;
-			const blob = await response.blob();
-			const idbKey = `media_${crypto.randomUUID()}`;
-			await set(idbKey, blob);
-			persistedMediaKeys.set(blobUrl, idbKey);
-			jsonString = jsonString.split(blobUrl).join(`idb://${idbKey}`);
+			blob = await response.blob();
 		} catch (err) {
-			console.error(`Failed to persist blob ${blobUrl}:`, err);
+			console.error(`Failed to read blob ${blobUrl}:`, err);
+			continue;
 		}
+		// A failed write (e.g. quota exceeded) fails the whole save: saving the
+		// project with a blob: link would leave dead media after a reload.
+		const idbKey = `media_${crypto.randomUUID()}`;
+		await set(idbKey, blob);
+		persistedMediaKeys.set(blobUrl, idbKey);
+		jsonString = jsonString.split(blobUrl).join(`idb://${idbKey}`);
 	}
 	return JSON.parse(jsonString);
 }
@@ -244,7 +248,8 @@ export const webElectronAPI: unknown = {
 			return { success: true, path: projectId };
 		} catch (e: unknown) {
 			console.error(e);
-			return { success: false, path: null, message: (e as Error).message };
+			// Everything above is an IndexedDB/localStorage write.
+			return { success: false, path: null, message: (e as Error).message, storageError: true };
 		}
 	},
 	// Named to match useProjectLibraryController's refreshProjectLibrary(), the

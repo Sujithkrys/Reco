@@ -88,6 +88,24 @@ describe("web project media persistence", () => {
 		expect(mediaKeys()).toHaveLength(1);
 	});
 
+	it("fails the save with a storage error when a media write fails", async () => {
+		const idbKeyval = await import("idb-keyval");
+		const setSpy = vi
+			.spyOn(idbKeyval, "set")
+			.mockRejectedValueOnce(new DOMException("Quota exceeded", "QuotaExceededError"));
+		const videoUrl = createBlobUrl(new Blob([new Uint8Array(16)], { type: "video/mp4" }));
+
+		const result = await api.saveProjectFile(
+			{ version: 1, videoPath: videoUrl, editor: {} },
+			"Demo",
+			"project-4",
+		);
+
+		expect(setSpy).toHaveBeenCalled();
+		expect(result).toMatchObject({ success: false, storageError: true });
+		expect(idb.has("project_project-4")).toBe(false);
+	});
+
 	it("still stores each distinct file once", async () => {
 		const videoUrl = createBlobUrl(new Blob([new Uint8Array(16)], { type: "video/mp4" }));
 		const audioUrl = createBlobUrl(new Blob([new Uint8Array(8)], { type: "audio/mpeg" }));
