@@ -106,6 +106,15 @@ describe("web project media persistence", () => {
 		expect(idb.has("project_project-4")).toBe(false);
 	});
 
+	it("skips the cloud upload without an error when signed out", async () => {
+		const file = new File([new Uint8Array(4)], "clip.mp4", { type: "video/mp4" });
+
+		await expect(api.uploadMediaFile(file)).resolves.toMatchObject({
+			success: false,
+			skipped: true,
+		});
+	});
+
 	it("still stores each distinct file once", async () => {
 		const videoUrl = createBlobUrl(new Blob([new Uint8Array(16)], { type: "video/mp4" }));
 		const audioUrl = createBlobUrl(new Blob([new Uint8Array(8)], { type: "audio/mpeg" }));

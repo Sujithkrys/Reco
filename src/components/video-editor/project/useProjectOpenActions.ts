@@ -148,10 +148,10 @@ export function useProjectOpenActions({
 		if (window.electronAPI.uploadMediaFile) {
 			window.electronAPI
 				.uploadMediaFile(opts?.file ?? result.path)
-				.then((res: { success?: boolean; path?: string; message?: string }) => {
+				.then((res: { success?: boolean; skipped?: boolean; path?: string; message?: string }) => {
 					if (res?.success) {
 						uploadedMediaPaths.set(sourcePath, res.path ?? "");
-					} else {
+					} else if (!res?.skipped) {
 						toast.error(`Cloud upload failed: ${res?.message ?? "unknown error"}`);
 					}
 				})

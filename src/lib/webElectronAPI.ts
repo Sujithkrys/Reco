@@ -322,7 +322,8 @@ export const webElectronAPI: unknown = {
 			const { data: sessionData } = await supabase.auth.getSession();
 			const token = sessionData?.session?.access_token;
 			if (!token) {
-				return { success: false, message: "Please sign in to upload media." };
+				// Signed out: media stays local (IndexedDB); this is not an error.
+				return { success: false, skipped: true, message: "Not signed in; media kept local." };
 			}
 
 			let file: File;

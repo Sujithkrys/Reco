@@ -143,8 +143,8 @@ export function useTimelineAudioActions({
 			if (window.electronAPI?.uploadMediaFile) {
 				window.electronAPI
 					.uploadMediaFile((result as any).file ?? audioPath)
-					.then((res: { success?: boolean; path?: string; message?: string }) => {
-						if (!res?.success) {
+					.then((res: { success?: boolean; skipped?: boolean; path?: string; message?: string }) => {
+						if (!res?.success && !res?.skipped) {
 							deps.reportError(
 								"Cloud upload failed",
 								res?.message ?? "Please sign in to upload media.",
