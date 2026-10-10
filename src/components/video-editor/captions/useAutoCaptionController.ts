@@ -1,5 +1,6 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 import { resolveAutoCaptionSourcePath } from "../autoCaptionSource";
 import { type CaptionEditTarget, updateCaptionCuesForEditedTarget } from "../captionEditing";
 import { resolveVideoUrl } from "../projectPersistence";
@@ -62,6 +63,7 @@ export function useAutoCaptionController({
 	setAutoCaptions,
 	syncActiveVideoSource,
 }: UseAutoCaptionControllerParams) {
+	const { requireAuth } = useAuth();
 	const captionGenerationInFlightRef = useRef(false);
 
 	useEffect(() => {
@@ -157,7 +159,7 @@ export function useAutoCaptionController({
 		setWhisperModelPath,
 	]);
 
-	const handleGenerateAutoCaptions = useCallback(async () => {
+	const generateAutoCaptions = useCallback(async () => {
 		if (captionGenerationInFlightRef.current || isGeneratingCaptions) return;
 		captionGenerationInFlightRef.current = true;
 		setIsGeneratingCaptions(true);
@@ -258,6 +260,14 @@ export function useAutoCaptionController({
 		whisperExecutablePath,
 		whisperModelPath,
 	]);
+
+	// Caption generation calls the transcription service, so ask for sign-in
+	// before any audio is decoded rather than failing after the work is done.
+	const handleGenerateAutoCaptions = useCallback(() => {
+		requireAuth(() => {
+			void generateAutoCaptions();
+		});
+	}, [generateAutoCaptions, requireAuth]);
 
 	const handleSaveAutoCaptionEdit = useCallback(
 		(target: CaptionEditTarget, text: string) => {
