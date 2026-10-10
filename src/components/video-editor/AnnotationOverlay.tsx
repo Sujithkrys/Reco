@@ -3,6 +3,12 @@ import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
 import { sanitizeRect } from "./annotationCanvasBounds";
 import {
+	computeLayerResize,
+	handleFromRndDirection,
+	type ResizeHandle,
+	scaleTextFontSize,
+} from "./annotationResize";
+import {
 	hasTextBackground,
 	layoutTextBox,
 	TEXT_BACKGROUND_RADIUS,
@@ -43,6 +49,8 @@ interface AnnotationOverlayProps {
 	interactionScale?: number;
 	onPositionChange: (id: string, position: { x: number; y: number }) => void;
 	onSizeChange: (id: string, size: { width: number; height: number }) => void;
+	/** Text corner resizes scale the font; the new size is written through this. */
+	onStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onClick: (id: string) => void;
 	zIndex: number;
 	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
@@ -71,6 +79,30 @@ function useFontsVersion(): number {
 	return version;
 }
 
+/** Smallest box a resize may produce, in overlay pixels. */
+const MIN_LAYER_SIZE_PX = 10;
+
+type PointerLikeEvent = (MouseEvent | TouchEvent) | { nativeEvent: MouseEvent | TouchEvent };
+
+function nativeOf(event: PointerLikeEvent): MouseEvent | TouchEvent {
+	return "nativeEvent" in event ? event.nativeEvent : event;
+}
+
+/** Client coordinates of a mouse or touch event (the first touch). */
+function pointerOf(event: PointerLikeEvent): { x: number; y: number } | null {
+	const native = nativeOf(event);
+	if ("touches" in native) {
+		const touch = native.touches[0] ?? native.changedTouches[0];
+		return touch ? { x: touch.clientX, y: touch.clientY } : null;
+	}
+	return { x: native.clientX, y: native.clientY };
+}
+
+function modifiersOf(event: PointerLikeEvent): { shift: boolean; alt: boolean } {
+	const native = nativeOf(event);
+	return { shift: native.shiftKey, alt: native.altKey };
+}
+
 /** Render an annotation in preview space with editor drag and resize controls. */
 export function AnnotationOverlay({
 	annotation,
@@ -82,6 +114,7 @@ export function AnnotationOverlay({
 	interactionScale = 1,
 	onPositionChange,
 	onSizeChange,
+	onStyleChange,
 	onClick,
 	zIndex,
 	isSelectedBoost,
@@ -102,13 +135,43 @@ export function AnnotationOverlay({
 	const blurScaleFactor = sizeScale * sceneTransform.scale;
 
 	const isDraggingRef = useRef(false);
-	// While a resize is in progress the box is wider/narrower than the stored
-	// size; wrap text to the live size so it reflows as the box moves.
-	const [liveSize, setLiveSize] = useState<{ width: number; height: number } | null>(null);
+	const rndRef = useRef<Rnd | null>(null);
+	// A resize in progress: where it started, and the rect/font it has reached.
+	const resizeSessionRef = useRef<{
+		handle: ResizeHandle;
+		startRect: Rect;
+		startPointer: { x: number; y: number };
+	} | null>(null);
+	const [liveResize, setLiveResizeState] = useState<{ rect: Rect; fontSize: number } | null>(null);
+	// Mirrors liveResize so onResizeStop always sees the last move, even before a re-render.
+	const liveResizeRef = useRef<{ rect: Rect; fontSize: number } | null>(null);
+	const setLiveResize = (value: { rect: Rect; fontSize: number } | null) => {
+		liveResizeRef.current = value;
+		setLiveResizeState(value);
+	};
+	// The committed result, shown until the stored position/size catch up so the
+	// box never snaps back for a frame after the drag ends.
+	const [pendingResize, setPendingResize] = useState<{ rect: Rect; fontSize: number } | null>(
+		null,
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: any change to the stored rect or font supersedes the pending one
+	useEffect(() => {
+		setPendingResize(null);
+	}, [
+		annotation.position.x,
+		annotation.position.y,
+		annotation.size.width,
+		annotation.size.height,
+		annotation.style.fontSize,
+		safeRecordingRect.width,
+		safeRecordingRect.height,
+	]);
+	const displayed = liveResize ?? pendingResize;
+	const displayRect = displayed?.rect ?? { x, y, width, height };
 	const fontsVersion = useFontsVersion();
-	const textFontSize = annotation.style.fontSize * sizeScale;
-	const textBoxWidth = liveSize?.width ?? width;
-	const textBoxHeight = liveSize?.height ?? height;
+	const textFontSize = (displayed?.fontSize ?? annotation.style.fontSize) * sizeScale;
+	const textBoxWidth = displayRect.width;
+	const textBoxHeight = displayRect.height;
 	const textLines = useMemo(() => {
 		if (annotation.type !== "text") return [];
 		const ctx = getMeasureContext();
@@ -293,9 +356,12 @@ export function AnnotationOverlay({
 
 	return (
 		<Rnd
-			position={{ x, y }}
-			size={{ width, height }}
+			ref={rndRef}
+			position={{ x: displayRect.x, y: displayRect.y }}
+			size={{ width: displayRect.width, height: displayRect.height }}
 			scale={interactionScale}
+			minWidth={MIN_LAYER_SIZE_PX}
+			minHeight={MIN_LAYER_SIZE_PX}
 			onDragStart={() => {
 				isDraggingRef.current = true;
 			}}
@@ -308,28 +374,79 @@ export function AnnotationOverlay({
 					isDraggingRef.current = false;
 				}, 100);
 			}}
-			onResize={(_e, _direction, ref) => {
-				if (annotation.type === "text") {
-					setLiveSize({ width: ref.offsetWidth, height: ref.offsetHeight });
-				}
+			// react-rnd supplies the handle and the pointer; the rect comes from
+			// computeLayerResize (edges move one edge, corners keep the ratio, Shift
+			// frees it, Alt resizes from the centre) and is pushed back into Rnd.
+			onResizeStart={(e, direction) => {
+				// A resize that ends inside the box fires a click; like a drag, it must
+				// not count as a click (which would cycle the selection).
+				isDraggingRef.current = true;
+				const handle = handleFromRndDirection(direction);
+				const pointer = pointerOf(e);
+				resizeSessionRef.current =
+					handle && pointer
+						? { handle, startRect: { x, y, width, height }, startPointer: pointer }
+						: null;
 			}}
-			onResizeStop={(_e, _direction, ref, _delta, position) => {
-				setLiveSize(null);
-				const next = screenRectToRecordingPercent({
-					x: position.x,
-					y: position.y,
-					width: ref.offsetWidth,
-					height: ref.offsetHeight,
+			onResize={(e) => {
+				const session = resizeSessionRef.current;
+				const pointer = pointerOf(e);
+				if (!session || !pointer) return;
+				const zoom = interactionScale > 0 ? interactionScale : 1;
+				const { rect, fontScale } = computeLayerResize({
+					handle: session.handle,
+					start: session.startRect,
+					delta: {
+						x: (pointer.x - session.startPointer.x) / zoom,
+						y: (pointer.y - session.startPointer.y) / zoom,
+					},
+					modifiers: modifiersOf(e),
+					layerType: annotation.type,
+					minSize: MIN_LAYER_SIZE_PX,
 				});
+				rndRef.current?.updatePosition({ x: rect.x, y: rect.y });
+				rndRef.current?.updateSize({ width: rect.width, height: rect.height });
+				setLiveResize({
+					rect,
+					fontSize:
+						annotation.type === "text"
+							? scaleTextFontSize(annotation.style.fontSize, fontScale)
+							: annotation.style.fontSize,
+				});
+			}}
+			onResizeStop={() => {
+				const result = liveResizeRef.current;
+				resizeSessionRef.current = null;
+				setLiveResize(null);
+				setTimeout(() => {
+					isDraggingRef.current = false;
+				}, 100);
+				if (!result) return;
+				// Position, size and font change together: one undo step.
+				const next = screenRectToRecordingPercent(result.rect);
+				const close = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+				const unchanged =
+					close(next.position.x, annotation.position.x) &&
+					close(next.position.y, annotation.position.y) &&
+					close(next.size.width, annotation.size.width) &&
+					close(next.size.height, annotation.size.height) &&
+					result.fontSize === annotation.style.fontSize;
+				if (unchanged) return;
+				setPendingResize(result);
 				onPositionChange(annotation.id, next.position);
 				onSizeChange(annotation.id, next.size);
+				if (annotation.type === "text" && result.fontSize !== annotation.style.fontSize) {
+					onStyleChange?.(annotation.id, { fontSize: result.fontSize });
+				}
 			}}
 			onClick={() => {
 				if (isDraggingRef.current) return;
 				onClick(annotation.id);
 			}}
+			// No transition on size or position: react-rnd measures the box while a
+			// resize runs, and an animating box made it misplace the edges.
 			className={cn(
-				"cursor-move transition-all",
+				"cursor-move transition-[background-color,border-color,box-shadow]",
 				isSelected && "ring-2 ring-[#2563EB] ring-offset-2 ring-offset-transparent",
 			)}
 			style={{

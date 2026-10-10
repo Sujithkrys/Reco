@@ -268,6 +268,7 @@ interface VideoPlaybackProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
+	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
 	cursorStyle?: CursorStyle;
@@ -354,6 +355,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onSelectAnnotation,
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
+			onAnnotationStyleChange,
 			cursorTelemetry = [],
 			showCursor = false,
 			cursorStyle = DEFAULT_CURSOR_STYLE,
@@ -3035,6 +3037,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											}
 											onSizeChange={(id, size) =>
 												onAnnotationSizeChange?.(id, size)
+											}
+											onStyleChange={(id, style) =>
+												onAnnotationStyleChange?.(id, style)
 											}
 											onClick={handleAnnotationClick}
 											zIndex={annotation.zIndex}

@@ -20,6 +20,7 @@ type Handlers = Pick<
 	| "onSelectAnnotation"
 	| "onAnnotationPositionChange"
 	| "onAnnotationSizeChange"
+	| "onAnnotationStyleChange"
 >;
 
 type Props = {

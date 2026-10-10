@@ -299,6 +299,8 @@ export function EditorPreviewPanel(props: Props) {
 											annotationCommands.handleAnnotationPositionChange,
 										onAnnotationSizeChange:
 											annotationCommands.handleAnnotationSizeChange,
+										onAnnotationStyleChange:
+											annotationCommands.handleAnnotationStyleChange,
 									}}
 								/>
 							</div>
