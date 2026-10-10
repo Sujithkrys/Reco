@@ -23,6 +23,7 @@ import { useEditorGlobalInteractions } from "./useEditorGlobalInteractions";
 import { useEditorPlaybackControls } from "./useEditorPlaybackControls";
 import { useFreshRecordingAutoZoom } from "./useFreshRecordingAutoZoom";
 import { useGeneratedClipRegionCommands } from "./useGeneratedClipRegionCommands";
+import { usePlayheadEditCommands } from "./usePlayheadEditCommands";
 import { useTimelineProjection } from "./useTimelineProjection";
 import { useZoomRegionCommands } from "./useZoomRegionCommands";
 
@@ -237,6 +238,17 @@ export function useTimelineEditingController(input: Input) {
 		clearOtherSelections,
 	});
 
+	const playheadEdits = usePlayheadEditCommands({
+		timeline,
+		playheadMs: projection.timelinePlayheadTime * 1000,
+		sourceDurationMs: input.duration * 1000,
+		nextClipIdRef: input.nextClipIdRef,
+		nextZoomIdRef: input.nextZoomIdRef,
+		nextAnnotationIdRef: input.nextAnnotationIdRef,
+		nextAudioIdRef: input.nextAudioIdRef,
+		handleUndo: input.handleUndo,
+	});
+
 	useEditorGlobalInteractions({
 		timeline,
 		videoPlaybackRef: input.videoPlaybackRef,
@@ -258,6 +270,7 @@ export function useTimelineEditingController(input: Input) {
 		audioCommands,
 		annotationCommands,
 		generatedClipCommands,
+		playheadEdits,
 		handleSelectAnnotation,
 		handleSelectGeneratedClip,
 		handleAutoSuggestZoomsConsumed: freshZoom.handleAutoSuggestZoomsConsumed,
