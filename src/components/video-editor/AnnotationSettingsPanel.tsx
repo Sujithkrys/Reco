@@ -56,6 +56,8 @@ interface AnnotationSettingsPanelProps {
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
 	onDelete: () => void;
+	/** Each uploaded file becomes its own image layer at the playhead. */
+	onImagesAdded?: (images: { dataUrl: string; fileName: string }[]) => void;
 	/** Centres the layer on the video so an off-canvas layer can be recovered. */
 	onResetPosition?: () => void;
 	currentTimeMs?: number;
@@ -107,6 +109,7 @@ export function AnnotationSettingsPanel({
 	onBlurColorChange,
 	onDelete,
 	onResetPosition,
+	onImagesAdded,
 	currentTimeMs,
 	onSeek,
 	onClose,
@@ -129,39 +132,43 @@ export function AnnotationSettingsPanel({
 	const colorPalette = ANNOTATION_COLOR_PALETTE;
 
 	const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const files = event.target.files;
-		if (!files || files.length === 0) return;
+		const files = Array.from(event.target.files ?? []);
+		event.target.value = "";
+		if (files.length === 0) return;
 
-		const file = files[0];
-
-		// Validate file type
 		const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
-		if (!validTypes.includes(file.type)) {
+		const validFiles = files.filter((file) => validTypes.includes(file.type));
+		if (validFiles.length < files.length) {
 			toast.error(t("annotations.imageUploadError"), {
 				description: t("annotations.imageUploadErrorDescription"),
 			});
-			event.target.value = "";
-			return;
 		}
 
-		const reader = new FileReader();
-
-		reader.onload = (e) => {
-			const dataUrl = e.target?.result as string;
-			if (dataUrl) {
-				onContentChange(dataUrl, file.name);
-				toast.success(t("annotations.imageUploadSuccess"));
-			}
-		};
-
-		reader.onerror = () => {
-			toast.error(t("annotations.imageUploadFailed"), {
-				description: t("annotations.imageUploadFailedDescription"),
+		const readFile = (file: File) =>
+			new Promise<{ dataUrl: string; fileName: string } | null>((resolve) => {
+				const reader = new FileReader();
+				reader.onload = () => {
+					const dataUrl = reader.result as string;
+					resolve(dataUrl ? { dataUrl, fileName: file.name } : null);
+				};
+				reader.onerror = () => {
+					toast.error(t("annotations.imageUploadFailed"), {
+						description: t("annotations.imageUploadFailedDescription"),
+					});
+					resolve(null);
+				};
+				reader.readAsDataURL(file);
 			});
-		};
 
-		reader.readAsDataURL(file);
-		event.target.value = "";
+		void Promise.all(validFiles.map(readFile)).then((results) => {
+			const images = results.filter((image): image is { dataUrl: string; fileName: string } =>
+				Boolean(image),
+			);
+			if (images.length === 0) return;
+			if (onImagesAdded) onImagesAdded(images);
+			else onContentChange(images[0].dataUrl, images[0].fileName);
+			toast.success(t("annotations.imageUploadSuccess"));
+		});
 	};
 
 	return (
@@ -604,6 +611,7 @@ export function AnnotationSettingsPanel({
 								type="file"
 								ref={fileInputRef}
 								onChange={handleImageUpload}
+								multiple
 								accept=".jpg,.jpeg,.png,.gif,.webp,image/*"
 								className="hidden"
 							/>
@@ -642,7 +650,7 @@ export function AnnotationSettingsPanel({
 							>
 								<Upload className="w-5 h-5" />
 								{annotation.content?.startsWith("data:image")
-									? t("annotations.replaceImage")
+									? t("annotations.addImages", "Add more images")
 									: t("annotations.uploadImage")}
 							</Button>
 

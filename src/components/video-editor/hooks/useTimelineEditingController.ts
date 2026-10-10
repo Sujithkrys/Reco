@@ -230,6 +230,8 @@ export function useTimelineEditingController(input: Input) {
 		clearOtherSelections,
 		nextAnnotationIdRef: input.nextAnnotationIdRef,
 		nextAnnotationZIndexRef: input.nextAnnotationZIndexRef,
+		playheadMs: projection.timelinePlayheadTime * 1000,
+		totalMs: projection.timelineDuration * 1000,
 	});
 	const generatedClipCommands = useGeneratedClipRegionCommands({
 		setGeneratedClipRegions: timeline.setGeneratedClipRegions,

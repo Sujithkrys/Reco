@@ -21,7 +21,19 @@ interface UseAnnotationRegionCommandsParams {
 	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 	nextAnnotationIdRef: MutableRefObject<number>;
 	nextAnnotationZIndexRef: MutableRefObject<number>;
+	/** Playhead and total timeline length, used to place image layers added from the panel. */
+	playheadMs: number;
+	totalMs: number;
 }
+
+export interface AddedImage {
+	dataUrl: string;
+	fileName: string;
+}
+
+const IMAGE_LAYER_DEFAULT_DURATION_MS = 1000;
+/** Diagonal offset between image layers added together, as percent of the video. */
+const IMAGE_STACK_OFFSET_PERCENT = 3;
 
 export function useAnnotationRegionCommands({
 	setAnnotationRegions,
@@ -30,6 +42,8 @@ export function useAnnotationRegionCommands({
 	clearOtherSelections,
 	nextAnnotationIdRef,
 	nextAnnotationZIndexRef,
+	playheadMs,
+	totalMs,
 }: UseAnnotationRegionCommandsParams) {
 	const handleAnnotationAdded = useCallback(
 		(span: Span, trackIndex = 0, initialType: AnnotationType = "text") => {
@@ -63,6 +77,76 @@ export function useAnnotationRegionCommands({
 			nextAnnotationZIndexRef,
 			setAnnotationRegions,
 			setSelectedAnnotationId,
+		],
+	);
+
+	/**
+	 * One image layer per file at the playhead, each offset diagonally from the last.
+	 * An empty selected image layer takes the first file instead of being left blank.
+	 * The last layer added ends up selected.
+	 */
+	const handleAnnotationImagesAdded = useCallback(
+		(images: AddedImage[], reuseId?: string) => {
+			if (images.length === 0) return;
+			const duration = Math.max(0, Math.min(IMAGE_LAYER_DEFAULT_DURATION_MS, totalMs));
+			const startMs = Math.round(
+				Math.max(0, Math.min(playheadMs, Math.max(0, totalMs - duration))),
+			);
+			const endMs = Math.round(Math.min(startMs + duration, totalMs));
+			const ids = images.map(() => `annotation-${nextAnnotationIdRef.current++}`);
+			const zIndexes = images.map(() => nextAnnotationZIndexRef.current++);
+			setAnnotationRegions((current) => {
+				const reuse = current.find((region) => region.id === reuseId);
+				const basePosition = reuse?.position ?? DEFAULT_ANNOTATION_POSITION;
+				const nextTrack =
+					current.reduce((max, region) => Math.max(max, region.trackIndex ?? 0), -1) + 1;
+				let reused = false;
+				const next = current.map((region) => {
+					if (!reuse || region.id !== reuse.id) return region;
+					reused = true;
+					return {
+						...region,
+						content: images[0].dataUrl,
+						imageContent: images[0].dataUrl,
+						imageFileName: images[0].fileName,
+					};
+				});
+				const added: AnnotationRegion[] = [];
+				images.forEach((image, index) => {
+					if (index === 0 && reused) return;
+					added.push({
+						id: ids[index],
+						startMs,
+						endMs,
+						type: "image",
+						content: image.dataUrl,
+						imageContent: image.dataUrl,
+						imageFileName: image.fileName,
+						position: {
+							x: basePosition.x + index * IMAGE_STACK_OFFSET_PERCENT,
+							y: basePosition.y + index * IMAGE_STACK_OFFSET_PERCENT,
+						},
+						size: { ...DEFAULT_ANNOTATION_SIZE },
+						style: { ...DEFAULT_ANNOTATION_STYLE },
+						zIndex: zIndexes[index],
+						trackIndex: nextTrack + added.length,
+					});
+				});
+				return [...next, ...added];
+			});
+			// The reused layer (if any) holds the first file under its own id.
+			const lastIndex = images.length - 1;
+			setSelectedAnnotationId(lastIndex === 0 && reuseId ? reuseId : ids[lastIndex]);
+			clearOtherSelections("annotation");
+		},
+		[
+			clearOtherSelections,
+			nextAnnotationIdRef,
+			nextAnnotationZIndexRef,
+			playheadMs,
+			setAnnotationRegions,
+			setSelectedAnnotationId,
+			totalMs,
 		],
 	);
 
@@ -202,6 +286,7 @@ export function useAnnotationRegionCommands({
 
 	return {
 		handleAnnotationAdded,
+		handleAnnotationImagesAdded,
 		handleAnnotationSpanChange,
 		handleAnnotationDelete,
 		handleAnnotationContentChange,
