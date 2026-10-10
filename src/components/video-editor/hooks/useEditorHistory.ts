@@ -55,8 +55,8 @@ export function useEditorHistory({
 	const applyingRef = useRef(false);
 	// Set when the timeline clamps regions after another change; the clamp then
 	// replaces the current step rather than becoming a step of its own (which
-	// undo would restore, re-trigger the clamp, and never get past). It expires
-	// quickly so it can never absorb a later user edit.
+	// undo would restore, re-trigger the clamp, and never get past). The first
+	// real change consumes it, and it expires so it cannot absorb a later edit.
 	const amendUntilRef = useRef(0);
 	const [historyFlags, setHistoryFlags] = useState({ canUndo: false, canRedo: false });
 	const syncButtons = useCallback(() => {
@@ -195,7 +195,9 @@ export function useEditorHistory({
 	// clamp itself (the next change) is folded into it.
 	const amendCurrentStep = useCallback(() => {
 		recordSnapshot(buildSnapshotRef.current());
-		amendUntilRef.current = Date.now() + 100;
+		// The clamp's own render can be slow (the preview re-lays out), so allow
+		// it a second; the first real change after this consumes the amend.
+		amendUntilRef.current = Date.now() + 1000;
 	}, [recordSnapshot]);
 
 	useEffect(() => {
