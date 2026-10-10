@@ -166,10 +166,9 @@ export function AnnotationSettingsPanel({
 
 	return (
 		<div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-editor-panel border border-foreground/10 rounded-2xl flex flex-col shadow-xl h-full overflow-hidden">
-			<div className="flex-1 min-h-0 p-4 overflow-y-auto custom-scrollbar">
-				<div className="mb-6">
-					<div className="flex items-center justify-between mb-4">
-						<span className="text-sm font-medium text-foreground">
+			<div className="flex-shrink-0 border-b border-foreground/10 bg-editor-panel px-4 py-3">
+				<div className="flex items-center justify-between">
+					<span className="text-sm font-medium text-foreground">
 							{t("annotations.settings")}
 						</span>
 						<div className="flex items-center gap-2">
@@ -191,8 +190,10 @@ export function AnnotationSettingsPanel({
 								</Tooltip>
 							)}
 						</div>
-					</div>
-
+				</div>
+			</div>
+			<div className="flex-1 min-h-0 p-4 overflow-y-auto custom-scrollbar">
+				<div className="mb-6">
 					{currentTimeMs !== undefined &&
 						(currentTimeMs < annotation.startMs || currentTimeMs > annotation.endMs) && (
 							<div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-500 dark:text-amber-400">
