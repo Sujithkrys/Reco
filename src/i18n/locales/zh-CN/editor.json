@@ -38,6 +38,8 @@
 		"strokeWidth": "描边宽度：{{width}}px",
 		"arrowColor": "箭头颜色",
 		"deleteAnnotation": "删除注释",
+		"resetPosition": "重置位置",
+		"addImages": "添加更多图片",
 		"shortcutsAndTips": "快捷键与提示",
 		"tipSelectAnnotation": "将播放头移动到注释重叠区域并选择项目。",
 		"tipCycleForward": "使用 Tab 循环切换重叠项目。",

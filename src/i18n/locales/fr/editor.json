@@ -38,6 +38,8 @@
 		"strokeWidth": "Épaisseur du trait : {{width}} px",
 		"arrowColor": "Couleur de la flèche",
 		"deleteAnnotation": "Supprimer l’annotation",
+		"resetPosition": "Réinitialiser la position",
+		"addImages": "Ajouter d’autres images",
 		"shortcutsAndTips": "Raccourcis et conseils",
 		"tipSelectAnnotation": "Déplacez la tête de lecture vers une zone d’annotations superposées et sélectionnez un élément.",
 		"tipCycleForward": "Utilisez Tab pour parcourir les éléments superposés.",

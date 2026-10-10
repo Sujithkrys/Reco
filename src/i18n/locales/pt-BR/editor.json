@@ -38,6 +38,8 @@
 		"strokeWidth": "Espessura do traço: {{width}}px",
 		"arrowColor": "Cor da seta",
 		"deleteAnnotation": "Excluir anotação",
+		"resetPosition": "Redefinir posição",
+		"addImages": "Adicionar mais imagens",
 		"shortcutsAndTips": "Atalhos e dicas",
 		"tipSelectAnnotation": "Mova o indicador para uma seção com anotações sobrepostas e selecione um item.",
 		"tipCycleForward": "Use Tab para alternar entre itens sobrepostos.",

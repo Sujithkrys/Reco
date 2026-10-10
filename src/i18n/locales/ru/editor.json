@@ -38,6 +38,8 @@
 		"strokeWidth": "Толщина: {{width}}px",
 		"arrowColor": "Цвет стрелки",
 		"deleteAnnotation": "Удалить аннотацию",
+		"resetPosition": "Сбросить положение",
+		"addImages": "Добавить ещё изображения",
 		"shortcutsAndTips": "Горячие клавиши и советы",
 		"tipSelectAnnotation": "Переместите ползунок в область пересечения аннотаций и выберите нужную.",
 		"tipCycleForward": "Нажмите Tab для переключения между элементами.",

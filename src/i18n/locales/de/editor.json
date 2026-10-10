@@ -38,6 +38,8 @@
 		"strokeWidth": "Strichbreite: {{width}}px",
 		"arrowColor": "Pfeilfarbe",
 		"deleteAnnotation": "Anmerkung löschen",
+		"resetPosition": "Position zurücksetzen",
+		"addImages": "Weitere Bilder hinzufügen",
 		"shortcutsAndTips": "Tastenkombinationen & Tipps",
 		"tipSelectAnnotation": "Bewegen Sie den Abspielkopf auf den überlappenden Anmerkungsbereich und wählen Sie ein Element aus.",
 		"tipCycleForward": "Verwenden Sie die Tabulatortaste, um durch die überlappenden Elemente zu blättern.",

@@ -39,6 +39,8 @@
 		"strokeWidth": "Lijndikte: {{width}}px",
 		"arrowColor": "Pijlkleur",
 		"deleteAnnotation": "Annotatie verwijderen",
+		"resetPosition": "Positie herstellen",
+		"addImages": "Meer afbeeldingen toevoegen",
 		"shortcutsAndTips": "Sneltoetsen & tips",
 		"tipSelectAnnotation": "Verplaats de afspeelkop naar een overlappend annotatiegedeelte en selecteer een item.",
 		"tipCycleForward": "Gebruik Tab om door overlappende items te bladeren.",

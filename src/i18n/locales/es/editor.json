@@ -38,6 +38,8 @@
 		"strokeWidth": "Ancho de trazo: {{width}}px",
 		"arrowColor": "Color de flecha",
 		"deleteAnnotation": "Eliminar anotación",
+		"resetPosition": "Restablecer posición",
+		"addImages": "Añadir más imágenes",
 		"shortcutsAndTips": "Atajos y consejos",
 		"tipSelectAnnotation": "Mueve el cabezal de reproducción a la sección de anotación superpuesta y selecciona un elemento.",
 		"tipCycleForward": "Usa Tab para recorrer los elementos superpuestos.",
