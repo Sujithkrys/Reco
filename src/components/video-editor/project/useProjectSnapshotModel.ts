@@ -41,6 +41,12 @@ export function useProjectSnapshotModel({
 		[project.videoPath, project.videoSourcePath],
 	);
 	const projectDisplayName = useMemo(() => {
+		// The library holds the project's own name. On the web the project path is a
+		// record id, so deriving a name from the path would show that id.
+		const libraryName = project.projectLibraryEntries
+			.find((entry) => entry.path === project.currentProjectPath)
+			?.name?.trim();
+		if (libraryName) return libraryName.replace(/\.reco$/i, "");
 		const fileName =
 			project.currentProjectPath?.split(/[\\/]/).pop() ??
 			currentSourcePath?.split(/[\\/]/).pop() ??
@@ -49,7 +55,7 @@ export function useProjectSnapshotModel({
 			fileName.replace(/\.reco$/i, "").replace(/\.[^.]+$/, "") ||
 			t("editor.project.untitled", "Untitled")
 		);
-	}, [project.currentProjectPath, currentSourcePath, t]);
+	}, [project.projectLibraryEntries, project.currentProjectPath, currentSourcePath, t]);
 
 	useEffect(() => {
 		if (!project.isEditingProjectName) project.setProjectNameDraft(projectDisplayName);
