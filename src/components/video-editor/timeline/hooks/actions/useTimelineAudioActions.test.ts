@@ -42,6 +42,35 @@ describe("audio upload after adding audio", () => {
 		expect(reportError).not.toHaveBeenCalled();
 	});
 
+	it("passes the picked file's name along with the new audio", async () => {
+		vi.stubGlobal("window", { electronAPI: {} });
+		const onAudioAdded = vi.fn();
+		const { handleAddAudio } = useTimelineAudioActions({
+			timeline: { videoDuration: 10, totalMs: 10_000, currentTimeMs: 0 },
+			regions: { audio: [] },
+			onAudioAdded,
+			deps: {
+				openFilePicker: async () => ({
+					success: true,
+					path: "blob:http://localhost/music",
+					file: new File([new Uint8Array(4)], "theme song.mp3", { type: "audio/mpeg" }),
+				}),
+				probeAudioDurationMs: async () => 4_000,
+				reportError: vi.fn(),
+			},
+		});
+
+		await handleAddAudio();
+
+		expect(onAudioAdded).toHaveBeenCalledWith(
+			expect.anything(),
+			"blob:http://localhost/music",
+			expect.any(Number),
+			4_000,
+			"theme song.mp3",
+		);
+	});
+
 	it("still reports a real upload failure", async () => {
 		const { handleAddAudio, reportError } = setup({ success: false, message: "network down" });
 

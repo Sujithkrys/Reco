@@ -718,6 +718,9 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						...(isFiniteNumber(region.sourceDurationMs) && region.sourceDurationMs > 0
 							? { sourceDurationMs: Math.round(region.sourceDurationMs) }
 							: {}),
+						...(typeof region.audioFileName === "string" && region.audioFileName.trim()
+							? { audioFileName: region.audioFileName }
+							: {}),
 					};
 				})
 		: [];

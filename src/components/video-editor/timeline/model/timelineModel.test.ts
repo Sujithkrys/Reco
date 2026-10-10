@@ -60,6 +60,16 @@ describe("timeline model", () => {
 		expect(items.find((i) => i.id === "au1")?.sourceSpan).toEqual({ start: 0, end: 1500 });
 	});
 
+	it("labels audio by its file name, never by a blob or storage id", () => {
+		const base = { id: "a", startMs: 0, endMs: 1, volume: 1 };
+		expect(
+			getAudioLabel({ ...base, audioPath: "blob:http://localhost/1f2e", audioFileName: "intro music.mp3" }),
+		).toBe("intro music");
+		expect(getAudioLabel({ ...base, audioPath: "blob:http://localhost/45d1ae54-f94d" })).toBe("Audio");
+		expect(getAudioLabel({ ...base, audioPath: "idb://media_1234" })).toBe("Audio");
+		expect(getAudioLabel({ ...base, audioPath: "C:\\music\\theme.wav" })).toBe("theme");
+	});
+
 	it("exposes the trimmed audio window as the item's source span", () => {
 		const items = buildTimelineItems({
 			zoomRegions: [],

@@ -183,6 +183,18 @@ describe("normalizeProjectEditor", () => {
 		expect(editor.audioRegions[0].sourceDurationMs).toBe(9000);
 	});
 
+	it("keeps an audio region's file name and loads old regions without one", () => {
+		const editor = normalizeProjectEditor({
+			audioRegions: [
+				{ id: "a1", startMs: 0, endMs: 1000, audioPath: "blob:x", volume: 1, audioFileName: "song.mp3" },
+				{ id: "a2", startMs: 0, endMs: 1000, audioPath: "blob:y", volume: 1 },
+			],
+		});
+
+		expect(editor.audioRegions[0].audioFileName).toBe("song.mp3");
+		expect(editor.audioRegions[1]).not.toHaveProperty("audioFileName");
+	});
+
 	it("drops invalid audio trim values", () => {
 		const editor = normalizeProjectEditor({
 			audioRegions: [

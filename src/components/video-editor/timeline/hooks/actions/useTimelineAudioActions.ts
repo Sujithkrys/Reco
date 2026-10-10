@@ -7,6 +7,8 @@ import { timelineNotifications } from "../utils/timelineNotifications";
 interface AudioFilePickerResult {
 	success: boolean;
 	path?: string;
+	/** Present on the web, where path is a blob URL. */
+	file?: File;
 }
 
 interface TimelineAudioActionsDeps {
@@ -29,6 +31,7 @@ interface UseTimelineAudioActionsParams {
 		audioPath: string,
 		trackIndex?: number,
 		sourceDurationMs?: number,
+		audioFileName?: string,
 	) => void;
 	deps?: Partial<TimelineAudioActionsDeps>;
 }
@@ -137,6 +140,7 @@ export function useTimelineAudioActions({
 				audioPath,
 				placement.trackIndex,
 				audioDurationMs,
+				result.file?.name,
 			);
 
 			// Client-direct upload to Supabase Storage in the background

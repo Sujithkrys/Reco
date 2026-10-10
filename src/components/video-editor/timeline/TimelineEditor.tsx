@@ -75,6 +75,7 @@ export interface TimelineEditorProps {
 		audioPath: string,
 		trackIndex?: number,
 		sourceDurationMs?: number,
+		audioFileName?: string,
 	) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;

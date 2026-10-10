@@ -669,6 +669,8 @@ export interface AudioRegion {
 	sourceStartMs?: number;
 	/** Length of the audio file, when known. Caps how far the right edge can extend. */
 	sourceDurationMs?: number;
+	/** Original file name, for labels (the web audioPath is a blob/idb URL). */
+	audioFileName?: string;
 }
 
 export function getAudioSourceStartMs(region: Pick<AudioRegion, "sourceStartMs">): number {

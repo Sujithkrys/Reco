@@ -36,6 +36,10 @@ export function getAnnotationLabel(region: AnnotationRegion): string {
 }
 
 export function getAudioLabel(region: AudioRegion): string {
+	const fileName = region.audioFileName?.trim();
+	if (fileName) return fileName.replace(/\.[^.]+$/, "") || fileName;
+	// blob:/idb:/data: paths carry an opaque id, not a file name.
+	if (/^(blob|idb|data):/i.test(region.audioPath)) return "Audio";
 	return (
 		region.audioPath
 			.split(/[\\/]/)

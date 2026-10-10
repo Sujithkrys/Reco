@@ -48,7 +48,13 @@ export function useAudioRegionCommands({
 	);
 
 	const handleAudioAdded = useCallback(
-		(span: Span, audioPath: string, trackIndex?: number, sourceDurationMs?: number) => {
+		(
+			span: Span,
+			audioPath: string,
+			trackIndex?: number,
+			sourceDurationMs?: number,
+			audioFileName?: string,
+		) => {
 			const id = `audio-${nextAudioIdRef.current++}`;
 			const knownDurationMs =
 				typeof sourceDurationMs === "number" &&
@@ -69,6 +75,7 @@ export function useAudioRegionCommands({
 				trackIndex,
 				sourceStartMs: 0,
 				...(knownDurationMs === undefined ? {} : { sourceDurationMs: knownDurationMs }),
+				...(audioFileName ? { audioFileName } : {}),
 			};
 			setAudioRegions((current) => [...current, newRegion]);
 			setSelectedAudioId(id);
