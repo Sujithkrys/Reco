@@ -1,6 +1,11 @@
 import { useRef } from "react";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
+import {
+	clampEdgesToCanvas,
+	clampMoveToCanvas,
+	getCanvasBoundsPercent,
+} from "./annotationCanvasBounds";
 import { getArrowComponent } from "./ArrowSvgs";
 import {
 	type AnnotationRegion,
@@ -77,44 +82,36 @@ export function AnnotationOverlay({
 
 	const isDraggingRef = useRef(false);
 
-	const screenRectToRecordingPercent = (rect: Rect) => {
+	const screenRectToRecordingPercent = (rect: Rect, mode: "move" | "resize") => {
 		const nextSceneX = (rect.x - sceneTransform.x) / sceneTransform.scale;
 		const nextSceneY = (rect.y - sceneTransform.y) / sceneTransform.scale;
 		const nextSceneWidth = rect.width / sceneTransform.scale;
 		const nextSceneHeight = rect.height / sceneTransform.scale;
+		const recordingWidth = Math.max(1, safeRecordingRect.width);
+		const recordingHeight = Math.max(1, safeRecordingRect.height);
 
-		const widthPercent = Math.max(0, (nextSceneWidth / Math.max(1, safeRecordingRect.width)) * 100);
-		const heightPercent = Math.max(
-			0,
-			(nextSceneHeight / Math.max(1, safeRecordingRect.height)) * 100,
-		);
-
+		const percentRect = {
+			x: ((nextSceneX - safeRecordingRect.x) / recordingWidth) * 100,
+			y: ((nextSceneY - safeRecordingRect.y) / recordingHeight) * 100,
+			width: Math.max(0, (nextSceneWidth / recordingWidth) * 100),
+			height: Math.max(0, (nextSceneHeight / recordingHeight) * 100),
+		};
 		// Bounds are the full outer canvas expressed in recording-rect percent, so
 		// positions can go below 0 / above 100 while the whole layer stays on canvas.
-		const minX = -(videoRectX / Math.max(1, safeRecordingRect.width)) * 100;
-		const maxX =
-			((canvasWidth - videoRectX) / Math.max(1, safeRecordingRect.width)) * 100 - widthPercent;
-		const minY = -(videoRectY / Math.max(1, safeRecordingRect.height)) * 100;
-		const maxY =
-			((canvasHeight - videoRectY) / Math.max(1, safeRecordingRect.height)) * 100 -
-			heightPercent;
-
-		const clamp = (val: number, min: number, max: number) => {
-			if (!Number.isFinite(val)) {
-				return min;
-			}
-			return Math.max(min, Math.min(max, val));
-		};
+		const bounds = getCanvasBoundsPercent(
+			{ x: videoRectX, y: videoRectY, width: recordingWidth, height: recordingHeight },
+			canvasWidth,
+			canvasHeight,
+		);
+		// Moving keeps the size; resizing stops each dragged edge at the canvas edge.
+		const clamped =
+			mode === "move"
+				? clampMoveToCanvas(percentRect, bounds)
+				: clampEdgesToCanvas(percentRect, bounds);
 
 		return {
-			position: {
-				x: clamp(((nextSceneX - safeRecordingRect.x) / Math.max(1, safeRecordingRect.width)) * 100, minX, maxX),
-				y: clamp(((nextSceneY - safeRecordingRect.y) / Math.max(1, safeRecordingRect.height)) * 100, minY, maxY),
-			},
-			size: {
-				width: widthPercent,
-				height: heightPercent,
-			},
+			position: { x: clamped.x, y: clamped.y },
+			size: { width: clamped.width, height: clamped.height },
 		};
 	};
 
@@ -257,7 +254,7 @@ export function AnnotationOverlay({
 				isDraggingRef.current = true;
 			}}
 			onDragStop={(_e, d) => {
-				const next = screenRectToRecordingPercent({ x: d.x, y: d.y, width, height });
+				const next = screenRectToRecordingPercent({ x: d.x, y: d.y, width, height }, "move");
 				onPositionChange(annotation.id, next.position);
 
 				// Reset dragging flag after a short delay to prevent click event
@@ -266,12 +263,15 @@ export function AnnotationOverlay({
 				}, 100);
 			}}
 			onResizeStop={(_e, _direction, ref, _delta, position) => {
-				const next = screenRectToRecordingPercent({
-					x: position.x,
-					y: position.y,
-					width: ref.offsetWidth,
-					height: ref.offsetHeight,
-				});
+				const next = screenRectToRecordingPercent(
+					{
+						x: position.x,
+						y: position.y,
+						width: ref.offsetWidth,
+						height: ref.offsetHeight,
+					},
+					"resize",
+				);
 				onPositionChange(annotation.id, next.position);
 				onSizeChange(annotation.id, next.size);
 			}}

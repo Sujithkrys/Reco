@@ -12,6 +12,13 @@ import {
 	useState,
 } from "react";
 import { getAssetPath, getRenderableAssetUrl, getRenderableVideoUrl } from "@/lib/assetPath";
+import {
+	areCanvasBoundsEqual,
+	type CanvasBoundsPercent,
+	fitRectToCanvas,
+	getCanvasBoundsPercent,
+	isSameRect,
+} from "./annotationCanvasBounds";
 import { getWebcamShadowFilter } from "@/lib/exporter/shadowProfile";
 import { getSquircleSvgPath } from "@/lib/geometry/squircle";
 import {
@@ -441,6 +448,49 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			});
 
 		const overlayRef = useRef<HTMLDivElement | null>(null);
+
+		// Re-clamp layers onto the canvas when it changes shape (padding, aspect
+		// ratio). The first layout seen for a video is only recorded, so opening or
+		// switching projects never moves saved layers.
+		const annotationLayoutRef = useRef({
+			annotationRegions,
+			onAnnotationPositionChange,
+			onAnnotationSizeChange,
+		});
+		annotationLayoutRef.current = {
+			annotationRegions,
+			onAnnotationPositionChange,
+			onAnnotationSizeChange,
+		};
+		const lastCanvasBoundsRef = useRef<{ videoPath: string | null; bounds: CanvasBoundsPercent } | null>(
+			null,
+		);
+		useEffect(() => {
+			const overlay = overlayRef.current;
+			const rect = annotationRecordingRect;
+			if (!overlay || rect.width <= 0 || rect.height <= 0) return;
+			if (overlay.clientWidth <= 0 || overlay.clientHeight <= 0) return;
+			const bounds = getCanvasBoundsPercent(rect, overlay.clientWidth, overlay.clientHeight);
+			const previous = lastCanvasBoundsRef.current;
+			lastCanvasBoundsRef.current = { videoPath: videoPath ?? null, bounds };
+			if (
+				!previous ||
+				previous.videoPath !== (videoPath ?? null) ||
+				areCanvasBoundsEqual(previous.bounds, bounds)
+			) {
+				return;
+			}
+			const { annotationRegions: layers, onAnnotationPositionChange: onMove, onAnnotationSizeChange: onResize } =
+				annotationLayoutRef.current;
+			for (const layer of layers) {
+				const current = { ...layer.position, ...layer.size };
+				const next = fitRectToCanvas(current, bounds);
+				if (isSameRect(current, next)) continue;
+				onMove?.(layer.id, { x: next.x, y: next.y });
+				onResize?.(layer.id, { width: next.width, height: next.height });
+			}
+		}, [annotationRecordingRect, videoPath]);
+
 		const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
 		const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 		const webcamBubbleRef = useRef<HTMLDivElement | null>(null);
