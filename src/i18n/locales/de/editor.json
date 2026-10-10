@@ -154,5 +154,23 @@
 		"expand": "Zeitleiste erweitern",
 		"collapse": "Zeitleiste reduzieren"
 	},
-	"openRecordingsFolder": "Aufnahmeordner öffnen"
+	"openRecordingsFolder": "Aufnahmeordner öffnen",
+	"colorPicker": {
+		"saturationValue": "Sättigung und Helligkeit",
+		"hue": "Farbton",
+		"opacity": "Deckkraft",
+		"hex": "Hex-Farbe",
+		"ringMode": "Zum Farbring wechseln",
+		"barMode": "Zur Farbtonleiste wechseln",
+		"presets": "Vorgaben",
+		"recent": "Zuletzt verwendet",
+		"inProject": "In diesem Projekt",
+		"red": "Rot",
+		"green": "Grün",
+		"blue": "Blau",
+		"saturation": "Sättigung",
+		"lightness": "Helligkeit",
+		"channelMode": "Zwischen RGB und HSL wechseln",
+		"none": "Keine"
+	}
 }

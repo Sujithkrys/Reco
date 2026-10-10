@@ -156,5 +156,23 @@
 		"expand": "Tijdlijn uitvouwen",
 		"collapse": "Tijdlijn samenvouwen"
 	},
-	"openRecordingsFolder": "Opnamemap openen"
+	"openRecordingsFolder": "Opnamemap openen",
+	"colorPicker": {
+		"saturationValue": "Verzadiging en helderheid",
+		"hue": "Tint",
+		"opacity": "Dekking",
+		"hex": "Hex-kleur",
+		"ringMode": "Overschakelen naar tintring",
+		"barMode": "Overschakelen naar tintbalk",
+		"presets": "Voorinstellingen",
+		"recent": "Recent",
+		"inProject": "In dit project",
+		"red": "Rood",
+		"green": "Groen",
+		"blue": "Blauw",
+		"saturation": "Verzadiging",
+		"lightness": "Lichtheid",
+		"channelMode": "Wisselen tussen RGB en HSL",
+		"none": "Geen"
+	}
 }

@@ -25,12 +25,13 @@ import {
 	XCircle,
 } from "@phosphor-icons/react";
 import { AnnotationColorBlock } from "../AnnotationColorBlock";
+import { collectProjectColors } from "../projectColors";
 import {
 	type AnnotationPreviewPatch,
 	clearAnnotationPreview,
 	previewAnnotation,
 } from "../annotationHoverPreview";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -85,6 +86,8 @@ type Props = {
 	availableWidth: number;
 	target: PlayheadEditTarget | null;
 	selectedAnnotation: AnnotationRegion | null;
+	/** All layers, for the "in this project" colours. */
+	annotationRegions: AnnotationRegion[];
 	selectedZoom: ZoomRegion | null;
 	selectedAudio: AudioRegion | null;
 	selectedClipId: string | null;
@@ -101,9 +104,15 @@ function ColorSwatches({
 	color,
 	onChange,
 	toPatch,
+	projectColors,
+	onClear,
+	clearLabel,
 }: {
 	id: string;
 	color: string;
+	projectColors?: string[];
+	onClear?: () => void;
+	clearLabel?: string;
 	onChange: (hex: string) => void;
 	/** The hover preview for a swatch; nothing is applied until it is clicked. */
 	toPatch: (hex: string) => AnnotationPreviewPatch;
@@ -112,6 +121,9 @@ function ColorSwatches({
 		<AnnotationColorBlock
 			color={color}
 			colors={ANNOTATION_COLOR_PALETTE}
+			projectColors={projectColors}
+			onClear={onClear}
+			clearLabel={clearLabel}
 			onChange={onChange}
 			onPreview={(hex) => (hex ? previewAnnotation(id, toPatch(hex)) : clearAnnotationPreview())}
 		/>
@@ -185,6 +197,7 @@ export function LayerContextToolbar({
 	availableWidth,
 	target,
 	selectedAnnotation,
+	annotationRegions,
 	selectedZoom,
 	selectedAudio,
 	selectedClipId,
@@ -196,6 +209,7 @@ export function LayerContextToolbar({
 	onDeleteClip,
 }: Props) {
 	const imageInputRef = useRef<HTMLInputElement>(null);
+	const projectColors = useMemo(() => collectProjectColors(annotationRegions), [annotationRegions]);
 	if (!target) return null;
 
 	const trimItems = (scope: "selected" | "all"): ToolbarItem[] =>
@@ -315,6 +329,7 @@ export function LayerContextToolbar({
 					popover: (
 						<ColorSwatches
 							id={id}
+							projectColors={projectColors}
 							color={a.style.color}
 							onChange={(hex) => setStyle({ color: hex })}
 							toPatch={(hex) => ({ style: { color: hex } })}
@@ -330,18 +345,13 @@ export function LayerContextToolbar({
 						<div className="space-y-2">
 							<ColorSwatches
 								id={id}
+								projectColors={projectColors}
+								onClear={() => setStyle({ backgroundColor: "transparent" })}
+								clearLabel="No background"
 								color={a.style.backgroundColor === "transparent" ? "#000000" : a.style.backgroundColor}
 								onChange={(hex) => setStyle({ backgroundColor: hex })}
 								toPatch={(hex) => ({ style: { backgroundColor: hex } })}
 							/>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-7 w-full text-xs text-muted-foreground"
-								onClick={() => setStyle({ backgroundColor: "transparent" })}
-							>
-								No background
-							</Button>
 						</div>
 					),
 				},
@@ -393,6 +403,7 @@ export function LayerContextToolbar({
 					popover: (
 						<ColorSwatches
 							id={id}
+							projectColors={projectColors}
 							color={shape.fillColor}
 							onChange={(hex) => setShape({ fillColor: hex })}
 							toPatch={(hex) => ({ shapeData: { fillColor: hex } })}
@@ -408,6 +419,7 @@ export function LayerContextToolbar({
 						<div className="space-y-3">
 							<ColorSwatches
 								id={id}
+								projectColors={projectColors}
 								color={shape.strokeColor}
 								onChange={(hex) => setShape({ strokeColor: hex })}
 								toPatch={(hex) => ({ shapeData: { strokeColor: hex } })}
@@ -489,6 +501,7 @@ export function LayerContextToolbar({
 					popover: (
 						<ColorSwatches
 							id={id}
+							projectColors={projectColors}
 							color={figure.color}
 							onChange={(hex) => setFigure({ color: hex })}
 							toPatch={(hex) => ({ figureData: { color: hex } })}
@@ -522,18 +535,13 @@ export function LayerContextToolbar({
 						<div className="space-y-2">
 							<ColorSwatches
 								id={id}
+								projectColors={projectColors}
+								onClear={() => annotationCommands.handleAnnotationBlurColorChange(id, "")}
+								clearLabel="Blur only (no colour)"
 								color={a.blurColor || "#000000"}
 								onChange={(hex) => annotationCommands.handleAnnotationBlurColorChange(id, hex)}
 								toPatch={(hex) => ({ blurColor: hex })}
 							/>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-7 w-full text-xs text-muted-foreground"
-								onClick={() => annotationCommands.handleAnnotationBlurColorChange(id, "")}
-							>
-								Blur only (no colour)
-							</Button>
 						</div>
 					),
 				},

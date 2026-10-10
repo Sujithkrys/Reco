@@ -156,5 +156,23 @@
 		"expand": "타임라인 펼치기",
 		"collapse": "타임라인 접기"
 	},
-	"openRecordingsFolder": "녹화 폴더 열기"
+	"openRecordingsFolder": "녹화 폴더 열기",
+	"colorPicker": {
+		"saturationValue": "채도 및 명도",
+		"hue": "색조",
+		"opacity": "불투명도",
+		"hex": "16진수 색상",
+		"ringMode": "색조 링으로 전환",
+		"barMode": "색조 막대로 전환",
+		"presets": "프리셋",
+		"recent": "최근 사용",
+		"inProject": "이 프로젝트에서 사용",
+		"red": "빨강",
+		"green": "초록",
+		"blue": "파랑",
+		"saturation": "채도",
+		"lightness": "밝기",
+		"channelMode": "RGB와 HSL 전환",
+		"none": "없음"
+	}
 }

@@ -155,5 +155,23 @@
 		"expand": "Expandir línea de tiempo",
 		"collapse": "Contraer línea de tiempo"
 	},
-	"openRecordingsFolder": "Abrir carpeta de grabaciones"
+	"openRecordingsFolder": "Abrir carpeta de grabaciones",
+	"colorPicker": {
+		"saturationValue": "Saturación y brillo",
+		"hue": "Tono",
+		"opacity": "Opacidad",
+		"hex": "Color hexadecimal",
+		"ringMode": "Cambiar al anillo de tono",
+		"barMode": "Cambiar a la barra de tono",
+		"presets": "Predefinidos",
+		"recent": "Recientes",
+		"inProject": "En este proyecto",
+		"red": "Rojo",
+		"green": "Verde",
+		"blue": "Azul",
+		"saturation": "Saturación",
+		"lightness": "Luminosidad",
+		"channelMode": "Cambiar entre RGB y HSL",
+		"none": "Ninguno"
+	}
 }

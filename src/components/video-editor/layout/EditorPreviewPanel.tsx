@@ -449,6 +449,7 @@ export function EditorPreviewPanel(props: Props) {
 						availableWidth={toolbarWidth}
 						target={playheadEdits.target}
 						selectedAnnotation={selectedAnnotation}
+						annotationRegions={timeline.annotationRegions}
 						selectedZoom={selectedZoom}
 						selectedAudio={selectedAudio}
 						selectedClipId={timeline.selectedClipId}

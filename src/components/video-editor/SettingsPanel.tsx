@@ -35,8 +35,9 @@ import { type AspectRatio } from "@/utils/aspectRatioUtils";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
-import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
-import { ColorEyedropperButton } from "./ColorEyedropperButton";
+import { ANNOTATION_COLOR_PALETTE, AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
+import { ColorPickerPopover } from "./ColorPickerPopover";
+import { collectProjectColors } from "./projectColors";
 import CaptionListPanel from "./CaptionListPanel";
 import type { CaptionRetimeSpan } from "./captionOps";
 import {
@@ -1282,8 +1283,6 @@ export function SettingsPanel({
 	const [backgroundTab, setBackgroundTab] = useState<BackgroundTab>(() =>
 		getBackgroundTabForWallpaper(selected),
 	);
-	const customColorInputRef = useRef<HTMLInputElement | null>(null);
-	const cursorClickEffectColorInputRef = useRef<HTMLInputElement | null>(null);
 	const defaultWebcam = initialEditorPreferences.webcam;
 	const [builtInCursorPreviewUrls, setBuiltInCursorPreviewUrls] = useState<
 		Partial<Record<string, string>>
@@ -1775,6 +1774,7 @@ export function SettingsPanel({
 	const selectedAnnotation = selectedAnnotationId
 		? annotationRegions.find((a) => a.id === selectedAnnotationId)
 		: null;
+	const projectColors = useMemo(() => collectProjectColors(annotationRegions), [annotationRegions]);
 
 	const backgroundSettingsContent = (
 		<div className="space-y-4">
@@ -1988,16 +1988,6 @@ export function SettingsPanel({
 								</div>
 							) : backgroundTab === "color" ? (
 								<div className="mt-0 space-y-2">
-									<input
-										ref={customColorInputRef}
-										type="color"
-										value={selectedColor}
-										onChange={(event) => {
-											setSelectedColor(event.target.value);
-											onWallpaperChange(event.target.value);
-										}}
-										className="sr-only"
-									/>
 									<div className="grid grid-cols-8 gap-1.5">
 										{visibleColorPalette.map((color) => {
 											const isSelected =
@@ -2016,33 +2006,34 @@ export function SettingsPanel({
 												/>
 											);
 										})}
-										<button
-											type="button"
-											onClick={() => customColorInputRef.current?.click()}
-											className={wallpaperTileClass(
-												isHexWallpaper(selected) &&
-													!visibleColorPalette.some(
-														(color) =>
-															color.toLowerCase() ===
-															selected.toLowerCase(),
-													),
-											)}
-											style={{
-												background: `linear-gradient(135deg, ${selectedColor} 0%, ${selectedColor} 58%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,0.92) 100%)`,
+										<ColorPickerPopover
+											value={selectedColor}
+											presets={visibleColorPalette}
+											projectColors={projectColors}
+											onChange={(hex) => {
+												setSelectedColor(hex);
+												onWallpaperChange(hex);
 											}}
-											aria-label="Custom color picker"
-											>
-												<div className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
-													Pick
-												</div>
-											</button>
-											<ColorEyedropperButton
-												onPick={(hex) => {
-													setSelectedColor(hex);
-													onWallpaperChange(hex);
-												}}
-												className="aspect-square h-auto w-full"
-											/>
+											trigger={
+												<button
+													type="button"
+													className={wallpaperTileClass(
+														isHexWallpaper(selected) &&
+															!visibleColorPalette.some(
+																(color) => color.toLowerCase() === selected.toLowerCase(),
+															),
+													)}
+													style={{
+														background: `linear-gradient(135deg, ${selectedColor} 0%, ${selectedColor} 58%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,0.92) 100%)`,
+													}}
+													aria-label="Custom color picker"
+												>
+													<div className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+														Pick
+													</div>
+												</button>
+											}
+										/>
 									</div>
 								</div>
 							) : (
@@ -2117,6 +2108,7 @@ export function SettingsPanel({
 						: undefined
 				}
 				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
+				projectColors={projectColors}
 				onImagesAdded={
 					onAnnotationImagesAdded
 						? (images) =>
@@ -2561,19 +2553,20 @@ export function SettingsPanel({
 					<span className="text-[10px] text-muted-foreground">
 						{tSettings("captions.textColor", "Text color")}
 					</span>
-					<div className="flex items-center gap-1.5">
-						<ColorEyedropperButton
-							onPick={(hex) => updateAutoCaptionSettings({ textColor: hex })}
-						/>
-						<input
-							type="color"
-							value={autoCaptionSettings.textColor}
-							onChange={(event) =>
-								updateAutoCaptionSettings({ textColor: event.target.value })
-							}
-							className="h-7 w-10 rounded border border-foreground/10 bg-transparent"
-						/>
-					</div>
+					<ColorPickerPopover
+						value={autoCaptionSettings.textColor}
+						presets={ANNOTATION_COLOR_PALETTE}
+						projectColors={projectColors}
+						onChange={(hex) => updateAutoCaptionSettings({ textColor: hex })}
+						trigger={
+							<button
+								type="button"
+								aria-label={tSettings("captions.textColor", "Text color")}
+								className="h-7 w-10 rounded border border-foreground/10"
+								style={{ backgroundColor: autoCaptionSettings.textColor }}
+							/>
+						}
+					/>
 				</label>
 				<div className="mb-1 text-sm font-medium text-foreground">
 					{tSettings("captions.fontSettings", "Font Settings")}
@@ -3511,15 +3504,6 @@ export function SettingsPanel({
 							/>
 							{showCursorClickEffectAdvanced ? (
 								<div className="grid gap-1.5">
-									<input
-										ref={cursorClickEffectColorInputRef}
-										type="color"
-										value={cursorClickEffectColor}
-										onChange={(event) =>
-											onCursorClickEffectColorChange?.(event.target.value)
-										}
-										className="sr-only"
-									/>
 									<div className="grid gap-1">
 										<div className="text-[10px] text-muted-foreground">
 											{tSettings(
@@ -3550,25 +3534,24 @@ export function SettingsPanel({
 													/>
 												);
 											})}
-											<button
-												type="button"
-												onClick={() =>
-													cursorClickEffectColorInputRef.current?.click()
+											<ColorPickerPopover
+												value={cursorClickEffectColor}
+												presets={[...CLICK_EFFECT_COLOR_OPTIONS]}
+												projectColors={projectColors}
+												onChange={(hex) => onCursorClickEffectColorChange?.(hex)}
+												trigger={
+													<button
+														type="button"
+														className="relative h-6 w-10 overflow-hidden rounded-[8px] border border-foreground/10 text-[8px] font-semibold uppercase tracking-[0.18em] text-foreground"
+														style={{
+															background: `linear-gradient(135deg, ${cursorClickEffectColor} 0%, ${cursorClickEffectColor} 58%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,0.92) 100%)`,
+														}}
+														aria-label="Custom effect color picker"
+													>
+														<div className="absolute inset-0 flex items-center justify-center">Pick</div>
+													</button>
 												}
-												className="relative h-6 w-10 overflow-hidden rounded-[8px] border border-foreground/10 text-[8px] font-semibold uppercase tracking-[0.18em] text-foreground"
-												style={{
-													background: `linear-gradient(135deg, ${cursorClickEffectColor} 0%, ${cursorClickEffectColor} 58%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,0.92) 100%)`,
-												}}
-												aria-label="Custom effect color picker"
-											>
-												<div className="absolute inset-0 flex items-center justify-center">
-													Pick
-												</div>
-												</button>
-												<ColorEyedropperButton
-													onPick={(hex) => onCursorClickEffectColorChange?.(hex)}
-													className="h-6 w-6"
-												/>
+											/>
 										</div>
 									</div>
 									<SliderControl

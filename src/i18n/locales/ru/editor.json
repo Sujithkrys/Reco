@@ -155,5 +155,23 @@
 		"expand": "Развернуть таймлайн",
 		"collapse": "Свернуть таймлайн"
 	},
-	"openRecordingsFolder": "Открыть папку с записями"
+	"openRecordingsFolder": "Открыть папку с записями",
+	"colorPicker": {
+		"saturationValue": "Насыщенность и яркость",
+		"hue": "Оттенок",
+		"opacity": "Непрозрачность",
+		"hex": "Цвет в HEX",
+		"ringMode": "Переключить на кольцо оттенков",
+		"barMode": "Переключить на шкалу оттенков",
+		"presets": "Образцы",
+		"recent": "Недавние",
+		"inProject": "В этом проекте",
+		"red": "Красный",
+		"green": "Зелёный",
+		"blue": "Синий",
+		"saturation": "Насыщенность",
+		"lightness": "Светлота",
+		"channelMode": "Переключить RGB и HSL",
+		"none": "Нет"
+	}
 }

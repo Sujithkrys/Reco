@@ -61,6 +61,8 @@ interface AnnotationSettingsPanelProps {
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
 	onDelete: () => void;
+	/** Colours already used by the project's layers, offered in the colour pickers. */
+	projectColors?: string[];
 	/** Each uploaded file becomes its own image layer at the playhead. */
 	onImagesAdded?: (images: { dataUrl: string; fileName: string }[]) => void;
 	/** Centres the layer on the video so an off-canvas layer can be recovered. */
@@ -122,6 +124,7 @@ export function AnnotationSettingsPanel({
 	onDelete,
 	onResetPosition,
 	onImagesAdded,
+	projectColors,
 	currentTimeMs,
 	onSeek,
 	onClose,
@@ -389,16 +392,25 @@ export function AnnotationSettingsPanel({
 										</label>
 										<Select
 											value={annotation.style.fontSize.toString()}
-											onValueChange={(value) =>
-												onStyleChange({ fontSize: parseInt(value) })
-											}
-										>
+											onValueChange={(value) => {
+												clearAnnotationPreview();
+												onStyleChange({ fontSize: parseInt(value) });
+											}}
+											onOpenChange={(open) => {
+												if (!open) clearAnnotationPreview();
+											}}
+											>
 											<SelectTrigger className="w-full bg-foreground/5 border-foreground/10 text-foreground h-9 text-xs">
 												<SelectValue placeholder={t("annotations.size")} />
 											</SelectTrigger>
 											<SelectContent className="bg-editor-surface-alt border-foreground/10 text-foreground max-h-[200px]">
 												{fontSizeOptions(annotation.style.fontSize).map((size) => (
-													<SelectItem key={size} value={size.toString()}>
+													<SelectItem
+														key={size}
+														value={size.toString()}
+														onPointerEnter={() => previewAnnotation(annotation.id, { style: { fontSize: size } })}
+														onPointerLeave={() => clearAnnotationPreview()}
+													>
 														{size}px
 													</SelectItem>
 												))}
@@ -501,7 +513,12 @@ export function AnnotationSettingsPanel({
 											<ToggleGroupItem
 												value="left"
 												aria-label={t("annotations.alignLeft")}
-												onClick={() => onStyleChange({ textAlign: "left" })}
+												onClick={() => {
+													clearAnnotationPreview();
+													onStyleChange({ textAlign: "left" });
+												}}
+												onMouseEnter={() => previewAnnotation(annotation.id, { style: { textAlign: "left" } })}
+												onMouseLeave={() => clearAnnotationPreview()}
 												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
 											>
 												<AlignLeft className="h-4 w-4" />
@@ -511,7 +528,12 @@ export function AnnotationSettingsPanel({
 											<ToggleGroupItem
 												value="center"
 												aria-label={t("annotations.alignCenter")}
-												onClick={() => onStyleChange({ textAlign: "center" })}
+												onClick={() => {
+													clearAnnotationPreview();
+													onStyleChange({ textAlign: "center" });
+												}}
+												onMouseEnter={() => previewAnnotation(annotation.id, { style: { textAlign: "center" } })}
+												onMouseLeave={() => clearAnnotationPreview()}
 												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
 											>
 												<AlignCenter className="h-4 w-4" />
@@ -521,7 +543,12 @@ export function AnnotationSettingsPanel({
 											<ToggleGroupItem
 												value="right"
 												aria-label={t("annotations.alignRight")}
-												onClick={() => onStyleChange({ textAlign: "right" })}
+												onClick={() => {
+													clearAnnotationPreview();
+													onStyleChange({ textAlign: "right" });
+												}}
+												onMouseEnter={() => previewAnnotation(annotation.id, { style: { textAlign: "right" } })}
+												onMouseLeave={() => clearAnnotationPreview()}
 												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
 											>
 												<AlignRight className="h-4 w-4" />
@@ -558,6 +585,7 @@ export function AnnotationSettingsPanel({
 												<AnnotationColorBlock
 													color={annotation.style.color}
 													colors={colorPalette}
+													projectColors={projectColors}
 													onChange={(hex) => onStyleChange({ color: hex })}
 													onPreview={previewWith((hex) => ({ style: { color: hex } }))}
 												/>
@@ -602,21 +630,12 @@ export function AnnotationSettingsPanel({
 															: annotation.style.backgroundColor
 													}
 													colors={colorPalette}
+													projectColors={projectColors}
+													onClear={() => onStyleChange({ backgroundColor: "transparent" })}
+													clearLabel={t("annotations.clearBackground")}
 													onChange={(hex) => onStyleChange({ backgroundColor: hex })}
 													onPreview={previewWith((hex) => ({ style: { backgroundColor: hex } }))}
 												/>
-												<Button
-													variant="ghost"
-													size="sm"
-													className="w-full mt-2 text-xs h-7 hover:bg-foreground/5 text-muted-foreground"
-													onClick={() => {
-														onStyleChange({
-															backgroundColor: "transparent",
-														});
-													}}
-												>
-													{t("annotations.clearBackground")}
-												</Button>
 											</PopoverContent>
 										</Popover>
 									</div>
@@ -784,8 +803,9 @@ export function AnnotationSettingsPanel({
 										<AnnotationColorBlock
 											color={annotation.figureData?.color || "#2563EB"}
 											colors={colorPalette}
+											projectColors={projectColors}
 											onChange={(hex) => {
-												const newFigureData: FigureData = {
+											const newFigureData: FigureData = {
 													...annotation.figureData!,
 													color: hex,
 												};
@@ -865,6 +885,7 @@ export function AnnotationSettingsPanel({
 										<AnnotationColorBlock
 											color={shape.fillColor}
 											colors={colorPalette}
+											projectColors={projectColors}
 											onChange={(hex) => onShapeDataChange?.({ fillColor: hex })}
 											onPreview={previewWith((hex) => ({ shapeData: { fillColor: hex } }))}
 										/>
@@ -896,6 +917,7 @@ export function AnnotationSettingsPanel({
 										<AnnotationColorBlock
 											color={shape.strokeColor}
 											colors={colorPalette}
+											projectColors={projectColors}
 											onChange={(hex) => onShapeDataChange?.({ strokeColor: hex })}
 											onPreview={previewWith((hex) => ({ shapeData: { strokeColor: hex } }))}
 										/>
@@ -1050,6 +1072,7 @@ export function AnnotationSettingsPanel({
 												<AnnotationColorBlock
 													color={annotation.blurColor || "#2563EB"}
 													colors={colorPalette}
+													projectColors={projectColors}
 													onChange={(hex) => onBlurColorChange?.(hex)}
 													onPreview={previewWith((hex) => ({ blurColor: hex }))}
 												/>

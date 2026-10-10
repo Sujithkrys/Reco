@@ -155,5 +155,23 @@
 		"expand": "Expand Timeline",
 		"collapse": "Collapse Timeline"
 	},
-	"openRecordingsFolder": "Open recordings folder"
+	"openRecordingsFolder": "Open recordings folder",
+	"colorPicker": {
+		"saturationValue": "Saturation and brightness",
+		"hue": "Hue",
+		"opacity": "Opacity",
+		"hex": "Hex colour",
+		"ringMode": "Switch to hue ring",
+		"barMode": "Switch to hue bar",
+		"presets": "Presets",
+		"recent": "Recent",
+		"inProject": "In this project",
+		"red": "Red",
+		"green": "Green",
+		"blue": "Blue",
+		"saturation": "Saturation",
+		"lightness": "Lightness",
+		"channelMode": "Switch between RGB and HSL",
+		"none": "None"
+	}
 }

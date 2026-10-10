@@ -155,5 +155,23 @@
 		"expand": "展開時間軸",
 		"collapse": "摺疊時間軸"
 	},
-	"openRecordingsFolder": "打開錄製資料夾"
+	"openRecordingsFolder": "打開錄製資料夾",
+	"colorPicker": {
+		"saturationValue": "飽和度與亮度",
+		"hue": "色相",
+		"opacity": "不透明度",
+		"hex": "十六進位色彩",
+		"ringMode": "切換為色相環",
+		"barMode": "切換為色相條",
+		"presets": "預設",
+		"recent": "最近使用",
+		"inProject": "此專案中",
+		"red": "紅",
+		"green": "綠",
+		"blue": "藍",
+		"saturation": "飽和度",
+		"lightness": "明度",
+		"channelMode": "在 RGB 與 HSL 之間切換",
+		"none": "無"
+	}
 }

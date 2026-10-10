@@ -155,5 +155,23 @@
 		"expand": "展开时间轴",
 		"collapse": "折叠时间轴"
 	},
-	"openRecordingsFolder": "打开录制文件夹"
+	"openRecordingsFolder": "打开录制文件夹",
+	"colorPicker": {
+		"saturationValue": "饱和度和亮度",
+		"hue": "色相",
+		"opacity": "不透明度",
+		"hex": "十六进制颜色",
+		"ringMode": "切换为色相环",
+		"barMode": "切换为色相条",
+		"presets": "预设",
+		"recent": "最近使用",
+		"inProject": "本项目中",
+		"red": "红",
+		"green": "绿",
+		"blue": "蓝",
+		"saturation": "饱和度",
+		"lightness": "明度",
+		"channelMode": "在 RGB 和 HSL 之间切换",
+		"none": "无"
+	}
 }
