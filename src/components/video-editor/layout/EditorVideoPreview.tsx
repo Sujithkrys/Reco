@@ -1,5 +1,10 @@
-import type { ComponentProps, Dispatch, RefObject, SetStateAction } from "react";
+import { type ComponentProps, type Dispatch, type RefObject, type SetStateAction, useEffect, useMemo } from "react";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
+import {
+	applyAnnotationPreview,
+	clearAnnotationPreview,
+	useAnnotationPreview,
+} from "../annotationHoverPreview";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
@@ -62,6 +67,15 @@ export function EditorVideoPreview({
 	setError,
 	handlers,
 }: Props) {
+	// Hover previews (colour swatches, fonts) are drawn here only; the project data,
+	// the edit history and the export keep using the real regions.
+	const annotationPreview = useAnnotationPreview();
+	const previewAnnotationRegions = useMemo(
+		() => applyAnnotationPreview(timeline.annotationRegions, annotationPreview),
+		[timeline.annotationRegions, annotationPreview],
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a preview never survives a selection change
+	useEffect(() => clearAnnotationPreview(), [timeline.selectedAnnotationId]);
 	return (
 		<VideoPlayback
 			clipRegions={timeline.clipRegions}
@@ -99,7 +113,7 @@ export function EditorVideoPreview({
 				appearance.webcam.sourcePath ? appearance.resolvedWebcamVideoUrl : null
 			}
 			generatedClipRegions={timeline.generatedClipRegions}
-			annotationRegions={timeline.annotationRegions}
+			annotationRegions={previewAnnotationRegions}
 			autoCaptions={timeline.autoCaptions}
 			autoCaptionSettings={timeline.autoCaptionSettings}
 			selectedAnnotationId={timeline.selectedAnnotationId}

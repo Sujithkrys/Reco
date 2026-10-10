@@ -15,7 +15,6 @@ import {
 	UploadSimple as Upload,
 	X,
 } from "@phosphor-icons/react";
-import Block from "@uiw/react-color-block";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,6 +34,12 @@ import { type CustomFont, getCustomFonts } from "@/lib/customFonts";
 import { cn } from "@/lib/utils";
 import { useScopedT } from "../../contexts/I18nContext";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
+import { AnnotationColorBlock } from "./AnnotationColorBlock";
+import {
+	type AnnotationPreviewPatch,
+	clearAnnotationPreview,
+	previewAnnotation,
+} from "./annotationHoverPreview";
 import { getArrowComponent } from "./ArrowSvgs";
 import {
 	type AnnotationRegion,
@@ -130,6 +135,16 @@ export function AnnotationSettingsPanel({
 	}, []);
 
 	const colorPalette = ANNOTATION_COLOR_PALETTE;
+
+	// Hover previews are transient: drop them when the layer changes or the panel closes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-runs on layer change on purpose
+	useEffect(() => () => clearAnnotationPreview(), [annotation.id]);
+	const previewWith = (toPatch: (hex: string) => AnnotationPreviewPatch) => (hex: string | null) =>
+		hex ? previewAnnotation(annotation.id, toPatch(hex)) : clearAnnotationPreview();
+	const previewFont = (fontFamily: string | null) =>
+		fontFamily
+			? previewAnnotation(annotation.id, { style: { fontFamily } })
+			: clearAnnotationPreview();
 
 	const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(event.target.files ?? []);
@@ -313,10 +328,14 @@ export function AnnotationSettingsPanel({
 										</label>
 										<Select
 											value={annotation.style.fontFamily}
-											onValueChange={(value) =>
-												onStyleChange({ fontFamily: value })
-											}
-										>
+											onValueChange={(value) => {
+												clearAnnotationPreview();
+												onStyleChange({ fontFamily: value });
+											}}
+											onOpenChange={(open) => {
+												if (!open) clearAnnotationPreview();
+											}}
+											>
 											<SelectTrigger className="w-full bg-foreground/5 border-foreground/10 text-foreground h-9 text-xs">
 												<SelectValue
 													placeholder={t("annotations.selectStyle")}
@@ -328,6 +347,8 @@ export function AnnotationSettingsPanel({
 														key={font.value}
 														value={font.value}
 														style={{ fontFamily: font.value }}
+														onPointerEnter={() => previewFont(font.value)}
+														onPointerLeave={() => previewFont(null)}
 													>
 														{font.label}
 													</SelectItem>
@@ -341,6 +362,8 @@ export function AnnotationSettingsPanel({
 															<SelectItem
 																key={font.id}
 																value={font.fontFamily}
+																onPointerEnter={() => previewFont(font.fontFamily)}
+																onPointerLeave={() => previewFont(null)}
 																style={{
 																	fontFamily: font.fontFamily,
 																}}
@@ -525,15 +548,11 @@ export function AnnotationSettingsPanel({
 												</Button>
 											</PopoverTrigger>
 											<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
-												<Block
+												<AnnotationColorBlock
 													color={annotation.style.color}
 													colors={colorPalette}
-													onChange={(color) => {
-														onStyleChange({ color: color.hex });
-													}}
-													style={{
-														borderRadius: "8px",
-													}}
+													onChange={(hex) => onStyleChange({ color: hex })}
+													onPreview={previewWith((hex) => ({ style: { color: hex } }))}
 												/>
 											</PopoverContent>
 										</Popover>
@@ -569,22 +588,15 @@ export function AnnotationSettingsPanel({
 												</Button>
 											</PopoverTrigger>
 											<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
-												<Block
+												<AnnotationColorBlock
 													color={
-														annotation.style.backgroundColor ===
-														"transparent"
+														annotation.style.backgroundColor === "transparent"
 															? "#000000"
 															: annotation.style.backgroundColor
 													}
 													colors={colorPalette}
-													onChange={(color) => {
-														onStyleChange({
-															backgroundColor: color.hex,
-														});
-													}}
-													style={{
-														borderRadius: "8px",
-													}}
+													onChange={(hex) => onStyleChange({ backgroundColor: hex })}
+													onPreview={previewWith((hex) => ({ style: { backgroundColor: hex } }))}
 												/>
 												<Button
 													variant="ghost"
@@ -762,19 +774,17 @@ export function AnnotationSettingsPanel({
 										</Button>
 									</PopoverTrigger>
 									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
-										<Block
+										<AnnotationColorBlock
 											color={annotation.figureData?.color || "#2563EB"}
 											colors={colorPalette}
-											onChange={(color) => {
+											onChange={(hex) => {
 												const newFigureData: FigureData = {
 													...annotation.figureData!,
-													color: color.hex,
+													color: hex,
 												};
 												onFigureDataChange?.(newFigureData);
 											}}
-											style={{
-												borderRadius: "8px",
-											}}
+											onPreview={previewWith((hex) => ({ figureData: { color: hex } }))}
 										/>
 									</PopoverContent>
 								</Popover>
@@ -845,13 +855,11 @@ export function AnnotationSettingsPanel({
 										</Button>
 									</PopoverTrigger>
 									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
-										<Block
+										<AnnotationColorBlock
 											color={shape.fillColor}
 											colors={colorPalette}
-											onChange={(color) =>
-												onShapeDataChange?.({ fillColor: color.hex })
-											}
-											style={{ borderRadius: "8px" }}
+											onChange={(hex) => onShapeDataChange?.({ fillColor: hex })}
+											onPreview={previewWith((hex) => ({ shapeData: { fillColor: hex } }))}
 										/>
 									</PopoverContent>
 								</Popover>
@@ -878,13 +886,11 @@ export function AnnotationSettingsPanel({
 										</Button>
 									</PopoverTrigger>
 									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
-										<Block
+										<AnnotationColorBlock
 											color={shape.strokeColor}
 											colors={colorPalette}
-											onChange={(color) =>
-												onShapeDataChange?.({ strokeColor: color.hex })
-											}
-											style={{ borderRadius: "8px" }}
+											onChange={(hex) => onShapeDataChange?.({ strokeColor: hex })}
+											onPreview={previewWith((hex) => ({ shapeData: { strokeColor: hex } }))}
 										/>
 									</PopoverContent>
 								</Popover>
@@ -1034,15 +1040,11 @@ export function AnnotationSettingsPanel({
 												</button>
 											</PopoverTrigger>
 											<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
-												<Block
+												<AnnotationColorBlock
 													color={annotation.blurColor || "#2563EB"}
 													colors={colorPalette}
-													onChange={(color) => {
-														onBlurColorChange?.(color.hex);
-													}}
-													style={{
-														borderRadius: "8px",
-													}}
+													onChange={(hex) => onBlurColorChange?.(hex)}
+													onPreview={previewWith((hex) => ({ blurColor: hex }))}
 												/>
 											</PopoverContent>
 										</Popover>

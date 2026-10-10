@@ -24,7 +24,12 @@ import {
 	Trash,
 	XCircle,
 } from "@phosphor-icons/react";
-import Block from "@uiw/react-color-block";
+import { AnnotationColorBlock } from "../AnnotationColorBlock";
+import {
+	type AnnotationPreviewPatch,
+	clearAnnotationPreview,
+	previewAnnotation,
+} from "../annotationHoverPreview";
 import { type ReactNode, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,13 +96,24 @@ type Props = {
 	onDeleteClip: (id: string) => void;
 };
 
-function ColorSwatches({ color, onChange }: { color: string; onChange: (hex: string) => void }) {
+function ColorSwatches({
+	id,
+	color,
+	onChange,
+	toPatch,
+}: {
+	id: string;
+	color: string;
+	onChange: (hex: string) => void;
+	/** The hover preview for a swatch; nothing is applied until it is clicked. */
+	toPatch: (hex: string) => AnnotationPreviewPatch;
+}) {
 	return (
-		<Block
+		<AnnotationColorBlock
 			color={color}
 			colors={ANNOTATION_COLOR_PALETTE}
-			onChange={(value) => onChange(value.hex)}
-			style={{ borderRadius: "8px", width: "100%" }}
+			onChange={onChange}
+			onPreview={(hex) => (hex ? previewAnnotation(id, toPatch(hex)) : clearAnnotationPreview())}
 		/>
 	);
 }
@@ -296,7 +312,14 @@ export function LayerContextToolbar({
 					kind: "popover",
 					label: "Text colour",
 					icon: <Palette className="h-4 w-4" />,
-					popover: <ColorSwatches color={a.style.color} onChange={(hex) => setStyle({ color: hex })} />,
+					popover: (
+						<ColorSwatches
+							id={id}
+							color={a.style.color}
+							onChange={(hex) => setStyle({ color: hex })}
+							toPatch={(hex) => ({ style: { color: hex } })}
+						/>
+					),
 				},
 				{
 					key: "text-background",
@@ -306,8 +329,10 @@ export function LayerContextToolbar({
 					popover: (
 						<div className="space-y-2">
 							<ColorSwatches
+								id={id}
 								color={a.style.backgroundColor === "transparent" ? "#000000" : a.style.backgroundColor}
 								onChange={(hex) => setStyle({ backgroundColor: hex })}
+								toPatch={(hex) => ({ style: { backgroundColor: hex } })}
 							/>
 							<Button
 								variant="ghost"
@@ -365,7 +390,14 @@ export function LayerContextToolbar({
 					kind: "popover",
 					label: "Fill colour",
 					icon: <PaintBucket className="h-4 w-4" />,
-					popover: <ColorSwatches color={shape.fillColor} onChange={(hex) => setShape({ fillColor: hex })} />,
+					popover: (
+						<ColorSwatches
+							id={id}
+							color={shape.fillColor}
+							onChange={(hex) => setShape({ fillColor: hex })}
+							toPatch={(hex) => ({ shapeData: { fillColor: hex } })}
+						/>
+					),
 				},
 				{
 					key: "shape-border",
@@ -374,7 +406,12 @@ export function LayerContextToolbar({
 					icon: <BoundingBox className="h-4 w-4" />,
 					popover: (
 						<div className="space-y-3">
-							<ColorSwatches color={shape.strokeColor} onChange={(hex) => setShape({ strokeColor: hex })} />
+							<ColorSwatches
+								id={id}
+								color={shape.strokeColor}
+								onChange={(hex) => setShape({ strokeColor: hex })}
+								toPatch={(hex) => ({ shapeData: { strokeColor: hex } })}
+							/>
 							<RangeRow
 								label="Border width"
 								value={shape.strokeWidth}
@@ -449,7 +486,14 @@ export function LayerContextToolbar({
 					kind: "popover",
 					label: "Arrow colour",
 					icon: <Palette className="h-4 w-4" />,
-					popover: <ColorSwatches color={figure.color} onChange={(hex) => setFigure({ color: hex })} />,
+					popover: (
+						<ColorSwatches
+							id={id}
+							color={figure.color}
+							onChange={(hex) => setFigure({ color: hex })}
+							toPatch={(hex) => ({ figureData: { color: hex } })}
+						/>
+					),
 				},
 			);
 		} else if (a.type === "blur") {
@@ -477,8 +521,10 @@ export function LayerContextToolbar({
 					popover: (
 						<div className="space-y-2">
 							<ColorSwatches
+								id={id}
 								color={a.blurColor || "#000000"}
 								onChange={(hex) => annotationCommands.handleAnnotationBlurColorChange(id, hex)}
+								toPatch={(hex) => ({ blurColor: hex })}
 							/>
 							<Button
 								variant="ghost"
