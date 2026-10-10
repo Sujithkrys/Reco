@@ -361,6 +361,15 @@ export const webElectronAPI: unknown = {
 			return { success: false, message: (e as Error).message };
 		}
 	},
+	// The editor header reads the open project's name straight from its record.
+	getProjectName: async (path: string) => {
+		try {
+			const projectRecord = (await get(`project_${path}`)) as { name?: string } | undefined;
+			return projectRecord?.name?.trim() || null;
+		} catch {
+			return null;
+		}
+	},
 	getProjectThumbnail: async (path: string) => {
 		try {
 			const projectRecord = (await get(`project_${path}`)) as { thumbnail_url?: string | null } | undefined;

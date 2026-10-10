@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useMemo } from "react";
+import { type RefObject, useCallback, useEffect, useMemo, useState } from "react";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 import type { useExportSettings } from "../export/useExportSettings";
 import {
@@ -9,6 +9,7 @@ import {
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useProjectState } from "../state/useProjectState";
 import type { useTimelineState } from "../state/useTimelineState";
+import { resolveProjectDisplayName, UNTITLED_PROJECT_NAME } from "./projectDisplayName";
 
 type Input = {
 	t: (key: string, fallback?: string) => string;
@@ -40,22 +41,48 @@ export function useProjectSnapshotModel({
 			project.videoSourcePath ?? (project.videoPath ? fromFileUrl(project.videoPath) : null),
 		[project.videoPath, project.videoSourcePath],
 	);
-	const projectDisplayName = useMemo(() => {
-		// The library holds the project's own name. On the web the project path is a
-		// record id, so deriving a name from the path would show that id.
-		const libraryName = project.projectLibraryEntries
-			.find((entry) => entry.path === project.currentProjectPath)
-			?.name?.trim();
-		if (libraryName) return libraryName.replace(/\.reco$/i, "");
-		const fileName =
-			project.currentProjectPath?.split(/[\\/]/).pop() ??
-			currentSourcePath?.split(/[\\/]/).pop() ??
-			"";
-		return (
-			fileName.replace(/\.reco$/i, "").replace(/\.[^.]+$/, "") ||
-			t("editor.project.untitled", "Untitled")
-		);
-	}, [project.projectLibraryEntries, project.currentProjectPath, currentSourcePath, t]);
+	// Read the open project's own record by id, so the header does not depend on
+	// the library list having loaded (or matching) when the editor opens.
+	const [storedProjectName, setStoredProjectName] = useState<{
+		path: string;
+		name: string | null;
+	} | null>(null);
+	useEffect(() => {
+		const path = project.currentProjectPath;
+		const getProjectName = window.electronAPI?.getProjectName;
+		if (!path || typeof getProjectName !== "function") return;
+		let cancelled = false;
+		void Promise.resolve(getProjectName(path))
+			.then((name: string | null) => {
+				if (!cancelled) setStoredProjectName({ path, name });
+			})
+			.catch(() => undefined);
+		return () => {
+			cancelled = true;
+		};
+		// Re-read after saves and library refreshes, which are when the name can change.
+	}, [project.currentProjectPath, project.projectLibraryEntries, project.lastSavedSnapshot]);
+
+	const projectDisplayName = useMemo(
+		() =>
+			resolveProjectDisplayName({
+				storedName:
+					storedProjectName?.path === project.currentProjectPath ? storedProjectName.name : null,
+				libraryName: project.projectLibraryEntries.find(
+					(entry) => entry.path === project.currentProjectPath,
+				)?.name,
+				projectPath: project.currentProjectPath,
+				sourcePath: currentSourcePath,
+				untitled: t("editor.project.untitledProject", UNTITLED_PROJECT_NAME),
+			}),
+		[
+			storedProjectName,
+			project.projectLibraryEntries,
+			project.currentProjectPath,
+			currentSourcePath,
+			t,
+		],
+	);
 
 	useEffect(() => {
 		if (!project.isEditingProjectName) project.setProjectNameDraft(projectDisplayName);

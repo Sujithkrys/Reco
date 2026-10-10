@@ -131,6 +131,14 @@ describe("web project naming", () => {
 		expect(record(result.path).name).toBe("Copy");
 	});
 
+	it("returns the stored record's name by id for the editor header", async () => {
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Untitled Project", "p6");
+		await api.renameProjectFile("p6", "talking demo");
+
+		await expect(api.getProjectName("p6")).resolves.toBe("talking demo");
+		await expect(api.getProjectName("missing")).resolves.toBeNull();
+	});
+
 	it("keeps the thumbnail when a save has none and returns it from getProjectThumbnail", async () => {
 		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Demo", "p5", "data:image/png;base64,AAA");
 		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Demo", "p5");

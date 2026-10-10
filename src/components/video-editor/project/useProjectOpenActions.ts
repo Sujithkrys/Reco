@@ -14,6 +14,7 @@ import type { useProjectState } from "../state/useProjectState";
 import { DEFAULT_WEBCAM_TIME_OFFSET_MS } from "../types";
 import { cloneStructured } from "../videoEditorUtils";
 import type { VideoPlaybackRef } from "../VideoPlayback";
+import { fileNameFromPath } from "./projectDisplayName";
 
 type Set<T> = Dispatch<SetStateAction<T>>;
 
@@ -177,8 +178,12 @@ export function useProjectOpenActions({
 			// effect (which only runs once a project path exists). Mint an id
 			// immediately, mirroring handleCreateNewProject below, so this
 			// behaves the same way from the very first import.
+			// On the web the source is a blob URL ending in a UUID; the picked File
+			// still has the real name.
+			const pickedFile = opts?.file ?? webBlobMap.get(result.path);
 			const fileNameBase =
-				sourcePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") || "Untitled Project";
+				fileNameFromPath(pickedFile instanceof File ? pickedFile.name : sourcePath) ||
+				"Untitled Project";
 			const initialProjectData = createProjectData(sourcePath, {});
 			const saveResult = await window.electronAPI.saveProjectFile(initialProjectData, fileNameBase);
 			if (saveResult.success && saveResult.path) {
