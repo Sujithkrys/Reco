@@ -46,6 +46,7 @@ import {
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import { getDefaultBorderRadiusPercent } from "./projectPersistence";
 import { SliderControl } from "./SliderControl";
+import { TransitionEditorPopoverContent } from "./timeline/components/overlays/TransitionMarkerOverlay";
 import { KeyboardShortcutsDialog } from "./TutorialHelp";
 import type {
 	AnnotationRegion,
@@ -53,6 +54,7 @@ import type {
 	AutoCaptionAnimation,
 	AutoCaptionSettings,
 	CaptionCue,
+	ClipTransition,
 	CropRegion,
 	CursorClickEffectStyle,
 	CursorStyle,
@@ -536,6 +538,9 @@ interface SettingsPanelProps {
 	onSourceAudioTrackVolumeChange?: (id: string, volume: number) => void;
 	onSourceAudioTrackNormalizeChange?: (id: string, normalize: boolean) => void;
 	onClipDelete?: (id: string) => void;
+	/** Only set while the selected clip touches the next one, so a transition is possible. */
+	selectedClipTransition?: ClipTransition | null;
+	onClipTransitionChange?: (transition: ClipTransition | null) => void;
 	selectedAudioId?: string | null;
 	selectedAudioVolume?: number | null;
 	selectedAudioNormalize?: boolean | null;
@@ -1009,6 +1014,8 @@ export function SettingsPanel({
 	onSourceAudioTrackVolumeChange,
 	onSourceAudioTrackNormalizeChange,
 	onClipDelete,
+	selectedClipTransition,
+	onClipTransitionChange,
 	selectedAudioId,
 	selectedAudioVolume,
 	selectedAudioNormalize,
@@ -3203,6 +3210,19 @@ export function SettingsPanel({
 						);
 					})}
 				</div>
+
+				{selectedClipId && onClipTransitionChange && (
+					<div className="mt-2 border-t border-foreground/5 pt-3">
+						<TransitionEditorPopoverContent
+							// Remount when the clip or its transition changes elsewhere (the timeline marker).
+							key={`${selectedClipId}:${selectedClipTransition?.kind}:${selectedClipTransition?.durationMs}`}
+							className="w-full"
+							transition={selectedClipTransition ?? undefined}
+							onChange={onClipTransitionChange}
+							onRemove={() => onClipTransitionChange(null)}
+						/>
+					</div>
+				)}
 
 				<div className="mt-2 flex flex-col gap-2 border-t border-foreground/5 pt-3">
 					<SectionLabel>{tSettings("audio.title", "Audio")}</SectionLabel>

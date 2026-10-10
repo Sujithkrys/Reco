@@ -10,7 +10,7 @@ import type { useZoomRegionCommands } from "../hooks/useZoomRegionCommands";
 import { SettingsPanel } from "../SettingsPanel";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
-import { type EditorEffectSection, mapTimelineTimeToSourceTime } from "../types";
+import { type EditorEffectSection, mapTimelineTimeToSourceTime, sortClipRegions } from "../types";
 
 type Input = {
 	activeEffectSection: EditorEffectSection;
@@ -75,6 +75,12 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 	const selectedClip = timeline.clipRegions.find(
 		(region) => region.id === timeline.selectedClipId,
 	);
+	// A transition needs the next clip to touch this one (see ClipRegion.transitionOut).
+	const sortedClips = sortClipRegions(timeline.clipRegions);
+	const nextClip = sortedClips[sortedClips.findIndex((c) => c.id === timeline.selectedClipId) + 1];
+	const canEditClipTransition = Boolean(
+		selectedClip && nextClip && nextClip.startMs === selectedClip.endMs,
+	);
 	const selectedAudio = timeline.audioRegions.find(
 		(region) => region.id === timeline.selectedAudioId,
 	);
@@ -101,6 +107,12 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onClipMutedChange: clipCommands.handleClipMutedChange,
 		onClipShowSourceAudioChange: clipCommands.handleClipShowSourceAudioChange,
 		onClipDelete: clipCommands.handleClipDelete,
+		selectedClipTransition: canEditClipTransition ? (selectedClip?.transitionOut ?? null) : null,
+		onClipTransitionChange: canEditClipTransition
+			? (transition) =>
+					timeline.selectedClipId &&
+					clipCommands.handleClipTransitionChange(timeline.selectedClipId, transition)
+			: undefined,
 		hasClipSourceAudio: timeline.hasClipSourceAudio,
 		sourceAudioTrackMeta: audio.sourceAudioTrackMeta,
 		sourceAudioTrackSettings: audio.selectedClipSourceAudioTrackSettings,

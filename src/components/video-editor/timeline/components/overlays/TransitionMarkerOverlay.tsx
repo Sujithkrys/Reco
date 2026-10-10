@@ -30,20 +30,23 @@ interface Boundary {
 
 const TRANSITION_KINDS: TransitionKind[] = ["crossfade", "slide", "wipe"];
 
-function TransitionEditorPopoverContent({
+/** Type + duration editor for a clip's outgoing transition; also used by the clip panel. */
+export function TransitionEditorPopoverContent({
 	transition,
 	onChange,
 	onRemove,
+	className = "w-56",
 }: {
 	transition?: ClipTransition;
 	onChange: (transition: ClipTransition) => void;
 	onRemove: () => void;
+	className?: string;
 }) {
 	const [kind, setKind] = useState<TransitionKind>(transition?.kind ?? "crossfade");
 	const [durationMs, setDurationMs] = useState(transition?.durationMs ?? DEFAULT_TRANSITION_DURATION_MS);
 
 	return (
-		<div className="w-56 space-y-3">
+		<div className={`${className} space-y-3`}>
 			<p className="text-xs font-medium text-foreground">Transition</p>
 			<div className="grid grid-cols-3 gap-1">
 				{TRANSITION_KINDS.map((option) => (
