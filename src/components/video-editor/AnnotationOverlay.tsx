@@ -1,11 +1,7 @@
 import { useRef } from "react";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
-import {
-	clampEdgesToCanvas,
-	clampMoveToCanvas,
-	getCanvasBoundsPercent,
-} from "./annotationCanvasBounds";
+import { sanitizeRect } from "./annotationCanvasBounds";
 import { getArrowComponent } from "./ArrowSvgs";
 import {
 	type AnnotationRegion,
@@ -32,10 +28,6 @@ interface AnnotationOverlayProps {
 	isSelected: boolean;
 	containerWidth: number;
 	containerHeight: number;
-	canvasWidth: number;
-	canvasHeight: number;
-	videoRectX: number;
-	videoRectY: number;
 	recordingRect: Rect;
 	sceneTransform: SceneTransform;
 	interactionScale?: number;
@@ -52,10 +44,6 @@ export function AnnotationOverlay({
 	isSelected,
 	containerWidth,
 	containerHeight,
-	canvasWidth,
-	canvasHeight,
-	videoRectX,
-	videoRectY,
 	recordingRect,
 	sceneTransform,
 	interactionScale = 1,
@@ -82,7 +70,7 @@ export function AnnotationOverlay({
 
 	const isDraggingRef = useRef(false);
 
-	const screenRectToRecordingPercent = (rect: Rect, mode: "move" | "resize") => {
+	const screenRectToRecordingPercent = (rect: Rect) => {
 		const nextSceneX = (rect.x - sceneTransform.x) / sceneTransform.scale;
 		const nextSceneY = (rect.y - sceneTransform.y) / sceneTransform.scale;
 		const nextSceneWidth = rect.width / sceneTransform.scale;
@@ -96,18 +84,8 @@ export function AnnotationOverlay({
 			width: Math.max(0, (nextSceneWidth / recordingWidth) * 100),
 			height: Math.max(0, (nextSceneHeight / recordingHeight) * 100),
 		};
-		// Bounds are the full outer canvas expressed in recording-rect percent, so
-		// positions can go below 0 / above 100 while the whole layer stays on canvas.
-		const bounds = getCanvasBoundsPercent(
-			{ x: videoRectX, y: videoRectY, width: recordingWidth, height: recordingHeight },
-			canvasWidth,
-			canvasHeight,
-		);
-		// Moving keeps the size; resizing stops each dragged edge at the canvas edge.
-		const clamped =
-			mode === "move"
-				? clampMoveToCanvas(percentRect, bounds)
-				: clampEdgesToCanvas(percentRect, bounds);
+		// No canvas limit: layers may sit partly or fully outside; export crops them.
+		const clamped = sanitizeRect(percentRect);
 
 		return {
 			position: { x: clamped.x, y: clamped.y },
@@ -257,7 +235,7 @@ export function AnnotationOverlay({
 				isDraggingRef.current = true;
 			}}
 			onDragStop={(_e, d) => {
-				const next = screenRectToRecordingPercent({ x: d.x, y: d.y, width, height }, "move");
+				const next = screenRectToRecordingPercent({ x: d.x, y: d.y, width, height });
 				onPositionChange(annotation.id, next.position);
 
 				// Reset dragging flag after a short delay to prevent click event
@@ -266,15 +244,12 @@ export function AnnotationOverlay({
 				}, 100);
 			}}
 			onResizeStop={(_e, _direction, ref, _delta, position) => {
-				const next = screenRectToRecordingPercent(
-					{
-						x: position.x,
-						y: position.y,
-						width: ref.offsetWidth,
-						height: ref.offsetHeight,
-					},
-					"resize",
-				);
+				const next = screenRectToRecordingPercent({
+					x: position.x,
+					y: position.y,
+					width: ref.offsetWidth,
+					height: ref.offsetHeight,
+				});
 				onPositionChange(annotation.id, next.position);
 				onSizeChange(annotation.id, next.size);
 			}}

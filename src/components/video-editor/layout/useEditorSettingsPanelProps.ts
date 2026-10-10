@@ -243,6 +243,7 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onAnnotationBlurIntensityChange: annotationCommands.handleAnnotationBlurIntensityChange,
 		onAnnotationBlurColorChange: annotationCommands.handleAnnotationBlurColorChange,
 		onAnnotationDelete: annotationCommands.handleAnnotationDelete,
+		onAnnotationPositionChange: annotationCommands.handleAnnotationPositionChange,
 		currentTimeMs: currentTime * 1000,
 		onSeek: input.onSeek,
 	};

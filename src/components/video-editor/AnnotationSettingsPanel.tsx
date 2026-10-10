@@ -56,6 +56,8 @@ interface AnnotationSettingsPanelProps {
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
 	onDelete: () => void;
+	/** Centres the layer on the video so an off-canvas layer can be recovered. */
+	onResetPosition?: () => void;
 	currentTimeMs?: number;
 	onSeek?: (seconds: number) => void;
 	onClose?: () => void;
@@ -104,6 +106,7 @@ export function AnnotationSettingsPanel({
 	onBlurIntensityChange,
 	onBlurColorChange,
 	onDelete,
+	onResetPosition,
 	currentTimeMs,
 	onSeek,
 	onClose,
@@ -1039,6 +1042,18 @@ export function AnnotationSettingsPanel({
 							</div>
 						</TabsContent>
 					</Tabs>
+
+					{onResetPosition && (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={onResetPosition}
+							className="mt-6 w-full gap-2 bg-foreground/5 text-foreground border-foreground/10 hover:bg-foreground/10"
+						>
+							{t("annotations.resetPosition", "Reset position")}
+						</Button>
+					)}
 
 					<div className="mt-6 p-3 bg-foreground/5 rounded-lg border border-foreground/5">
 						<div className="flex items-center gap-2 mb-2 text-muted-foreground">

@@ -642,6 +642,7 @@ interface SettingsPanelProps {
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onSelectAnnotation?: (id: string | null) => void;
 	onSelectZoom?: (id: string | null) => void;
 	onSelectClip?: (id: string | null) => void;
@@ -1099,6 +1100,7 @@ export function SettingsPanel({
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
 	onAnnotationDelete,
+	onAnnotationPositionChange,
 	onSelectAnnotation,
 	onSelectZoom,
 	onSelectClip,
@@ -2102,6 +2104,15 @@ export function SettingsPanel({
 						: undefined
 				}
 				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
+				onResetPosition={
+					onAnnotationPositionChange
+						? () =>
+								onAnnotationPositionChange(selectedAnnotation.id, {
+									x: (100 - selectedAnnotation.size.width) / 2,
+									y: (100 - selectedAnnotation.size.height) / 2,
+								})
+						: undefined
+				}
 			/>
 		);
 	}
