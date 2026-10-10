@@ -588,6 +588,10 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							typeof region.imageContent === "string"
 								? region.imageContent
 								: undefined,
+						imageFileName:
+							typeof region.imageFileName === "string" && region.imageFileName.trim()
+								? region.imageFileName
+								: undefined,
 						// Percent of the video rect; layers may sit on the background
 						// around the video, so allow values outside 0-100.
 						position: {

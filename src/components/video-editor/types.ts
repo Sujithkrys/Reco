@@ -570,6 +570,7 @@ export interface AnnotationRegion {
 	content: string; // Legacy - still used for current type
 	textContent?: string; // Separate storage for text
 	imageContent?: string; // Separate storage for image data URL
+	imageFileName?: string; // Original file name of the uploaded image, for display
 	position: AnnotationPosition;
 	size: AnnotationSize;
 	style: AnnotationTextStyle;

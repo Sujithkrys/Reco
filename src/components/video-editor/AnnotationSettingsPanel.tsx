@@ -47,7 +47,8 @@ import {
 
 interface AnnotationSettingsPanelProps {
 	annotation: AnnotationRegion;
-	onContentChange: (content: string) => void;
+	/** For image layers, imageFileName records the uploaded file's name (null clears it). */
+	onContentChange: (content: string, imageFileName?: string | null) => void;
 	onTypeChange: (type: AnnotationType) => void;
 	onStyleChange: (style: Partial<AnnotationRegion["style"]>) => void;
 	onFigureDataChange?: (figureData: FigureData) => void;
@@ -142,7 +143,7 @@ export function AnnotationSettingsPanel({
 		reader.onload = (e) => {
 			const dataUrl = e.target?.result as string;
 			if (dataUrl) {
-				onContentChange(dataUrl);
+				onContentChange(dataUrl, file.name);
 				toast.success(t("annotations.imageUploadSuccess"));
 			}
 		};
@@ -599,24 +600,44 @@ export function AnnotationSettingsPanel({
 								accept=".jpg,.jpeg,.png,.gif,.webp,image/*"
 								className="hidden"
 							/>
+							{annotation.content && annotation.content.startsWith("data:image") ? (
+								<div className="flex items-center gap-2.5 rounded-lg border border-foreground/10 bg-foreground/5 p-1.5">
+									<img
+										src={annotation.content}
+										alt=""
+										className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
+									/>
+									<span
+										className="min-w-0 flex-1 truncate text-xs text-foreground"
+										title={annotation.imageFileName}
+									>
+										{annotation.imageFileName || t("annotations.untitledImage")}
+									</span>
+									<button
+										type="button"
+										onClick={() => onContentChange("", null)}
+										className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+										aria-label={t("annotations.removeImage")}
+										title={t("annotations.removeImage")}
+									>
+										<X className="h-3.5 w-3.5" />
+									</button>
+								</div>
+							) : null}
+
 							<Button
 								onClick={() => fileInputRef.current?.click()}
 								variant="outline"
-								className="w-full gap-2 bg-foreground/5 text-foreground border-foreground/10 hover:bg-[#2563EB] hover:text-white hover:border-[#2563EB] transition-all py-8"
+								className={cn(
+									"w-full gap-2 bg-foreground/5 text-foreground border-foreground/10 hover:bg-[#2563EB] hover:text-white hover:border-[#2563EB] transition-all",
+									annotation.content?.startsWith("data:image") ? "py-2" : "py-8",
+								)}
 							>
 								<Upload className="w-5 h-5" />
-								{t("annotations.uploadImage")}
+								{annotation.content?.startsWith("data:image")
+									? t("annotations.replaceImage")
+									: t("annotations.uploadImage")}
 							</Button>
-
-							{annotation.content && annotation.content.startsWith("data:image") && (
-								<div className="rounded-lg border border-foreground/10 overflow-hidden bg-foreground/5 p-2">
-									<img
-										src={annotation.content}
-										alt="Uploaded annotation"
-										className="w-full h-auto rounded-md"
-									/>
-								</div>
-							)}
 
 							<p className="text-xs text-muted-foreground/70 text-center leading-relaxed">
 								{t("annotations.supportedFormats")}

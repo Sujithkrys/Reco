@@ -127,6 +127,30 @@ describe("normalizeProjectEditor", () => {
 		expect(editor.webcam.roundness).toBeCloseTo(4.34, 1);
 	});
 
+	it("keeps an image layer's file name and loads old image layers without one", () => {
+		const base = {
+			startMs: 0,
+			endMs: 1000,
+			type: "image",
+			content: "data:image/png;base64,AAA",
+			imageContent: "data:image/png;base64,AAA",
+		};
+		const editor = normalizeProjectEditor({
+			annotationRegions: [
+				{ ...base, id: "with-name", imageFileName: "logo.png" },
+				{ ...base, id: "old" },
+				{ ...base, id: "blank-name", imageFileName: "  " },
+			] as never,
+		});
+
+		expect(editor.annotationRegions.map((region) => region.imageFileName)).toEqual([
+			"logo.png",
+			undefined,
+			undefined,
+		]);
+		expect(editor.annotationRegions[1].imageContent).toBe("data:image/png;base64,AAA");
+	});
+
 	it("loads old audio regions with no source offset or file length", () => {
 		const editor = normalizeProjectEditor({
 			audioRegions: [

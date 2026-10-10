@@ -625,7 +625,11 @@ interface SettingsPanelProps {
 	onAspectRatioChange?: (ratio: AspectRatio) => void;
 	selectedAnnotationId?: string | null;
 	annotationRegions?: AnnotationRegion[];
-	onAnnotationContentChange?: (id: string, content: string) => void;
+	onAnnotationContentChange?: (
+		id: string,
+		content: string,
+		imageFileName?: string | null,
+	) => void;
 	onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
@@ -2062,8 +2066,8 @@ export function SettingsPanel({
 				currentTimeMs={currentTimeMs}
 				onSeek={onSeek}
 				onClose={() => onSelectAnnotation?.(null)}
-				onContentChange={(content) =>
-					onAnnotationContentChange(selectedAnnotation.id, content)
+				onContentChange={(content, imageFileName) =>
+					onAnnotationContentChange(selectedAnnotation.id, content, imageFileName)
 				}
 				onTypeChange={(type) => onAnnotationTypeChange(selectedAnnotation.id, type)}
 				onStyleChange={(style) => onAnnotationStyleChange(selectedAnnotation.id, style)}

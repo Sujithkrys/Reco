@@ -97,13 +97,21 @@ export function useAnnotationRegionCommands({
 	);
 
 	const handleAnnotationContentChange = useCallback(
-		(id: string, content: string) => {
+		(id: string, content: string, imageFileName?: string | null) => {
 			setAnnotationRegions((current) =>
 				current.map((region) => {
 					if (region.id !== id) return region;
 					if (region.type === "text") return { ...region, content, textContent: content };
-					if (region.type === "image")
-						return { ...region, content, imageContent: content };
+					if (region.type === "image") {
+						// Removing the image clears its file name; a new upload replaces it.
+						const nextFileName =
+							imageFileName !== undefined
+								? (imageFileName ?? undefined)
+								: content
+									? region.imageFileName
+									: undefined;
+						return { ...region, content, imageContent: content, imageFileName: nextFileName };
+					}
 					return { ...region, content };
 				}),
 			);
