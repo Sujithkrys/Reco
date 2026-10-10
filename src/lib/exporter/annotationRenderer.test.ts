@@ -106,6 +106,27 @@ describe("export text background", () => {
 		expect(small.ctx.font).toBe(large.ctx.font);
 	});
 
+	it("renders a corner-resized text layer from its stored percent rect and font size", async () => {
+		const { ctx, calls } = createRecordingContext();
+		// The editor stores a 1.5× corner resize as percent of the video rect plus the
+		// scaled font: 50%×50% at (10%, 20%) with 32px → 75%×75% at the same corner, 48px.
+		const resized = {
+			...textAnnotation("Hello world\nHi", { textAlign: "center", fontSize: 48 }),
+			position: { x: 10, y: 20 },
+			size: { width: 75, height: 75 },
+		};
+
+		await renderAnnotations(ctx, [resized], 1000, 500, 500, 1);
+
+		expect(roundRects(calls)).toEqual([[100, 100, 750, 375, 4]]);
+		expect(ctx.font).toContain("48px");
+		const lines = texts(calls);
+		expect(lines.map(([, x]) => x)).toEqual([475, 475]);
+		// Two 48×1.4px lines, evenly around the box middle (100 + 375/2).
+		expect(lines[0][2]).toBeCloseTo(287.5 - 33.6);
+		expect(lines[1][2]).toBeCloseTo(287.5 + 33.6);
+	});
+
 	it("draws no background without a background colour", async () => {
 		const { ctx, calls } = createRecordingContext();
 
