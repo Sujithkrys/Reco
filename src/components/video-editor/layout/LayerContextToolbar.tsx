@@ -43,7 +43,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ANNOTATION_COLOR_PALETTE, FONT_SIZES } from "../AnnotationSettingsPanel";
+import { ANNOTATION_COLOR_PALETTE, fontSizeOptions } from "../AnnotationSettingsPanel";
 import { getArrowComponent } from "../ArrowSvgs";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
 import type { useAudioRegionCommands } from "../hooks/useAudioRegionCommands";
@@ -254,7 +254,7 @@ export function LayerContextToolbar({
 									onChange={(event) => setStyle({ fontSize: Number(event.target.value) })}
 									className="h-8 rounded-md border border-foreground/10 bg-foreground/5 px-2 text-xs text-foreground"
 								>
-									{FONT_SIZES.map((size) => (
+									{fontSizeOptions(a.style.fontSize).map((size) => (
 										<option key={size} value={size}>
 											{size}px
 										</option>

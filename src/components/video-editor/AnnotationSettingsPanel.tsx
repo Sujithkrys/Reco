@@ -83,6 +83,13 @@ export const FONT_FAMILY_VALUES = [
 
 export const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 128];
 
+/** The preset sizes plus the layer's own size (a corner resize can produce any whole size). */
+export function fontSizeOptions(current: number): number[] {
+	return FONT_SIZES.includes(current)
+		? FONT_SIZES
+		: [...FONT_SIZES, current].sort((a, b) => a - b);
+}
+
 /** Swatches offered by every annotation colour picker (settings panel and layer toolbar). */
 export const ANNOTATION_COLOR_PALETTE = [
 	"#FF0000", // Red
@@ -390,7 +397,7 @@ export function AnnotationSettingsPanel({
 												<SelectValue placeholder={t("annotations.size")} />
 											</SelectTrigger>
 											<SelectContent className="bg-editor-surface-alt border-foreground/10 text-foreground max-h-[200px]">
-												{FONT_SIZES.map((size) => (
+												{fontSizeOptions(annotation.style.fontSize).map((size) => (
 													<SelectItem key={size} value={size.toString()}>
 														{size}px
 													</SelectItem>
