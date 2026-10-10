@@ -151,6 +151,24 @@ describe("normalizeProjectEditor", () => {
 		expect(editor.annotationRegions[1].imageContent).toBe("data:image/png;base64,AAA");
 	});
 
+	it("keeps shape layers and their shape settings when a project is reopened", () => {
+		const editor = normalizeProjectEditor({
+			annotationRegions: [
+				{
+					id: "annotation-1",
+					startMs: 0,
+					endMs: 1000,
+					type: "shape",
+					content: "",
+					shapeData: { fillColor: "#ff0000" },
+				},
+			] as never,
+		});
+
+		expect(editor.annotationRegions[0].type).toBe("shape");
+		expect(editor.annotationRegions[0].shapeData).toMatchObject({ fillColor: "#ff0000" });
+	});
+
 	it("loads old audio regions with no source offset or file length", () => {
 		const editor = normalizeProjectEditor({
 			audioRegions: [

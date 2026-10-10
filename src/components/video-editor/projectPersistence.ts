@@ -45,6 +45,7 @@ import {
 	DEFAULT_CURSOR_SWAY,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PADDING,
+	DEFAULT_SHAPE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_WEBCAM_MARGIN,
 	DEFAULT_WEBCAM_OVERLAY,
@@ -578,6 +579,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						type:
 							region.type === "image" ||
 							region.type === "figure" ||
+							region.type === "shape" ||
 							region.type === "blur"
 								? region.type
 								: "text",
@@ -637,6 +639,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							? {
 									...DEFAULT_FIGURE_DATA,
 									...region.figureData,
+								}
+							: undefined,
+						shapeData: region.shapeData
+							? {
+									...DEFAULT_SHAPE_DATA,
+									...region.shapeData,
 								}
 							: undefined,
 						blurIntensity: isFiniteNumber(region.blurIntensity)
