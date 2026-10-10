@@ -364,6 +364,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			selectAllBlocksActive,
 			setSelectAllBlocksActive,
 			handleKeyframeMove,
+			clearSelectedBlocks,
 			handleSelectZoom,
 			handleSelectClip,
 			handleSelectAnnotation,
@@ -529,6 +530,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							videoDurationMs={totalMs}
 							currentTimeMs={currentTimeMs}
 							onSeek={onSeek}
+							onClearSelection={clearSelectedBlocks}
 							onAddZoomAtMs={addZoomAtMs}
 							canPlaceZoomAtMs={canPlaceZoomAtMs}
 							onAddCaptionAtMs={addCaptionAtMs}

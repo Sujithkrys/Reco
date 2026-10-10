@@ -52,7 +52,6 @@ export function useTimelineSelection({
 	onSelectAudio,
 	onSelectCaption,
 	onSelectGeneratedClip,
-	onSeek,
 }: UseTimelineSelectionParams) {
 	const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
 	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
@@ -196,15 +195,11 @@ export function useTimelineSelection({
 	const handleSelectAnnotation = useCallback(
 		(id: string | null) => {
 			setSelectAllBlocksActive(false);
+			// No jump to the layer's start: pressing a timeline item already seeks to
+			// the pressed point (TimelineCanvas).
 			onSelectAnnotation?.(id);
-			if (id && onSeek) {
-				const target = annotationRegions.find((a) => a.id === id);
-				if (target && (currentTimeMs < target.startMs || currentTimeMs > target.endMs)) {
-					onSeek(target.startMs / 1000);
-				}
-			}
 		},
-		[onSelectAnnotation, onSeek, annotationRegions, currentTimeMs],
+		[onSelectAnnotation],
 	);
 
 	const handleSelectAudio = useCallback(

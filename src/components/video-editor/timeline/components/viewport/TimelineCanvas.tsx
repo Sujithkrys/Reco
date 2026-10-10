@@ -3,6 +3,7 @@ import { useTimelineContext } from "dnd-timeline";
 import {
 	type MouseEvent,
 	type MouseEventHandler,
+	type PointerEvent,
 	memo,
 	useCallback,
 	useEffect,
@@ -60,6 +61,8 @@ interface TimelineCanvasProps {
 	videoDurationMs: number;
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
+	/** Clears every timeline selection; called when empty timeline space is pressed. */
+	onClearSelection?: () => void;
 	canPlaceZoomAtMs?: (startMs: number) => boolean;
 	onSelectZoom?: (id: string | null) => void;
 	onSelectClip?: (id: string | null) => void;
@@ -166,15 +169,20 @@ function useTimelineLaneHover({
 		setHoverMs(null);
 	}, []);
 
-	const onMouseDown = useCallback((event: MouseEvent<HTMLDivElement>) => {
-		event.stopPropagation();
-	}, []);
+	const onMouseDown = useCallback(
+		(event: MouseEvent<HTMLDivElement>) => {
+			// A disabled lane lets the press through so the timeline seeks/deselects.
+			if (enabled) event.stopPropagation();
+		},
+		[enabled],
+	);
 
 	const onClick = useCallback(
 		(event: MouseEvent<HTMLDivElement>) => {
-			event.stopPropagation();
 			// Respect the lane's enabled flag so a hidden ghost can't still add on click.
-			if (!enabled || !onAddAtMs || hoverMs === null) return;
+			if (!enabled) return;
+			event.stopPropagation();
+			if (!onAddAtMs || hoverMs === null) return;
 			const startMs = Math.max(0, Math.min(hoverMs, videoDurationMs));
 			if (canPlaceAtMs && !canPlaceAtMs(startMs)) return;
 			onAddAtMs(startMs);
@@ -307,7 +315,9 @@ function useTimelineHover({
 		videoDurationMs,
 		valueToPixels,
 		ghostDurationMs: Math.min(1000, videoDurationMs),
-		enabled: true,
+		// Hover-to-add zoom is off: clicking the zoom lane seeks like any other spot.
+		// Zooms are added from the toolbar.
+		enabled: false,
 		isDragging,
 		onAddAtMs: onAddZoomAtMs,
 		canPlaceAtMs: canPlaceZoomAtMs,
@@ -803,6 +813,7 @@ export default function TimelineCanvas({
 	videoDurationMs,
 	currentTimeMs,
 	onSeek,
+	onClearSelection,
 	onAddZoomAtMs,
 	canPlaceZoomAtMs,
 	onAddCaptionAtMs,
@@ -892,20 +903,38 @@ export default function TimelineCanvas({
 		(e: MouseEvent<HTMLDivElement>) => {
 			if (e.button !== 0 || !onSeek || videoDurationMs <= 0 || !localTimelineRef.current)
 				return;
-			if ((e.target as HTMLElement).closest("[data-timeline-item]")) {
+			const target = e.target as HTMLElement;
+			if (target.closest("[data-timeline-item]")) {
 				return;
 			}
 
 			const rect = localTimelineRef.current.getBoundingClientRect();
 			onSeek(getAbsoluteMsFromClientX(e.clientX, rect) / 1000);
+			// Pressing empty space deselects; buttons (transition/chapter markers) don't.
+			if (!target.closest("button, [role='button']")) onClearSelection?.();
 			setIsSeeking(true);
 			e.preventDefault();
 		},
 		[
 			getAbsoluteMsFromClientX,
+			onClearSelection,
 			onSeek,
 			videoDurationMs,
 		],
+	);
+
+	// Items stop mousedown from reaching the timeline (so drags don't start a playhead
+	// scrub). Seek once in the capture phase instead, without preventing the event, so
+	// pressing any item also moves the playhead while drag and edge-resize still work.
+	const handleTimelinePointerDownCapture = useCallback(
+		(e: PointerEvent<HTMLDivElement>) => {
+			if (e.button !== 0 || !onSeek || videoDurationMs <= 0 || !localTimelineRef.current)
+				return;
+			if (!(e.target as HTMLElement).closest("[data-timeline-item]")) return;
+			const rect = localTimelineRef.current.getBoundingClientRect();
+			onSeek(getAbsoluteMsFromClientX(e.clientX, rect) / 1000);
+		},
+		[getAbsoluteMsFromClientX, onSeek, videoDurationMs],
 	);
 
 	useEffect(() => {
@@ -1024,6 +1053,7 @@ export default function TimelineCanvas({
 				height: `max(100%, ${timelineContentMinHeightPx}px, calc(${TIMELINE_AXIS_HEIGHT_PX}px + (100% - ${TIMELINE_AXIS_HEIGHT_PX}px) * ${timelineViewportStretchFactor}))`,
 			}}
 			className="select-none bg-editor-bg relative cursor-pointer group flex flex-col"
+			onPointerDownCapture={handleTimelinePointerDownCapture}
 			onMouseDown={handleTimelineMouseDown}
 			onClick={handleTimelineClick}
 			onMouseEnter={handleTimelineMouseEnter}
