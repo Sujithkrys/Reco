@@ -39,6 +39,33 @@ describe("timelineSelectionUtils", () => {
 				selectedClipId: "c-1",
 				selectedAnnotationId: "a-1",
 			}),
+		).toBe("annotation");
+	});
+
+	it.each([
+		["annotation", { selectedAnnotationId: "a-1" }],
+		["audio", { selectedAudioId: "au-1" }],
+		["caption", { selectedCaptionId: "cap-1" }],
+	] as const)("prefers a selected %s over a clip left selected underneath it", (target, layer) => {
+		expect(
+			resolveDeleteSelectionTarget({
+				selectAllBlocksActive: false,
+				selectedKeyframeId: null,
+				selectedZoomId: null,
+				selectedClipId: "c-1",
+				...layer,
+			}),
+		).toBe(target);
+	});
+
+	it("targets the clip when it is the only selection", () => {
+		expect(
+			resolveDeleteSelectionTarget({
+				selectAllBlocksActive: false,
+				selectedKeyframeId: null,
+				selectedZoomId: null,
+				selectedClipId: "c-1",
+			}),
 		).toBe("clip");
 	});
 

@@ -91,7 +91,25 @@ export function useTimelineKeyboardShortcuts({
 				return;
 			}
 
-			if (selectedClipId && e.key === "Backspace" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			const deleteTarget = resolveDeleteSelectionTarget({
+				selectAllBlocksActive,
+				selectedKeyframeId,
+				selectedZoomId,
+				selectedClipId,
+				selectedAnnotationId,
+				selectedAudioId,
+				selectedCaptionId,
+			});
+
+			// Backspace deletes a selected clip even without timeline focus, but only
+			// when the clip is the delete target — never a clip left selected under a layer.
+			if (
+				deleteTarget === "clip" &&
+				e.key === "Backspace" &&
+				!e.ctrlKey &&
+				!e.metaKey &&
+				!e.altKey
+			) {
 				e.preventDefault();
 				deleteSelectedClip();
 				return;
@@ -137,15 +155,7 @@ export function useTimelineKeyboardShortcuts({
 				e.key === "Backspace" ||
 				matchesShortcut(e, keyShortcuts.deleteSelected, isMac)
 			) {
-				const target = resolveDeleteSelectionTarget({
-					selectAllBlocksActive,
-					selectedKeyframeId,
-					selectedZoomId,
-					selectedClipId,
-					selectedAnnotationId,
-					selectedAudioId,
-					selectedCaptionId,
-				});
+				const target = deleteTarget;
 				if (target !== "none") {
 					e.preventDefault();
 				}

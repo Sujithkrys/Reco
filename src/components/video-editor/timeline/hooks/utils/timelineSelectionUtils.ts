@@ -29,9 +29,10 @@ export function resolveDeleteSelectionTarget({
 	if (selectAllBlocksActive) return "zoom";
 	if (selectedKeyframeId) return "keyframe";
 	if (selectedZoomId) return "zoom";
-	if (selectedClipId) return "clip";
+	// Layers win over the clip: the main clip can stay selected underneath them.
 	if (selectedAnnotationId) return "annotation";
 	if (selectedAudioId) return "audio";
 	if (selectedCaptionId) return "caption";
+	if (selectedClipId) return "clip";
 	return "none";
 }

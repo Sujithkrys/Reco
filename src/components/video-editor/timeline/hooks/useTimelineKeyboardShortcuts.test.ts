@@ -56,11 +56,15 @@ function setupLayer({
 	selectedId,
 	regions,
 	currentTimeMs,
+	selectedClipId = null,
+	timelineFocused = true,
 }: {
 	targetType: "annotation" | "audio" | "caption";
 	selectedId: string | null;
 	regions: Array<{ id: string; startMs: number; endMs: number }>;
 	currentTimeMs?: number;
+	selectedClipId?: string | null;
+	timelineFocused?: boolean;
 }) {
 	vi.stubGlobal("HTMLElement", Element);
 	vi.stubGlobal("HTMLInputElement", Input);
@@ -72,9 +76,12 @@ function setupLayer({
 	const deleteSelectedAnnotation = vi.fn();
 	const deleteSelectedAudio = vi.fn();
 	const deleteSelectedCaption = vi.fn();
+	const deleteSelectedClip = vi.fn();
 
 	useTimelineKeyboardShortcuts({
-		isTimelineFocusedRef: { current: true },
+		isTimelineFocusedRef: { current: timelineFocused },
+		selectedClipId,
+		deleteSelectedClip,
 		keyShortcuts: {
 			addKeyframe: { key: "k" },
 			addZoom: { key: "z" },
@@ -112,6 +119,7 @@ function setupLayer({
 		deleteSelectedAnnotation,
 		deleteSelectedAudio,
 		deleteSelectedCaption,
+		deleteSelectedClip,
 	};
 }
 
@@ -139,6 +147,43 @@ describe("selected clip Backspace", () => {
 		const unselected = setup(null);
 		unselected.press();
 		expect(unselected.deleteSelectedClip).not.toHaveBeenCalled();
+	});
+});
+
+describe("layer selected on top of a selected clip", () => {
+	const deleteFns = {
+		annotation: "deleteSelectedAnnotation",
+		audio: "deleteSelectedAudio",
+		caption: "deleteSelectedCaption",
+	} as const;
+
+	describe.each(["annotation", "audio", "caption"] as const)("%s", (targetType) => {
+		it.each(["Backspace", "Delete"] as const)("%s deletes the layer, not the clip", (key) => {
+			const result = setupLayer({
+				targetType,
+				selectedId: "layer-1",
+				regions: [{ id: "layer-1", startMs: 1000, endMs: 3000 }],
+				currentTimeMs: 2000,
+				selectedClipId: "clip-1",
+			});
+			result.press(key);
+			expect(result[deleteFns[targetType]]).toHaveBeenCalledOnce();
+			expect(result.deleteSelectedClip).not.toHaveBeenCalled();
+		});
+
+		it("Backspace without timeline focus leaves the clip alone", () => {
+			const result = setupLayer({
+				targetType,
+				selectedId: "layer-1",
+				regions: [{ id: "layer-1", startMs: 1000, endMs: 3000 }],
+				currentTimeMs: 2000,
+				selectedClipId: "clip-1",
+				timelineFocused: false,
+			});
+			result.press("Backspace");
+			expect(result.deleteSelectedClip).not.toHaveBeenCalled();
+			expect(result[deleteFns[targetType]]).not.toHaveBeenCalled();
+		});
 	});
 });
 
