@@ -94,6 +94,39 @@ async function restoreProjectMedia(projectData: unknown): Promise<unknown> {
 	return JSON.parse(jsonString);
 }
 
+interface StoredProjectRecord {
+	id: string;
+	name: string;
+	editor_state: unknown;
+	thumbnail_url: string | null;
+	updated_at: string;
+}
+
+/**
+ * Write a project record, keeping the stored name and thumbnail unless new
+ * ones are given, and recording the project's id inside its data so a reopened
+ * project can be renamed in place.
+ */
+async function writeProjectRecord(
+	projectId: string,
+	projectData: unknown,
+	options: { name?: string; nameForNewProject?: string; thumbnail?: string | null },
+): Promise<void> {
+	const existing = (await get(`project_${projectId}`)) as StoredProjectRecord | undefined;
+	const persistedData = await persistProjectMedia(projectData);
+	if (typeof persistedData === "object" && persistedData !== null) {
+		(persistedData as { projectId?: string }).projectId = projectId;
+	}
+	await set(`project_${projectId}`, {
+		id: projectId,
+		name: options.name || existing?.name || options.nameForNewProject || "Untitled Project",
+		editor_state: persistedData,
+		thumbnail_url: options.thumbnail || existing?.thumbnail_url || null,
+		updated_at: new Date().toISOString(),
+	} satisfies StoredProjectRecord);
+	localStorage.setItem(LAST_OPEN_PROJECT_KEY, projectId);
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -232,23 +265,40 @@ export const webElectronAPI: unknown = {
 	) => {
 		try {
 			const projectId = targetPath || crypto.randomUUID();
-			
-			// Persist all ephemeral blob URLs to IndexedDB
-			const persistedData = await persistProjectMedia(projectData);
-			
-			await set(`project_${projectId}`, {
-				id: projectId,
-				name: fileNameBase || "Untitled Project",
-				editor_state: persistedData,
-				thumbnail_url: thumbnail || null,
-				updated_at: new Date().toISOString()
+			// fileNameBase is the video's file name; it only names brand-new
+			// projects so a later save never undoes the user's own project name.
+			await writeProjectRecord(projectId, projectData, {
+				nameForNewProject: fileNameBase,
+				thumbnail,
 			});
-			localStorage.setItem(LAST_OPEN_PROJECT_KEY, projectId);
-
-			return { success: true, path: projectId };
+			return { success: true, path: projectId, projectId };
 		} catch (e: unknown) {
 			console.error(e);
 			// Everything above is an IndexedDB/localStorage write.
+			return { success: false, path: null, message: (e as Error).message, storageError: true };
+		}
+	},
+	saveProjectFileNamed: async (
+		projectData: unknown,
+		name: string,
+		thumbnail?: string | null,
+		mode: "rename" | "copy" = "rename",
+		currentProjectPath?: string | null,
+	) => {
+		try {
+			const existingId =
+				currentProjectPath ||
+				(projectData as { projectId?: string } | null)?.projectId ||
+				null;
+			// Rename overwrites the open project's record; copy always makes a new one.
+			const projectId = mode === "rename" && existingId ? existingId : crypto.randomUUID();
+			await writeProjectRecord(projectId, projectData, {
+				name: name.trim() || "Untitled Project",
+				thumbnail,
+			});
+			return { success: true, path: projectId, projectId };
+		} catch (e: unknown) {
+			console.error("saveProjectFileNamed error:", e);
 			return { success: false, path: null, message: (e as Error).message, storageError: true };
 		}
 	},
@@ -311,10 +361,17 @@ export const webElectronAPI: unknown = {
 			return { success: false, message: (e as Error).message };
 		}
 	},
-	getProjectThumbnail: async (_path: string) => ({
-		success: false,
-		data: null,
-	}),
+	getProjectThumbnail: async (path: string) => {
+		try {
+			const projectRecord = (await get(`project_${path}`)) as { thumbnail_url?: string | null } | undefined;
+			return {
+				success: Boolean(projectRecord?.thumbnail_url),
+				data: projectRecord?.thumbnail_url || null,
+			};
+		} catch {
+			return { success: false, data: null };
+		}
+	},
 
 	// ── File pickers (browser native) ────────────────────────────────────
 	uploadMediaFile: async (fileOrPath: File | string, options?: { prefix?: string }) => {

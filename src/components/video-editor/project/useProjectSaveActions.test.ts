@@ -20,12 +20,17 @@ import {
 	useProjectSaveActions,
 } from "./useProjectSaveActions";
 
-function setup(saveResult: Record<string, unknown> = { success: true, path: "project-1" }) {
+function setup(
+	saveResult: Record<string, unknown> = { success: true, path: "project-1" },
+	projectNameDraft = "",
+) {
 	const saveProjectFile = vi.fn(async () => saveResult);
+	const saveProjectFileNamed = vi.fn(async () => ({ success: true, path: "project-1" }));
 	const setTimeoutSpy = vi.fn(() => 1);
 	vi.stubGlobal("window", {
 		electronAPI: {
 			saveProjectFile,
+			saveProjectFileNamed,
 			setHasUnsavedChanges: vi.fn(),
 			onRequestSaveBeforeClose: vi.fn(() => () => undefined),
 			loadCurrentProjectFile: vi.fn(async () => ({ success: false })),
@@ -38,7 +43,7 @@ function setup(saveResult: Record<string, unknown> = { success: true, path: "pro
 			currentProjectPath: "project-1",
 			lastSavedSnapshot: null,
 			projectSaveDialogDraft: "",
-			projectNameDraft: "",
+			projectNameDraft,
 			setCurrentProjectPath: vi.fn(),
 			setLastSavedSnapshot: vi.fn(),
 			setIsSavingProjectDialog: vi.fn(),
@@ -60,7 +65,7 @@ function setup(saveResult: Record<string, unknown> = { success: true, path: "pro
 		refreshProjectLibrary: vi.fn(async () => undefined),
 		remountPreview: vi.fn(),
 	});
-	return { actions, saveProjectFile, setTimeoutSpy };
+	return { actions, saveProjectFile, saveProjectFileNamed, setTimeoutSpy };
 }
 
 const SILENT = {
@@ -98,6 +103,22 @@ describe("project save auth gating", () => {
 
 		expect(harness.requireAuth).toHaveBeenCalledOnce();
 		expect(saveProjectFile).not.toHaveBeenCalled();
+	});
+});
+
+describe("project rename", () => {
+	it("renames the open project in place", async () => {
+		const { actions, saveProjectFileNamed } = setup(undefined, "Launch video");
+
+		await actions.handleProjectNameSubmit();
+
+		expect(saveProjectFileNamed).toHaveBeenCalledWith(
+			expect.anything(),
+			"Launch video",
+			null,
+			"rename",
+			"project-1",
+		);
 	});
 });
 

@@ -58,6 +58,90 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
+type StoredRecord = { id: string; name: string; thumbnail_url: string | null; editor_state: { projectId?: string } };
+const record = (id: string) => idb.get(`project_${id}`) as StoredRecord;
+const projectCount = () => [...idb.keys()].filter((key) => key.startsWith("project_")).length;
+
+describe("web project naming", () => {
+	it("keeps the user's project name when the project is saved again", async () => {
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Untitled Project", "p1");
+		await api.renameProjectFile("p1", "Launch video");
+
+		// Ordinary saves pass the video's file name; it must not replace the project name.
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "screen-recording", "p1");
+
+		expect(record("p1").name).toBe("Launch video");
+	});
+
+	it("names a brand-new project after the given file name", async () => {
+		const result = await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "screen-recording");
+
+		expect(record(result.path).name).toBe("screen-recording");
+	});
+
+	it("stores the project id inside the saved project data", async () => {
+		const result = await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Demo");
+
+		expect(result.projectId).toBe(result.path);
+		expect(record(result.path).editor_state.projectId).toBe(result.path);
+	});
+
+	it("renames the open project in place instead of creating a copy", async () => {
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Untitled Project", "p2");
+
+		const result = await api.saveProjectFileNamed(
+			{ version: 1, videoPath: "", editor: {} },
+			"  Final cut  ",
+			null,
+			"rename",
+			"p2",
+		);
+
+		expect(result).toMatchObject({ success: true, path: "p2", projectId: "p2" });
+		expect(record("p2").name).toBe("Final cut");
+		expect(projectCount()).toBe(1);
+	});
+
+	it("renames using the project id stored in the data when no path is given", async () => {
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Untitled Project", "p3");
+
+		await api.saveProjectFileNamed(
+			{ version: 1, projectId: "p3", videoPath: "", editor: {} },
+			"Renamed",
+			null,
+			"rename",
+		);
+
+		expect(record("p3").name).toBe("Renamed");
+		expect(projectCount()).toBe(1);
+	});
+
+	it("save-as copy creates a separate project", async () => {
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Original", "p4");
+
+		const result = await api.saveProjectFileNamed(
+			{ version: 1, projectId: "p4", videoPath: "", editor: {} },
+			"Copy",
+			null,
+			"copy",
+		);
+
+		expect(result.path).not.toBe("p4");
+		expect(record("p4").name).toBe("Original");
+		expect(record(result.path).name).toBe("Copy");
+	});
+
+	it("keeps the thumbnail when a save has none and returns it from getProjectThumbnail", async () => {
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Demo", "p5", "data:image/png;base64,AAA");
+		await api.saveProjectFile({ version: 1, videoPath: "", editor: {} }, "Demo", "p5");
+
+		await expect(api.getProjectThumbnail("p5")).resolves.toEqual({
+			success: true,
+			data: "data:image/png;base64,AAA",
+		});
+	});
+});
+
 describe("web project media persistence", () => {
 	it("stores a blob once across repeated saves of the same project", async () => {
 		const videoUrl = createBlobUrl(new Blob([new Uint8Array(16)], { type: "video/mp4" }));

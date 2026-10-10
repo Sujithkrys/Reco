@@ -261,6 +261,8 @@ export function useProjectSaveActions({
 					trimmedName,
 					await captureProjectThumbnail(),
 					mode,
+					// Rename must overwrite the open project rather than create a copy.
+					mode === "rename" ? currentProjectPath : null,
 				);
 				if (result.canceled) {
 					toast.info("Project save canceled");
@@ -291,6 +293,7 @@ export function useProjectSaveActions({
 			currentSourcePath,
 			currentProjectSnapshot,
 			currentPersistedEditorState,
+			currentProjectPath,
 			lastSavedSnapshot,
 			setCurrentProjectPath,
 			setLastSavedSnapshot,
