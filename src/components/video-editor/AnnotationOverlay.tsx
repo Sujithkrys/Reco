@@ -153,8 +153,11 @@ export function AnnotationOverlay({
 								textAlign: annotation.style.textAlign,
 								wordBreak: "break-word",
 								whiteSpace: "pre-wrap",
-								boxDecorationBreak: "clone",
-								WebkitBoxDecorationBreak: "clone",
+								// One block behind all lines (not one per line); the export
+								// renderer draws the same block (layoutTextBlock).
+								display: "inline-block",
+								maxWidth: "100%",
+								boxSizing: "border-box",
 								padding: "0.1em 0.2em",
 								borderRadius: `${4 * sizeScale}px`,
 								lineHeight: "1.4",
