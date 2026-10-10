@@ -5,15 +5,15 @@ import {
 	rememberAudioFileDurationMs,
 } from "../audio/audioFileDurations";
 import { changeAudioSpan } from "../audioSpanChange";
+import type { TimelineSelectionKind } from "../state/timelineSelection";
 import type { AudioRegion, EditorEffectSection } from "../types";
 
 interface UseAudioRegionCommandsParams {
 	setAudioRegions: Dispatch<SetStateAction<AudioRegion[]>>;
 	selectedAudioId: string | null;
 	setSelectedAudioId: Dispatch<SetStateAction<string | null>>;
-	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
-	setSelectedCaptionId: Dispatch<SetStateAction<string | null>>;
+	/** Deselects every other timeline item (selection is exclusive). */
+	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 	setActiveEffectSection: Dispatch<SetStateAction<EditorEffectSection>>;
 	nextAudioIdRef: MutableRefObject<number>;
 }
@@ -22,9 +22,7 @@ export function useAudioRegionCommands({
 	setAudioRegions,
 	selectedAudioId,
 	setSelectedAudioId,
-	setSelectedZoomId,
-	setSelectedAnnotationId,
-	setSelectedCaptionId,
+	clearOtherSelections,
 	setActiveEffectSection,
 	nextAudioIdRef,
 }: UseAudioRegionCommandsParams) {
@@ -32,19 +30,11 @@ export function useAudioRegionCommands({
 		(id: string | null) => {
 			setSelectedAudioId(id);
 			if (id) {
-				setSelectedZoomId(null);
-				setSelectedAnnotationId(null);
-				setSelectedCaptionId(null);
+				clearOtherSelections("audio");
 				setActiveEffectSection("audio");
 			}
 		},
-		[
-			setActiveEffectSection,
-			setSelectedAnnotationId,
-			setSelectedAudioId,
-			setSelectedCaptionId,
-			setSelectedZoomId,
-		],
+		[clearOtherSelections, setActiveEffectSection, setSelectedAudioId],
 	);
 
 	const handleAudioAdded = useCallback(
@@ -79,19 +69,15 @@ export function useAudioRegionCommands({
 			};
 			setAudioRegions((current) => [...current, newRegion]);
 			setSelectedAudioId(id);
-			setSelectedZoomId(null);
-			setSelectedAnnotationId(null);
-			setSelectedCaptionId(null);
+			clearOtherSelections("audio");
 			setActiveEffectSection("audio");
 		},
 		[
+			clearOtherSelections,
 			nextAudioIdRef,
 			setActiveEffectSection,
 			setAudioRegions,
-			setSelectedAnnotationId,
 			setSelectedAudioId,
-			setSelectedCaptionId,
-			setSelectedZoomId,
 		],
 	);
 

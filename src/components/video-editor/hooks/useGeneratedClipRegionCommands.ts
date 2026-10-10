@@ -1,17 +1,21 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type SetStateAction, useCallback } from "react";
+import type { TimelineSelectionKind } from "../state/timelineSelection";
 import type { GeneratedClipRegion, GeneratedClipSpec } from "../types";
 
 interface UseGeneratedClipRegionCommandsParams {
 	setGeneratedClipRegions: Dispatch<SetStateAction<GeneratedClipRegion[]>>;
 	selectedGeneratedClipId: string | null;
 	setSelectedGeneratedClipId: Dispatch<SetStateAction<string | null>>;
+	/** Deselects every other timeline item (selection is exclusive). */
+	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 }
 
 export function useGeneratedClipRegionCommands({
 	setGeneratedClipRegions,
 	selectedGeneratedClipId,
 	setSelectedGeneratedClipId,
+	clearOtherSelections,
 }: UseGeneratedClipRegionCommandsParams) {
 	// Unlike annotations (drawn fresh with default content), a generated clip
 	// always arrives fully formed — from an MCP create_motion_graphic result or
@@ -21,8 +25,9 @@ export function useGeneratedClipRegionCommands({
 		(region: GeneratedClipRegion) => {
 			setGeneratedClipRegions((current) => [...current, region]);
 			setSelectedGeneratedClipId(region.id);
+			clearOtherSelections("generatedClip");
 		},
-		[setGeneratedClipRegions, setSelectedGeneratedClipId],
+		[clearOtherSelections, setGeneratedClipRegions, setSelectedGeneratedClipId],
 	);
 
 	const handleGeneratedClipSpanChange = useCallback(

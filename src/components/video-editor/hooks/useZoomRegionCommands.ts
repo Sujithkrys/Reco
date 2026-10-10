@@ -1,5 +1,6 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
+import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
 	clampFocusToDepth,
 	DEFAULT_AUTO_ZOOM_DEPTH,
@@ -15,9 +16,8 @@ interface UseZoomRegionCommandsParams {
 	setZoomRegions: Dispatch<SetStateAction<ZoomRegion[]>>;
 	selectedZoomId: string | null;
 	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAudioId: Dispatch<SetStateAction<string | null>>;
-	setSelectedCaptionId: Dispatch<SetStateAction<string | null>>;
+	/** Deselects every other timeline item (selection is exclusive). */
+	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 	setActiveEffectSection: Dispatch<SetStateAction<EditorEffectSection>>;
 	nextZoomIdRef: MutableRefObject<number>;
 	autoSuggestedVideoPathRef: MutableRefObject<string | null>;
@@ -29,9 +29,7 @@ export function useZoomRegionCommands({
 	setZoomRegions,
 	selectedZoomId,
 	setSelectedZoomId,
-	setSelectedAnnotationId,
-	setSelectedAudioId,
-	setSelectedCaptionId,
+	clearOtherSelections,
 	setActiveEffectSection,
 	nextZoomIdRef,
 	autoSuggestedVideoPathRef,
@@ -42,20 +40,12 @@ export function useZoomRegionCommands({
 			setSelectedZoomId(id);
 			if (id) {
 				setActiveEffectSection("zoom");
-				setSelectedAnnotationId(null);
-				setSelectedAudioId(null);
-				setSelectedCaptionId(null);
+				clearOtherSelections("zoom");
 			} else {
 				setActiveEffectSection((section) => (section === "zoom" ? "scene" : section));
 			}
 		},
-		[
-			setActiveEffectSection,
-			setSelectedAnnotationId,
-			setSelectedAudioId,
-			setSelectedCaptionId,
-			setSelectedZoomId,
-		],
+		[clearOtherSelections, setActiveEffectSection, setSelectedZoomId],
 	);
 
 	const markFreshRecordingSuggestion = useCallback(() => {
@@ -81,14 +71,12 @@ export function useZoomRegionCommands({
 			markFreshRecordingSuggestion();
 			setZoomRegions((current) => [...current, newRegion]);
 			setSelectedZoomId(id);
-			setSelectedAnnotationId(null);
-			setSelectedCaptionId(null);
+			clearOtherSelections("zoom");
 		},
 		[
+			clearOtherSelections,
 			markFreshRecordingSuggestion,
 			nextZoomIdRef,
-			setSelectedAnnotationId,
-			setSelectedCaptionId,
 			setSelectedZoomId,
 			setZoomRegions,
 		],

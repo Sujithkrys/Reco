@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { changeClipSpan } from "../clipSpanChange";
 import { planClipSpeedChange } from "../clipSpeedChange";
 import { planClipSplit } from "../clipSplit";
+import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
 	type ClipRegion,
 	type ClipTransition,
@@ -30,10 +31,8 @@ interface UseClipRegionCommandsParams {
 	setZoomRegions: Dispatch<SetStateAction<ZoomRegion[]>>;
 	selectedClipId: string | null;
 	setSelectedClipId: Dispatch<SetStateAction<string | null>>;
-	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAudioId: Dispatch<SetStateAction<string | null>>;
-	setSelectedCaptionId: Dispatch<SetStateAction<string | null>>;
+	/** Deselects every other timeline item (selection is exclusive). */
+	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 	setActiveEffectSection: Dispatch<SetStateAction<EditorEffectSection>>;
 	nextClipIdRef: MutableRefObject<number>;
 	t: Translator;
@@ -47,10 +46,7 @@ export function useClipRegionCommands({
 	setZoomRegions,
 	selectedClipId,
 	setSelectedClipId,
-	setSelectedZoomId,
-	setSelectedAnnotationId,
-	setSelectedAudioId,
-	setSelectedCaptionId,
+	clearOtherSelections,
 	setActiveEffectSection,
 	nextClipIdRef,
 	t,
@@ -60,22 +56,12 @@ export function useClipRegionCommands({
 			setSelectedClipId(id);
 			if (id) {
 				setActiveEffectSection("clip");
-				setSelectedZoomId(null);
-				setSelectedAnnotationId(null);
-				setSelectedAudioId(null);
-				setSelectedCaptionId(null);
+				clearOtherSelections("clip");
 			} else {
 				setActiveEffectSection((section) => (section === "clip" ? "scene" : section));
 			}
 		},
-		[
-			setActiveEffectSection,
-			setSelectedAnnotationId,
-			setSelectedAudioId,
-			setSelectedCaptionId,
-			setSelectedClipId,
-			setSelectedZoomId,
-		],
+		[clearOtherSelections, setActiveEffectSection, setSelectedClipId],
 	);
 
 	const handleClipSplit = useCallback(

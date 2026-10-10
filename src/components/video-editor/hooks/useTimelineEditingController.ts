@@ -4,6 +4,10 @@ import { toast } from "sonner";
 import type { useI18n } from "@/contexts/I18nContext";
 import type { useShortcuts } from "@/contexts/ShortcutsContext";
 import { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
+import {
+	clearTimelineSelectionsExcept,
+	type TimelineSelectionKind,
+} from "../state/timelineSelection";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
 import type { TimelineEditorHandle } from "../timeline/TimelineEditor";
@@ -109,16 +113,45 @@ export function useTimelineEditingController(input: Input) {
 		timelinePlayheadTime: projection.timelinePlayheadTime,
 		timelineDuration: projection.timelineDuration,
 	});
+	// Timeline selection is exclusive: selecting any item clears every other one,
+	// including a main clip that used to stay selected underneath layers.
+	const {
+		setSelectedZoomId,
+		setSelectedClipId,
+		setSelectedAnnotationId,
+		setSelectedAudioId,
+		setSelectedCaptionId,
+		setSelectedGeneratedClipId,
+	} = timeline;
+	const clearOtherSelections = useCallback(
+		(keep: TimelineSelectionKind) =>
+			clearTimelineSelectionsExcept(
+				{
+					setSelectedZoomId,
+					setSelectedClipId,
+					setSelectedAnnotationId,
+					setSelectedAudioId,
+					setSelectedCaptionId,
+					setSelectedGeneratedClipId,
+				},
+				keep,
+			),
+		[
+			setSelectedZoomId,
+			setSelectedClipId,
+			setSelectedAnnotationId,
+			setSelectedAudioId,
+			setSelectedCaptionId,
+			setSelectedGeneratedClipId,
+		],
+	);
 	const captionCommands = useCaptionCommands({
 		clipRegions: timeline.clipRegions,
 		autoCaptions: timeline.autoCaptions,
 		setAutoCaptions: timeline.setAutoCaptions,
 		setAutoCaptionSettings: timeline.setAutoCaptionSettings,
 		setSelectedCaptionId: timeline.setSelectedCaptionId,
-		setSelectedZoomId: timeline.setSelectedZoomId,
-		setSelectedClipId: timeline.setSelectedClipId,
-		setSelectedAnnotationId: timeline.setSelectedAnnotationId,
-		setSelectedAudioId: timeline.setSelectedAudioId,
+		clearOtherSelections,
 		setActiveEffectSection: input.setActiveEffectSection,
 		videoPlaybackRef: input.videoPlaybackRef,
 		mapSourceTimeToTimelineTime: projection.mapSourceTimeToTimelineTime,
@@ -129,9 +162,7 @@ export function useTimelineEditingController(input: Input) {
 		setZoomRegions: timeline.setZoomRegions,
 		selectedZoomId: timeline.selectedZoomId,
 		setSelectedZoomId: timeline.setSelectedZoomId,
-		setSelectedAnnotationId: timeline.setSelectedAnnotationId,
-		setSelectedAudioId: timeline.setSelectedAudioId,
-		setSelectedCaptionId: timeline.setSelectedCaptionId,
+		clearOtherSelections,
 		setActiveEffectSection: input.setActiveEffectSection,
 		nextZoomIdRef: input.nextZoomIdRef,
 		autoSuggestedVideoPathRef: input.autoSuggestedVideoPathRef,
@@ -140,40 +171,16 @@ export function useTimelineEditingController(input: Input) {
 	const handleSelectAnnotation = useCallback(
 		(id: string | null) => {
 			timeline.setSelectedAnnotationId(id);
-			if (id) {
-				timeline.setSelectedZoomId(null);
-				timeline.setSelectedAudioId(null);
-				timeline.setSelectedCaptionId(null);
-				timeline.setSelectedGeneratedClipId(null);
-			}
+			if (id) clearOtherSelections("annotation");
 		},
-		[
-			timeline.setSelectedAnnotationId,
-			timeline.setSelectedZoomId,
-			timeline.setSelectedAudioId,
-			timeline.setSelectedCaptionId,
-			timeline.setSelectedGeneratedClipId,
-		],
+		[timeline.setSelectedAnnotationId, clearOtherSelections],
 	);
 	const handleSelectGeneratedClip = useCallback(
 		(id: string | null) => {
 			timeline.setSelectedGeneratedClipId(id);
-			if (id) {
-				timeline.setSelectedZoomId(null);
-				timeline.setSelectedClipId(null);
-				timeline.setSelectedAnnotationId(null);
-				timeline.setSelectedAudioId(null);
-				timeline.setSelectedCaptionId(null);
-			}
+			if (id) clearOtherSelections("generatedClip");
 		},
-		[
-			timeline.setSelectedGeneratedClipId,
-			timeline.setSelectedZoomId,
-			timeline.setSelectedClipId,
-			timeline.setSelectedAnnotationId,
-			timeline.setSelectedAudioId,
-			timeline.setSelectedCaptionId,
-		],
+		[timeline.setSelectedGeneratedClipId, clearOtherSelections],
 	);
 	const freshZoom = useFreshRecordingAutoZoom({
 		appPlatform: input.appPlatform,
@@ -202,10 +209,7 @@ export function useTimelineEditingController(input: Input) {
 		setZoomRegions: timeline.setZoomRegions,
 		selectedClipId: timeline.selectedClipId,
 		setSelectedClipId: timeline.setSelectedClipId,
-		setSelectedZoomId: timeline.setSelectedZoomId,
-		setSelectedAnnotationId: timeline.setSelectedAnnotationId,
-		setSelectedAudioId: timeline.setSelectedAudioId,
-		setSelectedCaptionId: timeline.setSelectedCaptionId,
+		clearOtherSelections,
 		setActiveEffectSection: input.setActiveEffectSection,
 		nextClipIdRef: input.nextClipIdRef,
 		t: input.t,
@@ -214,9 +218,7 @@ export function useTimelineEditingController(input: Input) {
 		setAudioRegions: timeline.setAudioRegions,
 		selectedAudioId: timeline.selectedAudioId,
 		setSelectedAudioId: timeline.setSelectedAudioId,
-		setSelectedZoomId: timeline.setSelectedZoomId,
-		setSelectedAnnotationId: timeline.setSelectedAnnotationId,
-		setSelectedCaptionId: timeline.setSelectedCaptionId,
+		clearOtherSelections,
 		setActiveEffectSection: input.setActiveEffectSection,
 		nextAudioIdRef: input.nextAudioIdRef,
 	});
@@ -224,7 +226,7 @@ export function useTimelineEditingController(input: Input) {
 		setAnnotationRegions: timeline.setAnnotationRegions,
 		selectedAnnotationId: timeline.selectedAnnotationId,
 		setSelectedAnnotationId: timeline.setSelectedAnnotationId,
-		setSelectedZoomId: timeline.setSelectedZoomId,
+		clearOtherSelections,
 		nextAnnotationIdRef: input.nextAnnotationIdRef,
 		nextAnnotationZIndexRef: input.nextAnnotationZIndexRef,
 	});
@@ -232,6 +234,7 @@ export function useTimelineEditingController(input: Input) {
 		setGeneratedClipRegions: timeline.setGeneratedClipRegions,
 		selectedGeneratedClipId: timeline.selectedGeneratedClipId,
 		setSelectedGeneratedClipId: timeline.setSelectedGeneratedClipId,
+		clearOtherSelections,
 	});
 
 	useEditorGlobalInteractions({

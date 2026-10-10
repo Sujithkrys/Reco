@@ -1,5 +1,6 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
+import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
 	type AnnotationRegion,
 	type AnnotationType,
@@ -16,7 +17,8 @@ interface UseAnnotationRegionCommandsParams {
 	setAnnotationRegions: Dispatch<SetStateAction<AnnotationRegion[]>>;
 	selectedAnnotationId: string | null;
 	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
-	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
+	/** Deselects every other timeline item (selection is exclusive). */
+	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 	nextAnnotationIdRef: MutableRefObject<number>;
 	nextAnnotationZIndexRef: MutableRefObject<number>;
 }
@@ -25,7 +27,7 @@ export function useAnnotationRegionCommands({
 	setAnnotationRegions,
 	selectedAnnotationId,
 	setSelectedAnnotationId,
-	setSelectedZoomId,
+	clearOtherSelections,
 	nextAnnotationIdRef,
 	nextAnnotationZIndexRef,
 }: UseAnnotationRegionCommandsParams) {
@@ -53,14 +55,14 @@ export function useAnnotationRegionCommands({
 			};
 			setAnnotationRegions((current) => [...current, newRegion]);
 			setSelectedAnnotationId(id);
-			setSelectedZoomId(null);
+			clearOtherSelections("annotation");
 		},
 		[
+			clearOtherSelections,
 			nextAnnotationIdRef,
 			nextAnnotationZIndexRef,
 			setAnnotationRegions,
 			setSelectedAnnotationId,
-			setSelectedZoomId,
 		],
 	);
 

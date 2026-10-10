@@ -16,6 +16,7 @@ import {
 	splitCue,
 } from "../captionOps";
 import { captionSpanToSource } from "../captionTimeline";
+import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
 	type AutoCaptionSettings,
 	type CaptionCue,
@@ -31,10 +32,8 @@ interface UseCaptionCommandsParams {
 	setAutoCaptions: Dispatch<SetStateAction<CaptionCue[]>>;
 	setAutoCaptionSettings: Dispatch<SetStateAction<AutoCaptionSettings>>;
 	setSelectedCaptionId: Dispatch<SetStateAction<string | null>>;
-	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
-	setSelectedClipId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
-	setSelectedAudioId: Dispatch<SetStateAction<string | null>>;
+	/** Deselects every other timeline item (selection is exclusive). */
+	clearOtherSelections: (keep: TimelineSelectionKind) => void;
 	setActiveEffectSection: Dispatch<SetStateAction<EditorEffectSection>>;
 	videoPlaybackRef: RefObject<VideoPlaybackRef>;
 	mapSourceTimeToTimelineTime: (timeMs: number) => number;
@@ -47,10 +46,7 @@ export function useCaptionCommands({
 	setAutoCaptions,
 	setAutoCaptionSettings,
 	setSelectedCaptionId,
-	setSelectedZoomId,
-	setSelectedClipId,
-	setSelectedAnnotationId,
-	setSelectedAudioId,
+	clearOtherSelections,
 	setActiveEffectSection,
 	videoPlaybackRef,
 	mapSourceTimeToTimelineTime,
@@ -64,10 +60,7 @@ export function useCaptionCommands({
 				return;
 			}
 			setActiveEffectSection("caption");
-			setSelectedZoomId(null);
-			setSelectedClipId(null);
-			setSelectedAnnotationId(null);
-			setSelectedAudioId(null);
+			clearOtherSelections("caption");
 			const cue = autoCaptions.find((value) => value.id === id);
 			if (cue) {
 				handleSeek(mapSourceTimeToTimelineTime(cue.startMs) / 1000, { pause: true });
@@ -75,14 +68,11 @@ export function useCaptionCommands({
 		},
 		[
 			autoCaptions,
+			clearOtherSelections,
 			handleSeek,
 			mapSourceTimeToTimelineTime,
 			setActiveEffectSection,
-			setSelectedAnnotationId,
-			setSelectedAudioId,
 			setSelectedCaptionId,
-			setSelectedClipId,
-			setSelectedZoomId,
 		],
 	);
 
@@ -171,23 +161,17 @@ export function useCaptionCommands({
 			setAutoCaptions((captions) => addCue(captions, newCue));
 			setSelectedCaptionId(newCue.id);
 			setActiveEffectSection("caption");
-			setSelectedZoomId(null);
-			setSelectedClipId(null);
-			setSelectedAnnotationId(null);
-			setSelectedAudioId(null);
+			clearOtherSelections("caption");
 			handleSeek(span.start / 1000, { pause: true });
 		},
 		[
 			cancelEdit,
+			clearOtherSelections,
 			handleSeek,
 			clipRegions,
 			setActiveEffectSection,
 			setAutoCaptions,
-			setSelectedAnnotationId,
-			setSelectedAudioId,
 			setSelectedCaptionId,
-			setSelectedClipId,
-			setSelectedZoomId,
 		],
 	);
 
