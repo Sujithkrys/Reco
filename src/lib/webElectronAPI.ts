@@ -26,6 +26,13 @@ export const cursorTelemetryMap = new Map<string, WebCursorTelemetryPoint[]>();
 /** Local media path/blob URL -> remote Supabase Storage object path. */
 export const uploadedMediaPaths = new Map<string, string>();
 
+/**
+ * Blob URL -> IndexedDB key of the media already stored for it. Lets repeated
+ * saves (autosave in particular) and saves of a reopened project reuse the
+ * stored copy instead of writing the same file again on every save.
+ */
+const persistedMediaKeys = new Map<string, string>();
+
 async function persistProjectMedia(projectData: unknown): Promise<unknown> {
 	let jsonString = JSON.stringify(projectData);
 	const blobRegex = /"blob:(https?:\/\/[^"]+)"/g;
@@ -36,12 +43,18 @@ async function persistProjectMedia(projectData: unknown): Promise<unknown> {
 	}
 
 	for (const blobUrl of blobUrls) {
+		const existingKey = persistedMediaKeys.get(blobUrl);
+		if (existingKey) {
+			jsonString = jsonString.split(blobUrl).join(`idb://${existingKey}`);
+			continue;
+		}
 		try {
 			const response = await fetch(blobUrl);
 			if (!response.ok) continue;
 			const blob = await response.blob();
 			const idbKey = `media_${crypto.randomUUID()}`;
 			await set(idbKey, blob);
+			persistedMediaKeys.set(blobUrl, idbKey);
 			jsonString = jsonString.split(blobUrl).join(`idb://${idbKey}`);
 		} catch (err) {
 			console.error(`Failed to persist blob ${blobUrl}:`, err);
@@ -65,6 +78,7 @@ async function restoreProjectMedia(projectData: unknown): Promise<unknown> {
 			if (blob) {
 				const freshBlobUrl = URL.createObjectURL(blob as Blob);
 				webBlobMap.set(freshBlobUrl, blob as Blob);
+				persistedMediaKeys.set(freshBlobUrl, idbKey);
 				jsonString = jsonString.split(`idb://${idbKey}`).join(freshBlobUrl);
 			} else {
 				console.warn(`Media ${idbKey} not found in IndexedDB.`);
