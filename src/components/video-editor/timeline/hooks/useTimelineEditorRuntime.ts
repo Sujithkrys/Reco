@@ -58,6 +58,7 @@ interface UseTimelineEditorRuntimeParams {
 	onSelectAnnotation?: (id: string | null) => void;
 	speedRegions: SpeedRegion[];
 	onSpeedSpanChange?: (id: string, span: Span) => void;
+	onBeforeNormalize?: () => void;
 	audioRegions: AudioRegion[];
 	onAudioAdded?: (
 		span: Span,
@@ -122,6 +123,7 @@ export function useTimelineEditorRuntime({
 	onSelectAnnotation,
 	speedRegions,
 	onSpeedSpanChange,
+	onBeforeNormalize,
 	audioRegions,
 	onAudioAdded,
 	onAudioSpanChange,
@@ -209,6 +211,7 @@ export function useTimelineEditorRuntime({
 		onTrimSpanChange,
 		onSpeedSpanChange,
 		onAudioSpanChange,
+		onBeforeNormalize,
 	});
 
 	const {

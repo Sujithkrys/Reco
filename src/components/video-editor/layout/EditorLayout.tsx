@@ -383,6 +383,7 @@ export function EditorLayout(props: Props) {
 						currentTime={ui.currentTime}
 						handleSelectAnnotation={handleSelectAnnotation}
 						handleSelectGeneratedClip={handleSelectGeneratedClip}
+						onBeforeNormalize={history.amendCurrentStep}
 					/>
 			</div>
 			{editorDialogs}

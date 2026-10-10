@@ -69,6 +69,8 @@ export interface TimelineEditorProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	speedRegions?: SpeedRegion[];
 	onSpeedSpanChange?: (id: string, span: Span) => void;
+	/** Called before regions are clamped to a shorter timeline, so the clamp joins the edit that caused it. */
+	onBeforeNormalize?: () => void;
 	audioRegions?: AudioRegion[];
 	onAudioAdded?: (
 		span: Span,
@@ -167,6 +169,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onSelectAnnotation,
 			speedRegions = [],
 			onSpeedSpanChange,
+			onBeforeNormalize,
 			audioRegions = [],
 			onAudioAdded,
 			onAudioSpanChange,
@@ -416,6 +419,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onSelectAnnotation,
 			speedRegions,
 			onSpeedSpanChange,
+			onBeforeNormalize,
 			audioRegions,
 			onAudioAdded,
 			onAudioSpanChange,

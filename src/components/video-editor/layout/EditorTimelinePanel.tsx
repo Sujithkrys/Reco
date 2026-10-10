@@ -34,6 +34,7 @@ type Props = {
 	currentTime: number;
 	handleSelectAnnotation: (id: string | null) => void;
 	handleSelectGeneratedClip: (id: string | null) => void;
+	onBeforeNormalize?: () => void;
 };
 
 export function EditorTimelinePanel(props: Props) {
@@ -59,6 +60,7 @@ export function EditorTimelinePanel(props: Props) {
 		currentTime,
 		handleSelectAnnotation,
 		handleSelectGeneratedClip,
+		onBeforeNormalize,
 	} = props;
 
 	return (
@@ -77,6 +79,7 @@ export function EditorTimelinePanel(props: Props) {
 				onAutoSuggestZoomsConsumed={handleAutoSuggestZoomsConsumed}
 				disableSuggestedZooms={disableSuggestedZooms}
 				zoomRegions={timeline.zoomRegions}
+				onBeforeNormalize={onBeforeNormalize}
 				onZoomAdded={zoomCommands.handleZoomAdded}
 				onZoomSuggested={zoomCommands.handleZoomSuggested}
 				onZoomSpanChange={zoomCommands.handleZoomSpanChange}

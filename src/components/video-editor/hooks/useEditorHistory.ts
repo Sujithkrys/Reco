@@ -1,5 +1,6 @@
 import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import {
+	areEditorHistorySnapshotsEqual,
 	createEditorHistoryStack,
 	type EditorHistorySnapshot,
 	recordEditorHistorySnapshot,
@@ -52,6 +53,11 @@ export function useEditorHistory({
 	} = timeline;
 	const historyRef = useRef(createEditorHistoryStack());
 	const applyingRef = useRef(false);
+	// Set when the timeline clamps regions after another change; the clamp then
+	// replaces the current step rather than becoming a step of its own (which
+	// undo would restore, re-trigger the clamp, and never get past). It expires
+	// quickly so it can never absorb a later user edit.
+	const amendUntilRef = useRef(0);
 	const [historyFlags, setHistoryFlags] = useState({ canUndo: false, canRedo: false });
 	const syncButtons = useCallback(() => {
 		const next = {
@@ -160,18 +166,47 @@ export function useEditorHistory({
 		syncButtons();
 	}, [syncButtons]);
 
+	const buildSnapshotRef = useRef(buildSnapshot);
+	buildSnapshotRef.current = buildSnapshot;
+
+	const recordSnapshot = useCallback(
+		(snapshot: EditorHistorySnapshot) => {
+			// Only an actual change may use up a pending amend.
+			const amending =
+				amendUntilRef.current > Date.now() &&
+				!(
+					historyRef.current.current &&
+					areEditorHistorySnapshotsEqual(historyRef.current.current, snapshot)
+				);
+			const result = recordEditorHistorySnapshot(historyRef.current, snapshot, {
+				applyingHistory: applyingRef.current || amending,
+			});
+			if (result === "applied") {
+				applyingRef.current = false;
+				amendUntilRef.current = 0;
+			}
+			if (result !== "unchanged") syncButtons();
+		},
+		[syncButtons],
+	);
+
+	// The timeline calls this from its own effect, which runs before ours in the
+	// same commit: record the edit that caused the clamp first, so only the
+	// clamp itself (the next change) is folded into it.
+	const amendCurrentStep = useCallback(() => {
+		recordSnapshot(buildSnapshotRef.current());
+		amendUntilRef.current = Date.now() + 100;
+	}, [recordSnapshot]);
+
 	useEffect(() => {
-		const result = recordEditorHistorySnapshot(historyRef.current, buildSnapshot(), {
-			applyingHistory: applyingRef.current,
-		});
-		if (result === "applied") applyingRef.current = false;
-		if (result !== "unchanged") syncButtons();
-	}, [buildSnapshot, syncButtons]);
+		recordSnapshot(buildSnapshot());
+	}, [buildSnapshot, recordSnapshot]);
 
 	return {
 		...historyFlags,
 		handleUndo,
 		handleRedo,
 		resetHistory,
+		amendCurrentStep,
 	};
 }

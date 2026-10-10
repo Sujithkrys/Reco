@@ -13,6 +13,12 @@ interface UseTimelineNormalizationParams {
 	onTrimSpanChange?: (id: string, span: { start: number; end: number }) => void;
 	onSpeedSpanChange?: (id: string, span: { start: number; end: number }) => void;
 	onAudioSpanChange?: (id: string, span: { start: number; end: number }) => void;
+	/**
+	 * Called once before any region is clamped. The clamp follows from another
+	 * edit (e.g. shortening the last clip), so undo history folds it into that
+	 * edit instead of recording a step that undo could never get past.
+	 */
+	onBeforeNormalize?: () => void;
 }
 
 export function useTimelineNormalization({
@@ -26,63 +32,41 @@ export function useTimelineNormalization({
 	onTrimSpanChange,
 	onSpeedSpanChange,
 	onAudioSpanChange,
+	onBeforeNormalize,
 }: UseTimelineNormalizationParams) {
 	useEffect(() => {
 		if (totalMs === 0 || safeMinDurationMs <= 0) {
 			return;
 		}
 
-		zoomRegions.forEach((region) => {
-			const normalized = normalizeRegionSpan({
-				startMs: region.startMs,
-				endMs: region.endMs,
-				totalMs,
-				minDurationMs: safeMinDurationMs,
-			});
+		const changes: Array<() => void> = [];
+		const collect = (
+			regions: Array<{ id: string; startMs: number; endMs: number }>,
+			onChange: ((id: string, span: { start: number; end: number }) => void) | undefined,
+		) => {
+			if (!onChange) return;
+			for (const region of regions) {
+				const normalized = normalizeRegionSpan({
+					startMs: region.startMs,
+					endMs: region.endMs,
+					totalMs,
+					minDurationMs: safeMinDurationMs,
+				});
 
-			if (normalized.start !== region.startMs || normalized.end !== region.endMs) {
-				onZoomSpanChange(region.id, normalized);
+				if (normalized.start !== region.startMs || normalized.end !== region.endMs) {
+					changes.push(() => onChange(region.id, normalized));
+				}
 			}
-		});
+		};
 
-		trimRegions.forEach((region) => {
-			const normalized = normalizeRegionSpan({
-				startMs: region.startMs,
-				endMs: region.endMs,
-				totalMs,
-				minDurationMs: safeMinDurationMs,
-			});
+		collect(zoomRegions, onZoomSpanChange);
+		collect(trimRegions, onTrimSpanChange);
+		collect(speedRegions, onSpeedSpanChange);
+		collect(audioRegions, onAudioSpanChange);
 
-			if (normalized.start !== region.startMs || normalized.end !== region.endMs) {
-				onTrimSpanChange?.(region.id, normalized);
-			}
-		});
-
-		speedRegions.forEach((region) => {
-			const normalized = normalizeRegionSpan({
-				startMs: region.startMs,
-				endMs: region.endMs,
-				totalMs,
-				minDurationMs: safeMinDurationMs,
-			});
-
-			if (normalized.start !== region.startMs || normalized.end !== region.endMs) {
-				onSpeedSpanChange?.(region.id, normalized);
-			}
-		});
-
-		audioRegions.forEach((region) => {
-			const normalized = normalizeRegionSpan({
-				startMs: region.startMs,
-				endMs: region.endMs,
-				totalMs,
-				minDurationMs: safeMinDurationMs,
-			});
-
-			if (normalized.start !== region.startMs || normalized.end !== region.endMs) {
-				onAudioSpanChange?.(region.id, normalized);
-			}
-		});
+		if (changes.length === 0) return;
+		onBeforeNormalize?.();
+		for (const change of changes) change();
 	}, [
 		totalMs,
 		safeMinDurationMs,
@@ -94,5 +78,6 @@ export function useTimelineNormalization({
 		onTrimSpanChange,
 		onSpeedSpanChange,
 		onAudioSpanChange,
+		onBeforeNormalize,
 	]);
 }
