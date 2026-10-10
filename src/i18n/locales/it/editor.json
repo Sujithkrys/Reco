@@ -40,6 +40,7 @@
 		"deleteAnnotation": "Elimina annotazione",
 		"resetPosition": "Reimposta posizione",
 		"addImages": "Aggiungi altre immagini",
+		"pickColorFromScreen": "Preleva un colore dallo schermo",
 		"shortcutsAndTips": "Scorciatoie e consigli",
 		"tipSelectAnnotation": "Sposta il cursore sulla sezione dell'annotazione sovrapposta e seleziona un elemento.",
 		"tipCycleForward": "Usa Tab per scorrere tra gli elementi sovrapposti.",

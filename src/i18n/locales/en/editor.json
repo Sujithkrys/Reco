@@ -40,6 +40,7 @@
 		"deleteAnnotation": "Delete Annotation",
 		"resetPosition": "Reset position",
 		"addImages": "Add more images",
+		"pickColorFromScreen": "Pick a colour from the screen",
 		"shortcutsAndTips": "Shortcuts & Tips",
 		"tipSelectAnnotation": "Move playhead to overlapping annotation section and select an item.",
 		"tipCycleForward": "Use Tab to cycle through overlapping items.",

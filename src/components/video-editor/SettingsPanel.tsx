@@ -36,6 +36,7 @@ import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
+import { ColorEyedropperButton } from "./ColorEyedropperButton";
 import CaptionListPanel from "./CaptionListPanel";
 import type { CaptionRetimeSpan } from "./captionOps";
 import {
@@ -2030,11 +2031,18 @@ export function SettingsPanel({
 												background: `linear-gradient(135deg, ${selectedColor} 0%, ${selectedColor} 58%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,0.92) 100%)`,
 											}}
 											aria-label="Custom color picker"
-										>
-											<div className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
-												Pick
-											</div>
-										</button>
+											>
+												<div className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+													Pick
+												</div>
+											</button>
+											<ColorEyedropperButton
+												onPick={(hex) => {
+													setSelectedColor(hex);
+													onWallpaperChange(hex);
+												}}
+												className="aspect-square h-auto w-full"
+											/>
 									</div>
 								</div>
 							) : (
@@ -2553,14 +2561,19 @@ export function SettingsPanel({
 					<span className="text-[10px] text-muted-foreground">
 						{tSettings("captions.textColor", "Text color")}
 					</span>
-					<input
-						type="color"
-						value={autoCaptionSettings.textColor}
-						onChange={(event) =>
-							updateAutoCaptionSettings({ textColor: event.target.value })
-						}
-						className="h-7 w-10 rounded border border-foreground/10 bg-transparent"
-					/>
+					<div className="flex items-center gap-1.5">
+						<ColorEyedropperButton
+							onPick={(hex) => updateAutoCaptionSettings({ textColor: hex })}
+						/>
+						<input
+							type="color"
+							value={autoCaptionSettings.textColor}
+							onChange={(event) =>
+								updateAutoCaptionSettings({ textColor: event.target.value })
+							}
+							className="h-7 w-10 rounded border border-foreground/10 bg-transparent"
+						/>
+					</div>
 				</label>
 				<div className="mb-1 text-sm font-medium text-foreground">
 					{tSettings("captions.fontSettings", "Font Settings")}
@@ -3551,7 +3564,11 @@ export function SettingsPanel({
 												<div className="absolute inset-0 flex items-center justify-center">
 													Pick
 												</div>
-											</button>
+												</button>
+												<ColorEyedropperButton
+													onPick={(hex) => onCursorClickEffectColorChange?.(hex)}
+													className="h-6 w-6"
+												/>
 										</div>
 									</div>
 									<SliderControl
