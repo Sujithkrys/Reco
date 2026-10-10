@@ -1,7 +1,17 @@
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
 import { sanitizeRect } from "./annotationCanvasBounds";
+import {
+	hasTextBackground,
+	layoutTextBox,
+	TEXT_BACKGROUND_RADIUS,
+	TEXT_BOX_PADDING,
+	TEXT_INSET_X_EM,
+	TEXT_INSET_Y_EM,
+	TEXT_LINE_HEIGHT,
+	textLayerFont,
+} from "./annotationTextLayout";
 import { getArrowComponent } from "./ArrowSvgs";
 import {
 	type AnnotationRegion,
@@ -38,6 +48,29 @@ interface AnnotationOverlayProps {
 	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
 }
 
+let measureContext: CanvasRenderingContext2D | null | undefined;
+/** A shared 2D context for measuring text, so the preview wraps like the export canvas. */
+function getMeasureContext(): CanvasRenderingContext2D | null {
+	if (measureContext === undefined) {
+		measureContext =
+			typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
+	}
+	return measureContext;
+}
+
+/** Bumps when web fonts finish loading, so text measured with a fallback font is re-measured. */
+function useFontsVersion(): number {
+	const [version, setVersion] = useState(0);
+	useEffect(() => {
+		const fonts = typeof document === "undefined" ? undefined : document.fonts;
+		if (!fonts) return;
+		const bump = () => setVersion((current) => current + 1);
+		fonts.addEventListener("loadingdone", bump);
+		return () => fonts.removeEventListener("loadingdone", bump);
+	}, []);
+	return version;
+}
+
 /** Render an annotation in preview space with editor drag and resize controls. */
 export function AnnotationOverlay({
 	annotation,
@@ -69,6 +102,36 @@ export function AnnotationOverlay({
 	const blurScaleFactor = sizeScale * sceneTransform.scale;
 
 	const isDraggingRef = useRef(false);
+	// While a resize is in progress the box is wider/narrower than the stored
+	// size; wrap text to the live size so it reflows as the box moves.
+	const [liveSize, setLiveSize] = useState<{ width: number; height: number } | null>(null);
+	const fontsVersion = useFontsVersion();
+	const textFontSize = annotation.style.fontSize * sizeScale;
+	const textBoxWidth = liveSize?.width ?? width;
+	const textBoxHeight = liveSize?.height ?? height;
+	const textLines = useMemo(() => {
+		if (annotation.type !== "text") return [];
+		const ctx = getMeasureContext();
+		const content = annotation.content || "";
+		if (!ctx) return content.split("\n");
+		ctx.font = textLayerFont(annotation.style, textFontSize);
+		return layoutTextBox(
+			(text) => ctx.measureText(text).width,
+			content,
+			annotation.style.textAlign,
+			{ x: 0, y: 0, width: textBoxWidth, height: textBoxHeight, fontSize: textFontSize, scale: sizeScale },
+		).lines;
+		// fontsVersion re-measures once web fonts finish loading.
+	}, [
+		annotation.type,
+		annotation.content,
+		annotation.style,
+		textFontSize,
+		textBoxWidth,
+		textBoxHeight,
+		sizeScale,
+		fontsVersion,
+	]);
 
 	const screenRectToRecordingPercent = (rect: Rect) => {
 		const nextSceneX = (rect.x - sceneTransform.x) / sceneTransform.scale;
@@ -104,47 +167,49 @@ export function AnnotationOverlay({
 
 	const renderContent = () => {
 		switch (annotation.type) {
-			case "text":
+			case "text": {
+				const hasBackground = hasTextBackground(annotation.style);
 				return (
+					// The background fills the whole box (it resizes with it); lines come
+					// from the same wrap as the export renderer (layoutTextBox).
 					<div
-						className="w-full h-full flex items-center overflow-hidden"
+						className="w-full h-full overflow-hidden"
 						style={{
-							justifyContent:
-								annotation.style.textAlign === "left"
-									? "flex-start"
-									: annotation.style.textAlign === "right"
-										? "flex-end"
-										: "center",
-							alignItems: "center",
-							padding: `${8 * sizeScale}px`,
+							display: "flex",
+							flexDirection: "column",
+							justifyContent: "center",
+							boxSizing: "border-box",
+							padding: `${TEXT_BOX_PADDING * sizeScale}px`,
+							backgroundColor: hasBackground ? annotation.style.backgroundColor : undefined,
+							borderRadius: hasBackground ? `${TEXT_BACKGROUND_RADIUS * sizeScale}px` : undefined,
 						}}
 					>
-						<span
+						<div
 							style={{
+								flexShrink: 0,
+								width: "100%",
+								boxSizing: "border-box",
+								padding: `${TEXT_INSET_Y_EM}em ${TEXT_INSET_X_EM}em`,
 								color: annotation.style.color,
-								backgroundColor: annotation.style.backgroundColor,
-								fontSize: `${annotation.style.fontSize * sizeScale}px`,
+								fontSize: `${textFontSize}px`,
 								fontFamily: annotation.style.fontFamily,
 								fontWeight: annotation.style.fontWeight,
 								fontStyle: annotation.style.fontStyle,
 								textDecoration: annotation.style.textDecoration,
 								textAlign: annotation.style.textAlign,
-								wordBreak: "break-word",
-								whiteSpace: "pre-wrap",
-								// One block behind all lines (not one per line); the export
-								// renderer draws the same block (layoutTextBlock).
-								display: "inline-block",
-								maxWidth: "100%",
-								boxSizing: "border-box",
-								padding: "0.1em 0.2em",
-								borderRadius: `${4 * sizeScale}px`,
-								lineHeight: "1.4",
+								lineHeight: String(TEXT_LINE_HEIGHT),
 							}}
 						>
-							{annotation.content}
-						</span>
+							{textLines.map((line, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: lines have no identity beyond their order.
+								<div key={index} style={{ whiteSpace: "pre" }}>
+									{line || "​"}
+								</div>
+							))}
+						</div>
 					</div>
 				);
+			}
 
 			case "image":
 				if (annotation.content && annotation.content.startsWith("data:image")) {
@@ -243,7 +308,13 @@ export function AnnotationOverlay({
 					isDraggingRef.current = false;
 				}, 100);
 			}}
+			onResize={(_e, _direction, ref) => {
+				if (annotation.type === "text") {
+					setLiveSize({ width: ref.offsetWidth, height: ref.offsetHeight });
+				}
+			}}
 			onResizeStop={(_e, _direction, ref, _delta, position) => {
+				setLiveSize(null);
 				const next = screenRectToRecordingPercent({
 					x: position.x,
 					y: position.y,
