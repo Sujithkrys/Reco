@@ -74,6 +74,26 @@ export const FONT_FAMILY_VALUES = [
 
 export const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 128];
 
+/** Swatches offered by every annotation colour picker (settings panel and layer toolbar). */
+export const ANNOTATION_COLOR_PALETTE = [
+	"#FF0000", // Red
+	"#FFD700", // Yellow/Gold
+	"#00FF00", // Green
+	"#FFFFFF", // White
+	"#0000FF", // Blue
+	"#FF6B00", // Orange
+	"#9B59B6", // Purple
+	"#E91E63", // Pink
+	"#00BCD4", // Cyan
+	"#FF5722", // Deep Orange
+	"#8BC34A", // Light Green
+	"#FFC107", // Amber
+	"#2563EB", // Brand Blue
+	"#000000", // Black
+	"#607D8B", // Blue Grey
+	"#795548", // Brown
+];
+
 export function AnnotationSettingsPanel({
 	annotation,
 	onContentChange,
@@ -103,24 +123,7 @@ export function AnnotationSettingsPanel({
 		setCustomFonts(getCustomFonts());
 	}, []);
 
-	const colorPalette = [
-		"#FF0000", // Red
-		"#FFD700", // Yellow/Gold
-		"#00FF00", // Green
-		"#FFFFFF", // White
-		"#0000FF", // Blue
-		"#FF6B00", // Orange
-		"#9B59B6", // Purple
-		"#E91E63", // Pink
-		"#00BCD4", // Cyan
-		"#FF5722", // Deep Orange
-		"#8BC34A", // Light Green
-		"#FFC107", // Amber
-		"#2563EB", // Brand Blue
-		"#000000", // Black
-		"#607D8B", // Blue Grey
-		"#795548", // Brown
-	];
+	const colorPalette = ANNOTATION_COLOR_PALETTE;
 
 	const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;

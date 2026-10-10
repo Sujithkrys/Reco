@@ -345,6 +345,9 @@ export function EditorLayout(props: Props) {
 							playback={playback}
 							zoomCommands={zoomCommands}
 							annotationCommands={annotationCommands}
+							audioCommands={audioCommands}
+							clipCommands={clipCommands}
+							playheadEdits={editing.playheadEdits}
 							effectiveCursorTelemetry={cursor.effectiveCursorTelemetry}
 							effectiveShowCursor={effectiveShowCursor}
 							isCropped={ui.isCropped}

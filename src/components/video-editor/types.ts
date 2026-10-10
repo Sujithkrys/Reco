@@ -511,6 +511,17 @@ export type ArrowDirection =
 	| "down-right"
 	| "down-left";
 
+export const ARROW_DIRECTIONS: ArrowDirection[] = [
+	"up",
+	"down",
+	"left",
+	"right",
+	"up-right",
+	"up-left",
+	"down-right",
+	"down-left",
+];
+
 export interface FigureData {
 	arrowDirection: ArrowDirection;
 	color: string;

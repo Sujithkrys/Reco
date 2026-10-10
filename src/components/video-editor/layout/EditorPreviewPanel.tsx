@@ -16,9 +16,20 @@ import {
 	SpeakerX,
 	Waveform,
 } from "@phosphor-icons/react";
-import { useMemo, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import {
+	type Dispatch,
+	type RefObject,
+	type SetStateAction,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
+import { formatBinding } from "@/lib/shortcuts";
+import { cn } from "@/lib/utils";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -30,7 +41,10 @@ import { ASPECT_RATIOS, type AspectRatio, getAspectRatioLabel } from "@/utils/as
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import type { CaptionEditTarget } from "../captionEditing";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
+import type { useAudioRegionCommands } from "../hooks/useAudioRegionCommands";
+import type { useClipRegionCommands } from "../hooks/useClipRegionCommands";
 import type { useEditorPlaybackControls } from "../hooks/useEditorPlaybackControls";
+import type { usePlayheadEditCommands } from "../hooks/usePlayheadEditCommands";
 import type { useTimelineProjection } from "../hooks/useTimelineProjection";
 import type { useZoomRegionCommands } from "../hooks/useZoomRegionCommands";
 import type { useAppearanceState } from "../state/useAppearanceState";
@@ -41,6 +55,7 @@ import { ChapterManagementModal } from "../chapters/ChapterManagementModal";
 import { rippleShiftChapters } from "../chapters/chapterUtils";
 import { SilenceRemovalModal } from "../silenceRemoval/SilenceRemovalModal";
 import { EditorVideoPreview } from "./EditorVideoPreview";
+import { LayerContextToolbar } from "./LayerContextToolbar";
 
 type Props = {
 	t: ReturnType<typeof useI18n>["t"];
@@ -63,6 +78,9 @@ type Props = {
 	playback: ReturnType<typeof useEditorPlaybackControls>;
 	zoomCommands: ReturnType<typeof useZoomRegionCommands>;
 	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
+	audioCommands: ReturnType<typeof useAudioRegionCommands>;
+	clipCommands: ReturnType<typeof useClipRegionCommands>;
+	playheadEdits: ReturnType<typeof usePlayheadEditCommands>;
 	effectiveCursorTelemetry: ReturnType<typeof useTimelineState>["cursorTelemetry"];
 	effectiveShowCursor: boolean;
 	isCropped: boolean;
@@ -105,6 +123,9 @@ export function EditorPreviewPanel(props: Props) {
 		playback,
 		zoomCommands,
 		annotationCommands,
+		audioCommands,
+		clipCommands,
+		playheadEdits,
 		effectiveCursorTelemetry,
 		effectiveShowCursor,
 		isCropped,
@@ -120,6 +141,36 @@ export function EditorPreviewPanel(props: Props) {
 
 	const [silenceModalOpen, setSilenceModalOpen] = useState(false);
 	const [chapterModalOpen, setChapterModalOpen] = useState(false);
+	const { shortcuts, isMac } = useShortcuts();
+	const splitShortcutLabel = shortcuts.splitClip
+		? ` (${formatBinding(shortcuts.splitClip, isMac)})`
+		: "";
+
+	// The layer toolbar may only use the space between the existing buttons and
+	// the centred playback controls, so it never overlaps or pushes them.
+	const barRef = useRef<HTMLDivElement | null>(null);
+	const staticActionsRef = useRef<HTMLDivElement | null>(null);
+	const playbackControlsRef = useRef<HTMLDivElement | null>(null);
+	const [toolbarWidth, setToolbarWidth] = useState(0);
+	useEffect(() => {
+		const measure = () => {
+			const actions = staticActionsRef.current?.getBoundingClientRect();
+			const controls = playbackControlsRef.current?.getBoundingClientRect();
+			if (!actions || !controls) return;
+			// Keep a 12px gap before the playback controls.
+			setToolbarWidth(Math.max(0, Math.floor(controls.left - actions.right - 12)));
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		for (const element of [barRef.current, staticActionsRef.current, playbackControlsRef.current]) {
+			if (element) observer.observe(element);
+		}
+		window.addEventListener("resize", measure);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", measure);
+		};
+	}, []);
 
 	const activeChapter = useMemo(() => {
 		const currentMs = projection.timelinePlayheadTime * 1000;
@@ -135,6 +186,23 @@ export function EditorPreviewPanel(props: Props) {
 		}
 		return match;
 	}, [projection.timelinePlayheadTime, timeline.chapters]);
+
+	const selectedAnnotation =
+		timeline.annotationRegions.find((region) => region.id === timeline.selectedAnnotationId) ?? null;
+	const selectedZoom =
+		timeline.zoomRegions.find((region) => region.id === timeline.selectedZoomId) ?? null;
+	const selectedAudio =
+		timeline.audioRegions.find((region) => region.id === timeline.selectedAudioId) ?? null;
+	const splitTooltip =
+		playheadEdits.target === null
+			? "Split at playhead: not available for this selection"
+			: playheadEdits.target === "all"
+				? playheadEdits.splitCount > 0
+					? `Split at playhead (${playheadEdits.splitCount} ${playheadEdits.splitCount === 1 ? "item" : "items"})${splitShortcutLabel}`
+					: "Split at playhead: nothing under the playhead"
+				: playheadEdits.splitCount > 0
+					? `Split selected at playhead${splitShortcutLabel}`
+					: "Split: move the playhead inside the selection";
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -239,8 +307,9 @@ export function EditorPreviewPanel(props: Props) {
 				</div>
 			</div>
 
-			<div className="relative flex flex-shrink-0 items-center px-1 py-1">
+			<div ref={barRef} className="relative flex flex-shrink-0 items-center px-1 py-1">
 				<div className="z-10 flex min-w-0 flex-1 items-center gap-1.5">
+					<div ref={staticActionsRef} className="flex flex-shrink-0 items-center gap-1.5">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -316,12 +385,18 @@ export function EditorPreviewPanel(props: Props) {
 							<MagicWand className="h-4 w-4" />
 						</Button>
 					</Tooltip>
-					<Tooltip content={t("editor.toolbar.splitClip")} asChild>
+					{/* Context-aware: splits the selected layer, or with nothing selected the
+						clip and every layer under the playhead, as one undo step. */}
+					<Tooltip content={splitTooltip}>
 						<Button
-							onClick={() => timelineRef.current?.splitClip()}
+							onClick={() => playheadEdits.splitAtPlayhead()}
+							disabled={playheadEdits.splitCount === 0}
 							variant="ghost"
 							size="icon"
-							className="h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground"
+							className={cn(
+								"h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground",
+								playheadEdits.splitCount === 0 && "pointer-events-none opacity-40",
+							)}
 							aria-label={t("editor.toolbar.splitClip")}
 						>
 							<Scissors className="h-4 w-4" />
@@ -365,10 +440,25 @@ export function EditorPreviewPanel(props: Props) {
 							/>
 						</Button>
 					</Tooltip>
+					</div>
+					<LayerContextToolbar
+						availableWidth={toolbarWidth}
+						target={playheadEdits.target}
+						selectedAnnotation={selectedAnnotation}
+						selectedZoom={selectedZoom}
+						selectedAudio={selectedAudio}
+						selectedClipId={timeline.selectedClipId}
+						trimCount={playheadEdits.trimCount}
+						onTrim={playheadEdits.trimToPlayhead}
+						annotationCommands={annotationCommands}
+						zoomCommands={zoomCommands}
+						audioCommands={audioCommands}
+						onDeleteClip={clipCommands.handleClipDelete}
+					/>
 				</div>
 
 				<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-					<div className="pointer-events-auto flex items-center gap-1.5">
+					<div ref={playbackControlsRef} className="pointer-events-auto flex items-center gap-1.5">
 						<span className="mr-1 text-[10px] font-medium tabular-nums text-muted-foreground flex items-center gap-1.5">
 							<span>{formatTime(projection.timelinePlayheadTime)}</span>
 							{activeChapter && (
