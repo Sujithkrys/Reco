@@ -67,7 +67,7 @@ import { fitToolbarItems } from "./layerToolbarFit";
 const BUTTON_CLASS =
 	"h-7 w-7 rounded-full text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground";
 const POPOVER_CLASS =
-	"w-[240px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl";
+	"w-[240px] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl";
 const IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
 
 interface ToolbarItem {
@@ -636,7 +636,14 @@ export function LayerContextToolbar({
 							</Button>
 						</PopoverTrigger>
 					</Tooltip>
-					<PopoverContent side="top" align="center" className={POPOVER_CLASS}>
+					<PopoverContent
+						side="top"
+						align="center"
+						collisionPadding={12}
+						avoidCollisions
+						sticky="always"
+						className={POPOVER_CLASS}
+					>
 						{item.popover}
 					</PopoverContent>
 				</Popover>

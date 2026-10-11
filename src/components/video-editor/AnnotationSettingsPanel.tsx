@@ -37,6 +37,7 @@ import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { loadImageSize, type NaturalSize } from "./imageLayerSize";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { AnnotationColorBlock } from "./AnnotationColorBlock";
+import { COLOR_PICKER_POPOVER_PROPS } from "./ColorPickerPopover";
 import {
 	type AnnotationPreviewPatch,
 	clearAnnotationPreview,
@@ -594,7 +595,7 @@ export function AnnotationSettingsPanel({
 													<ChevronDown className="h-3 w-3 opacity-50" />
 												</Button>
 											</PopoverTrigger>
-											<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+											<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 												<AnnotationColorBlock
 													color={annotation.style.color}
 													colors={colorPalette}
@@ -635,7 +636,7 @@ export function AnnotationSettingsPanel({
 													<ChevronDown className="h-3 w-3 opacity-50" />
 												</Button>
 											</PopoverTrigger>
-											<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+											<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 												<AnnotationColorBlock
 													color={
 														annotation.style.backgroundColor === "transparent"
@@ -812,7 +813,7 @@ export function AnnotationSettingsPanel({
 											<ChevronDown className="h-3 w-3 opacity-50" />
 										</Button>
 									</PopoverTrigger>
-									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+									<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 										<AnnotationColorBlock
 											color={annotation.figureData?.color || "#2563EB"}
 											colors={colorPalette}
@@ -894,7 +895,7 @@ export function AnnotationSettingsPanel({
 											<ChevronDown className="h-3 w-3 opacity-50" />
 										</Button>
 									</PopoverTrigger>
-									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+									<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 										<AnnotationColorBlock
 											color={shape.fillColor}
 											colors={colorPalette}
@@ -926,7 +927,7 @@ export function AnnotationSettingsPanel({
 											<ChevronDown className="h-3 w-3 opacity-50" />
 										</Button>
 									</PopoverTrigger>
-									<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+									<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 										<AnnotationColorBlock
 											color={shape.strokeColor}
 											colors={colorPalette}
@@ -1087,7 +1088,7 @@ export function AnnotationSettingsPanel({
 													)}
 												</button>
 											</PopoverTrigger>
-											<PopoverContent className="w-[260px] p-3 bg-editor-surface-alt border border-foreground/10 rounded-xl shadow-xl">
+											<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 												<AnnotationColorBlock
 													color={annotation.blurColor || "#2563EB"}
 													colors={colorPalette}
