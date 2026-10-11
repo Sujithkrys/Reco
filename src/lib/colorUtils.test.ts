@@ -8,6 +8,10 @@ import {
 	normalizeHex,
 	parseChannel,
 	parseHex,
+	ringColorAt,
+	ringHueAt,
+	svColorAt,
+	hueBarColorAt,
 	rgbaToHex,
 	rgbToHsl,
 	rgbToHsv,
@@ -101,5 +105,35 @@ describe("parseChannel / clamp", () => {
 		expect(clamp(Number.NaN, 0, 10)).toBe(0);
 		expect(clamp(Infinity, 0, 10)).toBe(0);
 		expect(clamp(5, 0, 10)).toBe(5);
+	});
+});
+
+describe("colour at a point", () => {
+	const base = { h: 200, s: 50, v: 50, a: 1 };
+
+	it("saturation square: left is grey, right is full saturation, top is bright, bottom is black", () => {
+		expect(svColorAt(base, 0, 0)).toEqual({ h: 200, s: 0, v: 100, a: 1 });
+		expect(svColorAt(base, 1, 0)).toEqual({ h: 200, s: 100, v: 100, a: 1 });
+		expect(svColorAt(base, 0.5, 1)).toEqual({ h: 200, s: 50, v: 0, a: 1 });
+	});
+
+	it("clamps points outside the control", () => {
+		expect(svColorAt(base, -3, 7)).toEqual({ h: 200, s: 0, v: 0, a: 1 });
+		expect(svColorAt(base, 9, -2)).toEqual({ h: 200, s: 100, v: 100, a: 1 });
+	});
+
+	it("hue bar: left is red, a third across is green, the far right stays below 360", () => {
+		expect(hueBarColorAt(base, 0).h).toBe(0);
+		expect(hueBarColorAt(base, 1 / 3).h).toBeCloseTo(120);
+		expect(hueBarColorAt(base, 1).h).toBeLessThan(360);
+		expect(hueBarColorAt(base, 0.5)).toMatchObject({ s: 50, v: 50 });
+	});
+
+	it("hue ring: top is red, right is 90, bottom is 180, left is 270", () => {
+		expect(ringHueAt(0.5, 0)).toBeCloseTo(0);
+		expect(ringHueAt(1, 0.5)).toBeCloseTo(90);
+		expect(ringHueAt(0.5, 1)).toBeCloseTo(180);
+		expect(ringHueAt(0, 0.5)).toBeCloseTo(270);
+		expect(ringColorAt(base, 1, 0.5)).toMatchObject({ s: 50, v: 50, a: 1 });
 	});
 });

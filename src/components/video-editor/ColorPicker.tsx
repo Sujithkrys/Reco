@@ -19,8 +19,11 @@ import {
 	parseChannel,
 	parseHex,
 	type Rgba,
+	ringColorAt,
 	rgbToHsl,
 	rgbToHsv,
+	svColorAt,
+	hueBarColorAt,
 } from "@/lib/colorUtils";
 import { addRecentColor, getRecentColors } from "@/lib/recentColors";
 import { cn } from "@/lib/utils";
@@ -43,8 +46,18 @@ type TFn = (key: string, fallback?: string) => string;
 function useDragSurface(
 	onDrag: (x: number, y: number) => void,
 	onEnd: (cancelled: boolean) => void,
+	/** Pointer over the surface with no button down: previews the colour under it (rAF-throttled). */
+	hover?: { onHover: (x: number, y: number) => void; onLeave: () => void },
 ) {
 	const dragging = useRef(false);
+	const frame = useRef<number | null>(null);
+	const pending = useRef<{ x: number; y: number } | null>(null);
+	const cancelFrame = () => {
+		if (frame.current !== null) cancelAnimationFrame(frame.current);
+		frame.current = null;
+		pending.current = null;
+	};
+	useEffect(() => cancelFrame, []);
 	const report = (event: PointerEvent<HTMLElement>) => {
 		const rect = event.currentTarget.getBoundingClientRect();
 		if (rect.width <= 0 || rect.height <= 0) return;
@@ -56,6 +69,7 @@ function useDragSurface(
 	return {
 		onPointerDown: (event: PointerEvent<HTMLElement>) => {
 			if (event.button !== 0) return;
+			cancelFrame();
 			event.preventDefault();
 			event.currentTarget.setPointerCapture?.(event.pointerId);
 			event.currentTarget.focus();
@@ -63,7 +77,29 @@ function useDragSurface(
 			report(event);
 		},
 		onPointerMove: (event: PointerEvent<HTMLElement>) => {
-			if (dragging.current) report(event);
+			if (dragging.current) {
+				report(event);
+				return;
+			}
+			if (!hover || event.buttons !== 0 || event.pointerType === "touch") return;
+			const rect = event.currentTarget.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) return;
+			pending.current = {
+				x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+				y: clamp((event.clientY - rect.top) / rect.height, 0, 1),
+			};
+			if (frame.current !== null) return;
+			frame.current = requestAnimationFrame(() => {
+				frame.current = null;
+				const point = pending.current;
+				pending.current = null;
+				if (point) hover.onHover(point.x, point.y);
+			});
+		},
+		onPointerLeave: () => {
+			if (dragging.current) return;
+			cancelFrame();
+			hover?.onLeave();
 		},
 		onPointerUp: (event: PointerEvent<HTMLElement>) => {
 			if (!dragging.current) return;
@@ -309,15 +345,21 @@ export function ColorPicker({
 		[hsva.h],
 	);
 
+	const previewHsva = (next: Hsva) => onPreview?.(hsvaToHex(next, allowAlpha));
+	const endHover = () => onPreview?.(null);
 	const svDrag = useDragSurface(
-		(x, y) => live({ ...liveRef.current, s: x * 100, v: (1 - y) * 100 }),
+		(x, y) => live(svColorAt(liveRef.current, x, y)),
 		endDrag,
+		{ onHover: (x, y) => previewHsva(svColorAt(liveRef.current, x, y)), onLeave: endHover },
 	);
-	const hueDrag = useDragSurface((x) => live({ ...liveRef.current, h: x * 360 }), endDrag);
-	const ringDrag = useDragSurface((x, y) => {
-		const angle = (Math.atan2(x - 0.5, -(y - 0.5)) * 180) / Math.PI;
-		live({ ...liveRef.current, h: (angle + 360) % 360 });
-	}, endDrag);
+	const hueDrag = useDragSurface((x) => live(hueBarColorAt(liveRef.current, x)), endDrag, {
+		onHover: (x) => previewHsva(hueBarColorAt(liveRef.current, x)),
+		onLeave: endHover,
+	});
+	const ringDrag = useDragSurface((x, y) => live(ringColorAt(liveRef.current, x, y)), endDrag, {
+		onHover: (x, y) => previewHsva(ringColorAt(liveRef.current, x, y)),
+		onLeave: endHover,
+	});
 	const alphaDrag = useDragSurface((x) => live({ ...liveRef.current, a: x }), endDrag);
 
 	const onSvKey = (event: KeyboardEvent<HTMLElement>) => {

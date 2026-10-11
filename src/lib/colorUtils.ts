@@ -140,3 +140,24 @@ export function parseChannel(text: string, min = 0, max = 255): number | null {
 	if (!/^-?\d+(\.\d+)?$/.test(trimmed)) return null;
 	return Math.round(clamp(Number(trimmed), min, max));
 }
+
+/** Colour under a point of the saturation/brightness square (x, y in 0-1, y down), keeping the current hue and alpha. */
+export function svColorAt(hsva: Hsva, x: number, y: number): Hsva {
+	return { ...hsva, s: clamp(x, 0, 1) * 100, v: (1 - clamp(y, 0, 1)) * 100 };
+}
+
+/** Colour under a point of the hue bar (x in 0-1), keeping saturation, brightness and alpha. */
+export function hueBarColorAt(hsva: Hsva, x: number): Hsva {
+	return { ...hsva, h: Math.min(359.999, clamp(x, 0, 1) * 360) };
+}
+
+/** Hue (0-360, 0 at the top, clockwise) at a point of a square holding a hue ring (x, y in 0-1). */
+export function ringHueAt(x: number, y: number): number {
+	const angle = (Math.atan2(clamp(x, 0, 1) - 0.5, -(clamp(y, 0, 1) - 0.5)) * 180) / Math.PI;
+	return (angle + 360) % 360;
+}
+
+/** Colour under a point of the hue ring, keeping saturation, brightness and alpha. */
+export function ringColorAt(hsva: Hsva, x: number, y: number): Hsva {
+	return { ...hsva, h: ringHueAt(x, y) };
+}
