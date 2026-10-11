@@ -112,7 +112,13 @@
 		"panTimeline": "타임라인 이동",
 		"zoomTimeline": "타임라인 확대/축소",
 		"cycleAnnotations": "주석 순환",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "선택한 레이어",
+		"layerMove": "이동 (Shift ×10, Alt 1px)",
+		"layerDuplicate": "복제",
+		"layerDeselect": "선택 해제",
+		"layerOrder": "뒤로 / 앞으로 보내기",
+		"layerScale": "작게 / 크게"
 	},
 	"actions": {
 		"saveAgain": "다시 저장",

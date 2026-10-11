@@ -13,6 +13,9 @@ export interface AnnotationPreviewPatch {
 	shapeData?: Partial<ShapeData>;
 	figureData?: Partial<FigureData>;
 	blurColor?: string;
+	/** Used by the keyboard shortcuts to show held arrow / scale keys before they are committed. */
+	position?: { x: number; y: number };
+	size?: { width: number; height: number };
 }
 
 export interface AnnotationPreview {
@@ -73,6 +76,8 @@ export function applyAnnotationPreview(
 				? { figureData: { ...region.figureData, ...patch.figureData } }
 				: {}),
 			...(patch.blurColor !== undefined ? { blurColor: patch.blurColor } : {}),
+						...(patch.position ? { position: patch.position } : {}),
+						...(patch.size ? { size: patch.size } : {}),
 		};
 	});
 }

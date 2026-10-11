@@ -111,7 +111,13 @@
 		"panTimeline": "Déplacer la timeline",
 		"zoomTimeline": "Zoomer la timeline",
 		"cycleAnnotations": "Parcourir les annotations",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "Calque sélectionné",
+		"layerMove": "Déplacer (Maj ×10, Alt 1 px)",
+		"layerDuplicate": "Dupliquer",
+		"layerDeselect": "Désélectionner",
+		"layerOrder": "Reculer / avancer",
+		"layerScale": "Plus petit / plus grand"
 	},
 	"actions": {
 		"saveAgain": "Enregistrer à nouveau",

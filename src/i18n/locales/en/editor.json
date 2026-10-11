@@ -111,7 +111,13 @@
 		"panTimeline": "Pan Timeline",
 		"zoomTimeline": "Zoom Timeline",
 		"cycleAnnotations": "Cycle Annotations",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "Selected layer",
+		"layerMove": "Move (Shift ×10, Alt 1 px)",
+		"layerDuplicate": "Duplicate",
+		"layerDeselect": "Deselect",
+		"layerOrder": "Send backward / forward",
+		"layerScale": "Smaller / larger"
 	},
 	"actions": {
 		"saveAgain": "Save Again",

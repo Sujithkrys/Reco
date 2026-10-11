@@ -111,7 +111,13 @@
 		"panTimeline": "Sposta timeline",
 		"zoomTimeline": "Zoom timeline",
 		"cycleAnnotations": "Scorri annotazioni",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "Livello selezionato",
+		"layerMove": "Sposta (Maiusc ×10, Alt 1 px)",
+		"layerDuplicate": "Duplica",
+		"layerDeselect": "Deseleziona",
+		"layerOrder": "Porta indietro / avanti",
+		"layerScale": "Più piccolo / più grande"
 	},
 	"actions": {
 		"saveAgain": "Salva di nuovo",

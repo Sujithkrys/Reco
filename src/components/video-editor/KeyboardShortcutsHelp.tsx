@@ -73,9 +73,42 @@ export function KeyboardShortcutsHelp() {
 							</span>
 							<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
 								{t("keyboardShortcuts.tab")}
-							</kbd>
-						</div>
-					</div>
+								</kbd>
+								</div>
+								</div>
+								<div className="pt-1 border-t border-foreground/5 mt-1">
+									<div className="text-[10px] font-semibold text-foreground">{t("keyboardShortcuts.layerTitle")}</div>
+									<div className="flex items-center justify-between mt-1.5">
+									<span className="text-muted-foreground">{t("keyboardShortcuts.layerMove")}</span>
+									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
+										← ↑ ↓ →
+									</kbd>
+								</div>
+									<div className="flex items-center justify-between mt-1.5">
+									<span className="text-muted-foreground">{t("keyboardShortcuts.layerDuplicate")}</span>
+									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
+										Ctrl + D
+									</kbd>
+								</div>
+									<div className="flex items-center justify-between mt-1.5">
+									<span className="text-muted-foreground">{t("keyboardShortcuts.layerDeselect")}</span>
+									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
+										Esc
+									</kbd>
+								</div>
+									<div className="flex items-center justify-between mt-1.5">
+									<span className="text-muted-foreground">{t("keyboardShortcuts.layerOrder")}</span>
+									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
+										Ctrl + [ / ]
+									</kbd>
+								</div>
+									<div className="flex items-center justify-between mt-1.5">
+									<span className="text-muted-foreground">{t("keyboardShortcuts.layerScale")}</span>
+									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
+										Ctrl + - / =
+									</kbd>
+								</div>
+								</div>
 				</div>
 			</div>
 		</div>

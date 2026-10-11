@@ -1,5 +1,6 @@
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from "react";
 import { useCallback, useRef } from "react";
+import { bindingsEqual } from "@/lib/shortcuts";
 import { toast } from "sonner";
 import type { useI18n } from "@/contexts/I18nContext";
 import type { useShortcuts } from "@/contexts/ShortcutsContext";
@@ -23,6 +24,7 @@ import { useEditorGlobalInteractions } from "./useEditorGlobalInteractions";
 import { useEditorPlaybackControls } from "./useEditorPlaybackControls";
 import { useFreshRecordingAutoZoom } from "./useFreshRecordingAutoZoom";
 import { useGeneratedClipRegionCommands } from "./useGeneratedClipRegionCommands";
+import { useLayerKeyboardShortcuts } from "./useLayerKeyboardShortcuts";
 import { usePlayheadEditCommands } from "./usePlayheadEditCommands";
 import { useTimelineProjection } from "./useTimelineProjection";
 import { useZoomRegionCommands } from "./useZoomRegionCommands";
@@ -245,6 +247,13 @@ export function useTimelineEditingController(input: Input) {
 		playheadMs: projection.timelinePlayheadTime * 1000,
 		totalMs: projection.timelineDuration * 1000,
 		getVideoRectAspect,
+	});
+	useLayerKeyboardShortcuts({
+		annotationRegions: timeline.annotationRegions,
+		selectedAnnotationId: timeline.selectedAnnotationId,
+		annotationCommands,
+		onDeselect: () => timeline.setSelectedAnnotationId(null),
+		ctrlDIsDelete: bindingsEqual(input.shortcuts.deleteSelected, { key: "d", ctrl: true }),
 	});
 	const generatedClipCommands = useGeneratedClipRegionCommands({
 		setGeneratedClipRegions: timeline.setGeneratedClipRegions,

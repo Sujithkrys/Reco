@@ -111,7 +111,13 @@
 		"panTimeline": "Desplazar línea de tiempo",
 		"zoomTimeline": "Zoom en línea de tiempo",
 		"cycleAnnotations": "Recorrer anotaciones",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "Capa seleccionada",
+		"layerMove": "Mover (Mayús ×10, Alt 1 px)",
+		"layerDuplicate": "Duplicar",
+		"layerDeselect": "Deseleccionar",
+		"layerOrder": "Enviar atrás / adelante",
+		"layerScale": "Más pequeña / más grande"
 	},
 	"actions": {
 		"saveAgain": "Guardar de nuevo",

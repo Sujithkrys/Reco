@@ -110,7 +110,13 @@
 		"panTimeline": "Zeitleiste verschieben",
 		"zoomTimeline": "Zeitleiste zoomen",
 		"cycleAnnotations": "Anmerkungen durchlaufen",
-		"tab": "Registerkarte"
+		"tab": "Registerkarte",
+		"layerTitle": "Ausgewählte Ebene",
+		"layerMove": "Verschieben (Umschalt ×10, Alt 1 px)",
+		"layerDuplicate": "Duplizieren",
+		"layerDeselect": "Auswahl aufheben",
+		"layerOrder": "Nach hinten / vorne",
+		"layerScale": "Kleiner / größer"
 	},
 	"actions": {
 		"saveAgain": "Erneut speichern",

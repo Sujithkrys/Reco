@@ -111,7 +111,13 @@
 		"panTimeline": "平移时间线",
 		"zoomTimeline": "缩放时间线",
 		"cycleAnnotations": "循环切换注释",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "所选图层",
+		"layerMove": "移动（Shift ×10，Alt 1 像素）",
+		"layerDuplicate": "复制",
+		"layerDeselect": "取消选择",
+		"layerOrder": "下移 / 上移一层",
+		"layerScale": "缩小 / 放大"
 	},
 	"actions": {
 		"saveAgain": "再次保存",

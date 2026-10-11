@@ -112,7 +112,13 @@
 		"panTimeline": "Tijdlijn verschuiven",
 		"zoomTimeline": "Tijdlijn zoomen",
 		"cycleAnnotations": "Annotaties doorlopen",
-		"tab": "Tab"
+		"tab": "Tab",
+		"layerTitle": "Geselecteerde laag",
+		"layerMove": "Verplaatsen (Shift ×10, Alt 1 px)",
+		"layerDuplicate": "Dupliceren",
+		"layerDeselect": "Selectie opheffen",
+		"layerOrder": "Naar achteren / voren",
+		"layerScale": "Kleiner / groter"
 	},
 	"actions": {
 		"saveAgain": "Opnieuw opslaan",

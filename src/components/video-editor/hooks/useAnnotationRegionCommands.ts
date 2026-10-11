@@ -1,6 +1,7 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 import { heightForImageWidth, imageLayerSize, type NaturalSize } from "../imageLayerSize";
+import { reorderedZIndexes } from "../layerKeyboard";
 import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
 	type AnnotationRegion,
@@ -37,6 +38,8 @@ export interface AddedImage {
 	}
 
 const IMAGE_LAYER_DEFAULT_DURATION_MS = 1000;
+/** Offset of a duplicated layer from the original, percent of the video. */
+const DUPLICATE_OFFSET_PERCENT = 3;
 /** Diagonal offset between image layers added together, as percent of the video. */
 const IMAGE_STACK_OFFSET_PERCENT = 3;
 
@@ -165,7 +168,51 @@ export function useAnnotationRegionCommands({
 		],
 	);
 
-	const handleAnnotationSpanChange = useCallback(
+	/** A copy of the layer, offset a little and on top; the copy becomes the selection. */
+		const handleAnnotationDuplicate = useCallback(
+			(id: string) => {
+				const newId = `annotation-${nextAnnotationIdRef.current++}`;
+				const zIndex = nextAnnotationZIndexRef.current++;
+				let created = false;
+				setAnnotationRegions((current) => {
+					const source = current.find((region) => region.id === id);
+					if (!source) return current;
+					created = true;
+					const copy = globalThis.structuredClone(source);
+					copy.id = newId;
+					copy.zIndex = zIndex;
+					copy.position = {
+						x: source.position.x + DUPLICATE_OFFSET_PERCENT,
+						y: source.position.y + DUPLICATE_OFFSET_PERCENT,
+					};
+					return [...current, copy];
+				});
+				if (!created) return;
+				setSelectedAnnotationId(newId);
+				clearOtherSelections("annotation");
+			},
+			[
+				clearOtherSelections,
+				nextAnnotationIdRef,
+				nextAnnotationZIndexRef,
+				setAnnotationRegions,
+				setSelectedAnnotationId,
+			],
+		);
+
+		/** Moves a layer one place up or down in the stacking order. */
+		const handleAnnotationReorder = useCallback(
+			(id: string, direction: "up" | "down") => {
+				setAnnotationRegions((current) => {
+					const next = reorderedZIndexes(current, id, direction);
+					if (!next) return current;
+					return current.map((region) => ({ ...region, zIndex: next.get(region.id) ?? region.zIndex }));
+				});
+			},
+			[setAnnotationRegions],
+		);
+
+		const handleAnnotationSpanChange = useCallback(
 		(id: string, span: Span, trackIndex?: number) => {
 			const normalizedTrackIndex =
 				typeof trackIndex === "number" && Number.isFinite(trackIndex)
@@ -311,7 +358,9 @@ export function useAnnotationRegionCommands({
 	return {
 		handleAnnotationAdded,
 		handleAnnotationImagesAdded,
-		handleAnnotationSpanChange,
+				handleAnnotationDuplicate,
+				handleAnnotationReorder,
+				handleAnnotationSpanChange,
 		handleAnnotationDelete,
 		handleAnnotationContentChange,
 		handleAnnotationTypeChange,

@@ -41,7 +41,12 @@ export const FIXED_SHORTCUTS: FixedShortcut[] = [
 		display: "Del / ⌫",
 		bindings: [{ key: "delete" }, { key: "backspace" }],
 	},
-	{ label: "Pan Timeline", display: "Shift + Scroll", bindings: [] },
+	{ label: "Duplicate Layer", display: "Ctrl + D", bindings: [{ key: "d", ctrl: true }] },
+		{ label: "Layer Backward", display: "Ctrl + [", bindings: [{ key: "[", ctrl: true }] },
+		{ label: "Layer Forward", display: "Ctrl + ]", bindings: [{ key: "]", ctrl: true }] },
+		{ label: "Layer Larger", display: "Ctrl + =", bindings: [{ key: "=", ctrl: true }] },
+		{ label: "Layer Smaller", display: "Ctrl + -", bindings: [{ key: "-", ctrl: true }] },
+		{ label: "Pan Timeline", display: "Shift + Scroll", bindings: [] },
 	{ label: "Zoom Timeline", display: "Ctrl + Scroll", bindings: [] },
 ];
 
@@ -81,7 +86,8 @@ export const DEFAULT_SHORTCUTS: ShortcutsConfig = {
 	splitClip: { key: "c" },
 	addAnnotation: { key: "a" },
 	addKeyframe: { key: "f" },
-	deleteSelected: { key: "d", ctrl: true },
+	// Ctrl+D duplicates the selected layer; Delete and Backspace already delete it.
+		deleteSelected: { key: "delete", ctrl: true },
 	playPause: { key: " " },
 	undo: { key: "z", ctrl: true },
 	redo: { key: "z", ctrl: true, shift: true },
