@@ -37,7 +37,8 @@ export function buildExportRenderOptions({
 	const background = resolveBackgroundForLayout({
 		wallpaper: appearance.wallpaper,
 		padding: appearance.padding,
-	});
+				backgroundEnabled: appearance.backgroundEnabled,
+			});
 	return {
 		clipRegions: timeline.clipRegions,
 		wallpaper: background.wallpaper,

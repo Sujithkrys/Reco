@@ -214,7 +214,7 @@
 		"color": "색상",
 		"gradient": "그라데이션",
 		"wallpaperPreview": "배경화면 미리보기",
-		"none": "없음",
+		"enabled": "배경",
 		"uploadCustom": "사용자 이미지 업로드",
 		"uploadSuccess": "사용자 이미지를 업로드했습니다!",
 		"uploadError": "JPG 또는 JPEG 이미지 파일을 업로드해 주세요.",

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { normalizeBackgroundSetting } from "../backgroundSetting";
 import type { EditorPreferences } from "../editorPreferences";
 import type {
 	CropRegion,
@@ -24,7 +25,9 @@ import {
 } from "../types";
 
 export function useAppearanceState(preferences: EditorPreferences) {
-	const [wallpaper, setWallpaper] = useState(preferences.wallpaper);
+	const initialBackground = normalizeBackgroundSetting(preferences.wallpaper, undefined);
+		const [wallpaper, setWallpaper] = useState(initialBackground.wallpaper);
+		const [backgroundEnabled, setBackgroundEnabled] = useState(initialBackground.backgroundEnabled);
 	const [shadowIntensity, setShadowIntensity] = useState(preferences.shadowIntensity);
 	const [backgroundBlur, setBackgroundBlur] = useState(preferences.backgroundBlur);
 	const [zoomMotionBlur, setZoomMotionBlur] = useState(preferences.zoomMotionBlur);
@@ -117,7 +120,9 @@ export function useAppearanceState(preferences: EditorPreferences) {
 
 	return {
 		wallpaper,
-		setWallpaper,
+				setWallpaper,
+				backgroundEnabled,
+				setBackgroundEnabled,
 		shadowIntensity,
 		setShadowIntensity,
 		backgroundBlur,

@@ -266,26 +266,27 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 	};
 }
 
-/** Stored wallpaper value for the "None" background: the video fills the canvas edge to edge. */
-export const NO_BACKGROUND_WALLPAPER = "none";
+/** Colour behind the video when the background is switched off (bars show if the ratios differ). */
+const BACKGROUND_OFF_FILL = "#000000";
 
-/** Colour behind the video when the background is None (bars show if the ratios differ). */
-const NO_BACKGROUND_FILL = "#000000";
-
-export function isNoBackground(wallpaper: string | null | undefined): boolean {
-	return wallpaper === NO_BACKGROUND_WALLPAPER;
+export function isBackgroundOff(backgroundEnabled: boolean | undefined): boolean {
+	return backgroundEnabled === false;
 }
 
 /**
  * The wallpaper and padding the layout and the renderers actually use. The preview and every
- * export path go through this, so None means the same thing in both: black behind the video and
- * zero padding. The stored padding is not touched, so it comes back when another background is
- * chosen.
+ * export path go through this, so a switched-off background means the same thing in both: black
+ * behind the video and zero padding. The stored wallpaper and padding are not touched, so they
+ * come back when the background is switched on again.
  */
 export function resolveBackgroundForLayout<P extends Padding | number>(input: {
 	wallpaper: string;
 	padding: P;
+	/** The background switch; false means black behind the video and no padding. */
+	backgroundEnabled?: boolean;
 }): { wallpaper: string; padding: P | 0 } {
-	if (!isNoBackground(input.wallpaper)) return input;
-	return { wallpaper: NO_BACKGROUND_FILL, padding: 0 };
+	if (!isBackgroundOff(input.backgroundEnabled)) {
+		return { wallpaper: input.wallpaper, padding: input.padding };
+	}
+	return { wallpaper: BACKGROUND_OFF_FILL, padding: 0 };
 }

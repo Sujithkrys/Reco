@@ -12,7 +12,7 @@ import type {
 	GifSizePreset,
 } from "@/lib/exporter";
 import { isValidMp4FrameRate } from "@/lib/exporter/types";
-import { DEFAULT_WALLPAPER_PATH } from "@/lib/wallpapers";
+import { normalizeBackgroundSetting } from "./backgroundSetting";
 import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/aspectRatioUtils";
 import { CURSOR_MOTION_PRESETS, resolveCursorMotionPresetId } from "./cursorMotionPresets";
 import {
@@ -97,6 +97,8 @@ const DEFAULT_MOTION_PRESET = CURSOR_MOTION_PRESETS.focused;
 
 export interface ProjectEditorState {
 	wallpaper: string;
+	/** The background switch. Off: the video fills the canvas; the wallpaper and padding are kept. */
+	backgroundEnabled: boolean;
 	shadowIntensity: number;
 	backgroundBlur: number;
 	zoomMotionBlur: number;
@@ -932,7 +934,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		CURSOR_MOTION_PRESETS[resolveCursorMotionPresetId(normalizedMotionValues)];
 
 	return {
-		wallpaper: typeof editor.wallpaper === "string" ? editor.wallpaper : DEFAULT_WALLPAPER_PATH,
+		...normalizeBackgroundSetting(editor.wallpaper, editor.backgroundEnabled),
 		shadowIntensity: typeof editor.shadowIntensity === "number" ? editor.shadowIntensity : 0.67,
 		backgroundBlur: normalizedBackgroundBlur,
 		zoomMotionBlur: normalizedZoomMotionBlur,

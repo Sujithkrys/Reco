@@ -220,7 +220,7 @@
 		"color": "Color",
 		"gradient": "Gradient",
 		"wallpaperPreview": "Wallpaper preview",
-		"none": "None",
+		"enabled": "Background",
 		"uploadCustom": "Upload Custom",
 		"uploadSuccess": "Custom image uploaded successfully!",
 		"uploadError": "Please upload a JPG or JPEG image file.",

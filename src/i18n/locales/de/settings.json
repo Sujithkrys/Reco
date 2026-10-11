@@ -214,7 +214,7 @@
 		"color": "Farbe",
 		"gradient": "Farbverlauf",
 		"wallpaperPreview": "Vorschau des Hintergrundbildes",
-		"none": "Keiner",
+		"enabled": "Hintergrund",
 		"uploadCustom": "Benutzerdefiniertes Bild hochladen",
 		"uploadSuccess": "Benutzerdefiniertes Bild erfolgreich hochgeladen!",
 		"uploadError": "Bitte lade eine JPG- oder JPEG-Bilddatei hoch.",

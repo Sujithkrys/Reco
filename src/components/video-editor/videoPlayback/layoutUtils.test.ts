@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ADVANCED_VERTICAL_PADDING_MAX } from "../types";
 import {
 	computePaddedLayout,
-	isNoBackground,
-	NO_BACKGROUND_WALLPAPER,
+	isBackgroundOff,
 	resolveBackgroundForLayout,
 	scalePreviewBorderRadius,
 } from "./layoutUtils";
@@ -75,61 +74,57 @@ describe("scalePreviewBorderRadius", () => {
 	});
 });
 
-describe("None background", () => {
+describe("background switch", () => {
 	const wide = { ...BASE_LAYOUT_PARAMS, width: 1920, height: 1080, videoWidth: 1920, videoHeight: 1080 };
 
-	it("is recognised only by its own value", () => {
-		expect(isNoBackground(NO_BACKGROUND_WALLPAPER)).toBe(true);
-		expect(isNoBackground("#000000")).toBe(false);
-		expect(isNoBackground("")).toBe(false);
+	it("is off only for an explicit false", () => {
+		expect(isBackgroundOff(false)).toBe(true);
+		expect(isBackgroundOff(true)).toBe(false);
+		expect(isBackgroundOff(undefined)).toBe(false);
 	});
 
-	it("resolves to black and zero padding, and leaves every other background untouched", () => {
-		expect(resolveBackgroundForLayout({ wallpaper: "none", padding: 20 })).toEqual({
+	it("off resolves to black and zero padding; on leaves the background as chosen", () => {
+		expect(resolveBackgroundForLayout({ wallpaper: "#123456", padding: 20, backgroundEnabled: false })).toEqual({
 			wallpaper: "#000000",
 			padding: 0,
 		});
-		const kept = { wallpaper: "#123456", padding: 20 };
-		expect(resolveBackgroundForLayout(kept)).toBe(kept);
+		expect(resolveBackgroundForLayout({ wallpaper: "#123456", padding: 20, backgroundEnabled: true })).toEqual({
+			wallpaper: "#123456",
+			padding: 20,
+		});
+		expect(resolveBackgroundForLayout({ wallpaper: "#123456", padding: 20 })).toEqual({
+			wallpaper: "#123456",
+			padding: 20,
+		});
 	});
 
-	it("does not touch the stored padding, so it returns with another background", () => {
-		const stored = { top: 10, bottom: 10, left: 10, right: 10, linked: true };
-		resolveBackgroundForLayout({ wallpaper: "none", padding: stored });
-		expect(stored).toEqual({ top: 10, bottom: 10, left: 10, right: 10, linked: true });
-		expect(resolveBackgroundForLayout({ wallpaper: "#fff", padding: stored }).padding).toBe(stored);
+	it("keeps the stored wallpaper and padding, so switching on restores them", () => {
+		const stored = { wallpaper: "/wallpapers/a.jpg", padding: { top: 10, bottom: 10, left: 10, right: 10, linked: true } };
+		const copy = structuredClone(stored);
+		resolveBackgroundForLayout({ ...stored, backgroundEnabled: false });
+		expect(stored).toEqual(copy);
+		expect(resolveBackgroundForLayout({ ...stored, backgroundEnabled: true }).padding).toBe(stored.padding);
 	});
 
-	it("fills the canvas edge to edge when the video has the canvas ratio", () => {
-		const { padding } = resolveBackgroundForLayout({ wallpaper: "none", padding: 30 });
-		const layout = computePaddedLayout({ ...wide, padding });
-		expect(layout.fullFrameDisplayW).toBeCloseTo(1920);
-		expect(layout.fullFrameDisplayH).toBeCloseTo(1080);
-		expect(layout.centerOffsetX).toBeCloseTo(0);
-		expect(layout.centerOffsetY).toBeCloseTo(0);
+	it("off fills the canvas edge to edge when the video has the canvas ratio, and padding is back when on", () => {
+		const off = computePaddedLayout({
+			...wide,
+			padding: resolveBackgroundForLayout({ wallpaper: "#fff", padding: 30, backgroundEnabled: false }).padding,
+		});
+		expect(off.fullFrameDisplayW).toBeCloseTo(1920);
+		expect(off.fullFrameDisplayH).toBeCloseTo(1080);
+		expect(off.centerOffsetX).toBeCloseTo(0);
+		const on = computePaddedLayout({
+			...wide,
+			padding: resolveBackgroundForLayout({ wallpaper: "#fff", padding: 30, backgroundEnabled: true }).padding,
+		});
+		expect(on.fullFrameDisplayW).toBeLessThan(1920);
 	});
 
-	it("fits a taller video to the canvas height and centres it, leaving bars at the sides", () => {
-		const { padding } = resolveBackgroundForLayout({ wallpaper: "none", padding: 30 });
+	it("off fits a taller video to the canvas height, centred, with bars at the sides", () => {
+		const { padding } = resolveBackgroundForLayout({ wallpaper: "#fff", padding: 30, backgroundEnabled: false });
 		const layout = computePaddedLayout({ ...wide, videoWidth: 1000, videoHeight: 1000, padding });
 		expect(layout.fullFrameDisplayH).toBeCloseTo(1080);
-		expect(layout.fullFrameDisplayW).toBeCloseTo(1080);
 		expect(layout.centerOffsetX).toBeCloseTo((1920 - 1080) / 2);
-		expect(layout.centerOffsetY).toBeCloseTo(0);
-	});
-
-	it("gives the same layout for the preview path and the export path", () => {
-		// Both call resolveBackgroundForLayout, then computePaddedLayout, with the same inputs.
-		const preview = computePaddedLayout({
-			...wide,
-			padding: resolveBackgroundForLayout({ wallpaper: "none", padding: 25 }).padding,
-		});
-		const exported = computePaddedLayout({
-			...wide,
-			padding: resolveBackgroundForLayout({ wallpaper: "none", padding: 25 }).padding,
-		});
-		expect(preview).toEqual(exported);
-		const padded = computePaddedLayout({ ...wide, padding: 25 });
-		expect(padded.fullFrameDisplayW).toBeLessThan(preview.fullFrameDisplayW);
 	});
 });

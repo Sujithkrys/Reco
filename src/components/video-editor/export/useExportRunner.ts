@@ -152,7 +152,11 @@ export function useExportRunner(input: ExportRunnerInput) {
 								setExportProgress(progress);
 							},
 						}),
-						videoPadding: resolveBackgroundForLayout({ wallpaper: appearance.wallpaper, padding }).padding,
+						videoPadding: resolveBackgroundForLayout({
+														wallpaper: appearance.wallpaper,
+														padding,
+														backgroundEnabled: appearance.backgroundEnabled,
+													}).padding,
 						maxDecodeQueue: smokeExportConfig.maxDecodeQueue,
 						maxPendingFrames: smokeExportConfig.maxPendingFrames,
 					});

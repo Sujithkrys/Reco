@@ -1,10 +1,10 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildExportRenderOptions } from "./buildExportRenderOptions";
 
 type Input = Parameters<typeof buildExportRenderOptions>[0];
 
-function build(wallpaper: string, padding: number) {
-	const appearance = { wallpaper, padding, webcam: {}, resolvedWebcamVideoUrl: null } as unknown as Input["appearance"];
+function build(wallpaper: string, padding: number, backgroundEnabled = true) {
+	const appearance = { wallpaper, padding, backgroundEnabled, webcam: {}, resolvedWebcamVideoUrl: null } as unknown as Input["appearance"];
 	const timeline = {
 		clipRegions: [],
 		trimRegions: [],
@@ -27,15 +27,15 @@ function build(wallpaper: string, padding: number) {
 	} as Input);
 }
 
-describe("export options for the None background", () => {
-	it("exports black with no padding, the same resolution the preview uses", () => {
-		const options = build("none", 24);
+describe("export options for the background switch", () => {
+	it("off exports black with no padding, the same resolution the preview uses", () => {
+		const options = build("#123456", 24, false);
 		expect(options.wallpaper).toBe("#000000");
 		expect(options.padding).toBe(0);
 	});
 
-	it("leaves every other background and its padding alone", () => {
-		const options = build("#123456", 24);
+	it("on leaves the background and its padding alone", () => {
+		const options = build("#123456", 24, true);
 		expect(options.wallpaper).toBe("#123456");
 		expect(options.padding).toBe(24);
 	});

@@ -108,7 +108,8 @@ export function useProjectSnapshotModel({
 		() =>
 			buildPersistedEditorState({
 				wallpaper: appearance.wallpaper,
-				shadowIntensity: appearance.shadowIntensity,
+								backgroundEnabled: appearance.backgroundEnabled,
+								shadowIntensity: appearance.shadowIntensity,
 				backgroundBlur: appearance.backgroundBlur,
 				zoomMotionBlur: appearance.zoomMotionBlur,
 				zoomMotionBlurTuning: appearance.zoomMotionBlurTuning,
@@ -172,7 +173,8 @@ export function useProjectSnapshotModel({
 			}),
 		[
 			appearance.wallpaper,
-			appearance.shadowIntensity,
+						appearance.backgroundEnabled,
+						appearance.shadowIntensity,
 			appearance.backgroundBlur,
 			appearance.zoomMotionBlur,
 			appearance.zoomMotionBlurTuning,

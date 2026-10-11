@@ -1,7 +1,6 @@
 import {
 	CursorClick,
 		Palette,
-		Prohibit,
 	PresentationChart,
 	Record,
 	Trash as Trash2,
@@ -39,7 +38,6 @@ import { SUPPORTED_LOCALES } from "../../i18n/config";
 import { ANNOTATION_COLOR_PALETTE, AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { ColorPickerPopover } from "./ColorPickerPopover";
-import { isNoBackground, NO_BACKGROUND_WALLPAPER } from "./videoPlayback/layoutUtils";
 import { clearWallpaperPreview, previewWallpaper } from "./wallpaperHoverPreview";
 import { collectProjectColors } from "./projectColors";
 import CaptionListPanel from "./CaptionListPanel";
@@ -187,7 +185,7 @@ function getBackgroundTabForWallpaper(value: string): BackgroundTab {
 		return "gradient";
 	}
 
-	if (isHexWallpaper(value) || isNoBackground(value)) {
+	if (isHexWallpaper(value)) {
 		return "color";
 	}
 
@@ -524,6 +522,8 @@ interface SettingsPanelProps {
 	panelMode?: "editor" | "background";
 	activeEffectSection?: EditorEffectSection;
 	selected: string;
+		backgroundEnabled: boolean;
+		onBackgroundEnabledChange?: (enabled: boolean) => void;
 	onWallpaperChange: (path: string) => void;
 	selectedZoomDepth?: ZoomDepth | null;
 	onZoomDepthChange?: (depth: ZoomDepth) => void;
@@ -1006,7 +1006,9 @@ export function SettingsPanel({
 	panelMode = "editor",
 	activeEffectSection: activeEffectSectionProp,
 	selected,
-	onWallpaperChange,
+		backgroundEnabled,
+		onBackgroundEnabledChange,
+		onWallpaperChange,
 	selectedZoomDepth,
 	onZoomDepthChange,
 	selectedZoomId,
@@ -1822,8 +1824,23 @@ export function SettingsPanel({
 				/>
 			</section>
 
-			<div className="w-full">
-				<LayoutGroup id="background-picker-switcher">
+			<div className="flex items-center justify-between gap-3 rounded-lg bg-foreground/[0.03] px-2.5 py-2">
+				<span className="text-[11px] font-medium text-foreground">{tSettings("background.enabled", "Background")}</span>
+				<Switch
+					checked={backgroundEnabled}
+					onCheckedChange={(enabled) => onBackgroundEnabledChange?.(enabled)}
+					aria-label={tSettings("background.enabled", "Background")}
+					className="data-[state=checked]:bg-[#2563EB] scale-75"
+				/>
+			</div>
+
+			<div
+				className={cn("w-full transition-opacity", !backgroundEnabled && "pointer-events-none select-none opacity-40")}
+				aria-disabled={!backgroundEnabled}
+				// inert also takes the tiles out of keyboard focus; React's types do not know the attribute yet.
+	{...({ inert: backgroundEnabled ? undefined : "" } as object)}
+			>
+			<LayoutGroup id="background-picker-switcher">
 					<div className="grid h-8 w-full grid-cols-4 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
 						{(
 							[
@@ -2009,19 +2026,6 @@ export function SettingsPanel({
 							) : backgroundTab === "color" ? (
 								<div className="mt-0 space-y-2">
 									<div className="grid grid-cols-8 gap-1.5">
-										<button
-											type="button"
-											onPointerEnter={() => previewWallpaper(NO_BACKGROUND_WALLPAPER)}
-											onPointerLeave={() => clearWallpaperPreview()}
-											onClick={() => onWallpaperChange(NO_BACKGROUND_WALLPAPER)}
-											className={wallpaperTileClass(isNoBackground(selected))}
-											aria-label={tSettings("background.none", "None")}
-											title={tSettings("background.none", "None")}
-										>
-											<div className="absolute inset-[1px] flex items-center justify-center overflow-hidden rounded-[8px] bg-editor-bg">
-												<Prohibit className="h-4 w-4 text-red-500" weight="bold" />
-											</div>
-										</button>
 								{visibleColorPalette.map((color) => {
 											const isSelected =
 												selected.toLowerCase() === color.toLowerCase();

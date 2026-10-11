@@ -89,6 +89,8 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		panelMode: "editor",
 		activeEffectSection,
 		selected: appearance.wallpaper,
+				backgroundEnabled: appearance.backgroundEnabled,
+				onBackgroundEnabledChange: appearance.setBackgroundEnabled,
 		onWallpaperChange: appearance.setWallpaper,
 		selectedZoomDepth: selectedZoom?.depth ?? null,
 		onZoomDepthChange: (depth) =>

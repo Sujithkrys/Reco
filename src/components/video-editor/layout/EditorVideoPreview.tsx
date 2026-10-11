@@ -77,8 +77,13 @@ export function EditorVideoPreview({
 	const wallpaperPreview = useWallpaperPreview();
 	// The same None handling as the export: black behind the video, zero padding.
 	const background = resolveBackgroundForLayout({
-		wallpaper: previewedWallpaper(appearance.wallpaper, wallpaperPreview),
-		padding: appearance.padding,
+		// Hovering a wallpaper only previews while the background is on.
+			wallpaper: previewedWallpaper(
+				appearance.wallpaper,
+				appearance.backgroundEnabled ? wallpaperPreview : null,
+			),
+			padding: appearance.padding,
+			backgroundEnabled: appearance.backgroundEnabled,
 	});
 	const previewAnnotationRegions = useMemo(
 		() => applyAnnotationPreview(timeline.annotationRegions, annotationPreview),

@@ -214,7 +214,7 @@
 		"color": "Цвет",
 		"gradient": "Градиент",
 		"wallpaperPreview": "Предпросмотр",
-		"none": "Нет",
+		"enabled": "Фон",
 		"uploadCustom": "Загрузить",
 		"uploadSuccess": "Изображение загружено.",
 		"uploadError": "Загрузите JPG или JPEG.",
