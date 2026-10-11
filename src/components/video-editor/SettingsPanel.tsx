@@ -1,6 +1,7 @@
 import {
 	CursorClick,
-	Palette,
+		Palette,
+		Prohibit,
 	PresentationChart,
 	Record,
 	Trash as Trash2,
@@ -2017,8 +2018,8 @@ export function SettingsPanel({
 											aria-label={tSettings("background.none", "None")}
 											title={tSettings("background.none", "None")}
 										>
-											<div className="absolute inset-[1px] flex items-center justify-center overflow-hidden rounded-[8px] bg-black">
-												<div className="h-0.5 w-full rotate-45 bg-red-500" />
+											<div className="absolute inset-[1px] flex items-center justify-center overflow-hidden rounded-[8px] bg-editor-bg">
+												<Prohibit className="h-4 w-4 text-red-500" weight="bold" />
 											</div>
 										</button>
 								{visibleColorPalette.map((color) => {
