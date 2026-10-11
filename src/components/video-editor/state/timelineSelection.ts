@@ -29,6 +29,13 @@ const SETTER_BY_KIND: Record<TimelineSelectionKind, keyof TimelineSelectionSette
 	generatedClip: "setSelectedGeneratedClipId",
 };
 
+/** Clear every timeline selection, as a click on empty space does. */
+export function clearAllTimelineSelections(setters: TimelineSelectionSetters): void {
+	for (const kind of Object.keys(SETTER_BY_KIND) as TimelineSelectionKind[]) {
+		setters[SETTER_BY_KIND[kind]](null);
+	}
+}
+
 /** Clear every timeline selection except `keep`, so selecting one item deselects the rest. */
 export function clearTimelineSelectionsExcept(
 	setters: TimelineSelectionSetters,

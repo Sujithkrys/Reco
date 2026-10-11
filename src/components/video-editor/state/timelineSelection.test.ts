@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+	clearAllTimelineSelections,
 	clearTimelineSelectionsExcept,
 	type TimelineSelectionKind,
 	type TimelineSelectionSetters,
@@ -42,4 +43,12 @@ describe("exclusive timeline selection", () => {
 			}
 		},
 	);
+});
+
+describe("clearing every selection", () => {
+	it("nulls all of them, as a click on empty preview space does", () => {
+		const setters = createSetters();
+		clearAllTimelineSelections(setters);
+		for (const setter of Object.values(setters)) expect(setter).toHaveBeenCalledExactlyOnceWith(null);
+	});
 });

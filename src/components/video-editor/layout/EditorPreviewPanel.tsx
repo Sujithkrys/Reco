@@ -54,6 +54,7 @@ import type { VideoPlaybackRef } from "../VideoPlayback";
 import { ChapterManagementModal } from "../chapters/ChapterManagementModal";
 import { rippleShiftChapters } from "../chapters/chapterUtils";
 import { SilenceRemovalModal } from "../silenceRemoval/SilenceRemovalModal";
+import { clearAllTimelineSelections } from "../state/timelineSelection";
 import { EditorVideoPreview } from "./EditorVideoPreview";
 import { LayerContextToolbar } from "./LayerContextToolbar";
 
@@ -295,6 +296,15 @@ export function EditorPreviewPanel(props: Props) {
 										onZoomFocusChange: zoomCommands.handleZoomFocusChange,
 										onEditAutoCaption: handleSaveAutoCaptionEdit,
 										onSelectAnnotation: handleSelectAnnotation,
+										onClearSelections: () =>
+											clearAllTimelineSelections({
+												setSelectedZoomId: timeline.setSelectedZoomId,
+												setSelectedClipId: timeline.setSelectedClipId,
+												setSelectedAnnotationId: timeline.setSelectedAnnotationId,
+												setSelectedAudioId: timeline.setSelectedAudioId,
+												setSelectedCaptionId: timeline.setSelectedCaptionId,
+												setSelectedGeneratedClipId: timeline.setSelectedGeneratedClipId,
+											}),
 										onAnnotationPositionChange:
 											annotationCommands.handleAnnotationPositionChange,
 										onAnnotationSizeChange:

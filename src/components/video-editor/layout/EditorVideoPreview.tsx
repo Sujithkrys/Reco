@@ -18,6 +18,7 @@ type Handlers = Pick<
 	| "onZoomFocusChange"
 	| "onEditAutoCaption"
 	| "onSelectAnnotation"
+		| "onClearSelections"
 	| "onAnnotationPositionChange"
 	| "onAnnotationSizeChange"
 	| "onAnnotationStyleChange"

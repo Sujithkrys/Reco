@@ -266,6 +266,8 @@ interface VideoPlaybackProps {
 	onEditAutoCaption?: (target: CaptionEditTarget, text: string) => void;
 	selectedAnnotationId?: string | null;
 	onSelectAnnotation?: (id: string | null) => void;
+	/** A click on empty preview space (not on a layer or control): clear every selection. */
+	onClearSelections?: () => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
@@ -353,6 +355,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onEditAutoCaption,
 			selectedAnnotationId,
 			onSelectAnnotation,
+			onClearSelections,
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
 			onAnnotationStyleChange,
@@ -1296,6 +1299,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			isDraggingFocusRef.current = true;
 			event.currentTarget.setPointerCapture(event.pointerId);
 			updateFocusFromClientPoint(event.clientX, event.clientY);
+		};
+
+		// Empty preview space deselects. Layers and their handles sit inside [data-annotation-layers];
+		// the caption box stops its own pointerdown. A zoom-focus drag keeps the zoom selected.
+		const handlePreviewPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+			if (event.button !== 0 || isDraggingFocusRef.current) return;
+			if (!(event.target instanceof Element)) return;
+			if (event.target.closest("[data-annotation-layers], [data-preview-keep]")) return;
+			onClearSelections?.();
 		};
 
 		const handleOverlayPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -2614,6 +2626,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		return (
 			<div
 				ref={previewFrameRef}
+				onPointerDown={handlePreviewPointerDown}
 				className="relative overflow-hidden"
 				style={{
 					width: "100%",
@@ -2960,6 +2973,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						>
 							<div
 								className="absolute"
+								data-annotation-layers
 								style={{
 									pointerEvents: "none",
 									overflow: "visible",
