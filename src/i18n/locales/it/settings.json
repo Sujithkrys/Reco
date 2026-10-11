@@ -214,6 +214,7 @@
 		"color": "Colore",
 		"gradient": "Gradiente",
 		"wallpaperPreview": "Anteprima sfondo",
+		"none": "Nessuno",
 		"uploadCustom": "Carica personalizzato",
 		"uploadSuccess": "Immagine personalizzata caricata con successo!",
 		"uploadError": "Carica un file immagine JPG o JPEG.",

@@ -5,6 +5,7 @@ import {
 	clearAnnotationPreview,
 	useAnnotationPreview,
 } from "../annotationHoverPreview";
+import { resolveBackgroundForLayout } from "../videoPlayback/layoutUtils";
 import { previewedWallpaper, useWallpaperPreview } from "../wallpaperHoverPreview";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import type { useAppearanceState } from "../state/useAppearanceState";
@@ -74,6 +75,11 @@ export function EditorVideoPreview({
 	// the edit history and the export keep using the real regions.
 	const annotationPreview = useAnnotationPreview();
 	const wallpaperPreview = useWallpaperPreview();
+	// The same None handling as the export: black behind the video, zero padding.
+	const background = resolveBackgroundForLayout({
+		wallpaper: previewedWallpaper(appearance.wallpaper, wallpaperPreview),
+		padding: appearance.padding,
+	});
 	const previewAnnotationRegions = useMemo(
 		() => applyAnnotationPreview(timeline.annotationRegions, annotationPreview),
 		[timeline.annotationRegions, annotationPreview],
@@ -93,7 +99,7 @@ export function EditorVideoPreview({
 			currentTime={currentTime}
 			onPlayStateChange={setIsPlaying}
 			onError={setError}
-			wallpaper={previewedWallpaper(appearance.wallpaper, wallpaperPreview)}
+			wallpaper={background.wallpaper}
 			zoomRegions={effectiveZoomRegions}
 			selectedZoomId={timeline.selectedZoomId}
 			isPlaying={isPlaying}
@@ -110,7 +116,7 @@ export function EditorVideoPreview({
 			zoomOutEasing={appearance.zoomOutEasing}
 			connectedZoomEasing={appearance.connectedZoomEasing}
 			borderRadius={appearance.borderRadius}
-			padding={appearance.padding}
+			padding={background.padding}
 			cropRegion={appearance.cropRegion}
 			webcam={appearance.webcam}
 			webcamVideoPath={

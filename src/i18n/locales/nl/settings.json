@@ -214,6 +214,7 @@
 		"color": "Kleur",
 		"gradient": "Verloop",
 		"wallpaperPreview": "Achtergrondvoorbeeld",
+		"none": "Geen",
 		"uploadCustom": "Afbeelding uploaden",
 		"uploadSuccess": "Eigen afbeelding succesvol geüpload!",
 		"uploadError": "Upload een JPG- of JPEG-afbeelding.",

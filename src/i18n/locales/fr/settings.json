@@ -214,6 +214,7 @@
 		"color": "Couleur",
 		"gradient": "Dégradé",
 		"wallpaperPreview": "Aperçu du fond d’écran",
+		"none": "Aucun",
 		"uploadCustom": "Importer un fond personnalisé",
 		"uploadSuccess": "Image personnalisée importée avec succès !",
 		"uploadError": "Veuillez importer un fichier image JPG ou JPEG.",

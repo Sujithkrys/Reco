@@ -38,6 +38,7 @@ import { SUPPORTED_LOCALES } from "../../i18n/config";
 import { ANNOTATION_COLOR_PALETTE, AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { ColorPickerPopover } from "./ColorPickerPopover";
+import { isNoBackground, NO_BACKGROUND_WALLPAPER } from "./videoPlayback/layoutUtils";
 import { clearWallpaperPreview, previewWallpaper } from "./wallpaperHoverPreview";
 import { collectProjectColors } from "./projectColors";
 import CaptionListPanel from "./CaptionListPanel";
@@ -185,7 +186,7 @@ function getBackgroundTabForWallpaper(value: string): BackgroundTab {
 		return "gradient";
 	}
 
-	if (isHexWallpaper(value)) {
+	if (isHexWallpaper(value) || isNoBackground(value)) {
 		return "color";
 	}
 
@@ -2007,7 +2008,20 @@ export function SettingsPanel({
 							) : backgroundTab === "color" ? (
 								<div className="mt-0 space-y-2">
 									<div className="grid grid-cols-8 gap-1.5">
-										{visibleColorPalette.map((color) => {
+										<button
+											type="button"
+											onPointerEnter={() => previewWallpaper(NO_BACKGROUND_WALLPAPER)}
+											onPointerLeave={() => clearWallpaperPreview()}
+											onClick={() => onWallpaperChange(NO_BACKGROUND_WALLPAPER)}
+											className={wallpaperTileClass(isNoBackground(selected))}
+											aria-label={tSettings("background.none", "None")}
+											title={tSettings("background.none", "None")}
+										>
+											<div className="absolute inset-[1px] flex items-center justify-center overflow-hidden rounded-[8px] bg-black">
+												<div className="h-0.5 w-full rotate-45 bg-red-500" />
+											</div>
+										</button>
+								{visibleColorPalette.map((color) => {
 											const isSelected =
 												selected.toLowerCase() === color.toLowerCase();
 											return (

@@ -214,6 +214,7 @@
 		"color": "Cor",
 		"gradient": "Gradiente",
 		"wallpaperPreview": "Prévia do papel de parede",
+		"none": "Nenhum",
 		"uploadCustom": "Enviar personalizado",
 		"uploadSuccess": "Imagem personalizada enviada com sucesso!",
 		"uploadError": "Envie um arquivo de imagem JPG ou JPEG.",

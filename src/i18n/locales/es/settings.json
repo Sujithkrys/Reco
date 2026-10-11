@@ -214,6 +214,7 @@
 		"color": "Color",
 		"gradient": "Degradado",
 		"wallpaperPreview": "Vista previa del fondo",
+		"none": "Ninguno",
 		"uploadCustom": "Subir personalizado",
 		"uploadSuccess": "¡Imagen personalizada subida exitosamente!",
 		"uploadError": "Por favor sube un archivo de imagen JPG o JPEG.",

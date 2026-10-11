@@ -3,6 +3,7 @@ import { toFileUrl } from "../projectPersistence";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
 import type { CursorTelemetryPoint, SpeedRegion, ZoomRegion } from "../types";
+import { resolveBackgroundForLayout } from "../videoPlayback/layoutUtils";
 
 type AppearanceState = ReturnType<typeof useAppearanceState>;
 type TimelineState = ReturnType<typeof useTimelineState>;
@@ -32,9 +33,14 @@ export function buildExportRenderOptions({
 	shadowIntensity,
 	onProgress,
 }: BuildExportRenderOptionsInput) {
+	// None draws black behind the video with zero padding; the stored padding stays as chosen.
+	const background = resolveBackgroundForLayout({
+		wallpaper: appearance.wallpaper,
+		padding: appearance.padding,
+	});
 	return {
 		clipRegions: timeline.clipRegions,
-		wallpaper: appearance.wallpaper,
+		wallpaper: background.wallpaper,
 		trimRegions: timeline.trimRegions,
 		speedRegions: effectiveSpeedRegions,
 		showShadow: shadowIntensity > 0,
@@ -52,7 +58,7 @@ export function buildExportRenderOptions({
 		zoomOutEasing: appearance.zoomOutEasing,
 		connectedZoomEasing: appearance.connectedZoomEasing,
 		borderRadius: appearance.borderRadius,
-		padding: appearance.padding,
+		padding: background.padding,
 		cropRegion: appearance.cropRegion,
 		webcam: appearance.webcam,
 		webcamUrl:

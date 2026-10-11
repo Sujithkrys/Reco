@@ -7,6 +7,7 @@ import { calculateMp4ExportDimensions } from "../exportDimensions";
 import { resolveMp4ExportRouting } from "../mp4ExportRouting";
 import { resolveMp4ExportSettings } from "../mp4ExportSettings";
 import { createSmokeExportProgressSampler } from "../smokeExportProgress";
+import { resolveBackgroundForLayout } from "../videoPlayback/layoutUtils";
 import { buildExportRenderOptions } from "./buildExportRenderOptions";
 import {
 	type PendingExportSave,
@@ -151,7 +152,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 								setExportProgress(progress);
 							},
 						}),
-						videoPadding: padding,
+						videoPadding: resolveBackgroundForLayout({ wallpaper: appearance.wallpaper, padding }).padding,
 						maxDecodeQueue: smokeExportConfig.maxDecodeQueue,
 						maxPendingFrames: smokeExportConfig.maxPendingFrames,
 					});

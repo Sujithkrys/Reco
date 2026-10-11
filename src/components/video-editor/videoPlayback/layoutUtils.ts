@@ -265,3 +265,27 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 		},
 	};
 }
+
+/** Stored wallpaper value for the "None" background: the video fills the canvas edge to edge. */
+export const NO_BACKGROUND_WALLPAPER = "none";
+
+/** Colour behind the video when the background is None (bars show if the ratios differ). */
+const NO_BACKGROUND_FILL = "#000000";
+
+export function isNoBackground(wallpaper: string | null | undefined): boolean {
+	return wallpaper === NO_BACKGROUND_WALLPAPER;
+}
+
+/**
+ * The wallpaper and padding the layout and the renderers actually use. The preview and every
+ * export path go through this, so None means the same thing in both: black behind the video and
+ * zero padding. The stored padding is not touched, so it comes back when another background is
+ * chosen.
+ */
+export function resolveBackgroundForLayout<P extends Padding | number>(input: {
+	wallpaper: string;
+	padding: P;
+}): { wallpaper: string; padding: P | 0 } {
+	if (!isNoBackground(input.wallpaper)) return input;
+	return { wallpaper: NO_BACKGROUND_FILL, padding: 0 };
+}

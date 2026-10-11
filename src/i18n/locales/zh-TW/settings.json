@@ -214,6 +214,7 @@
 		"color": "顏色",
 		"gradient": "漸層",
 		"wallpaperPreview": "桌布預覽",
+		"none": "無",
 		"uploadCustom": "上傳自訂圖片",
 		"uploadSuccess": "自訂圖片已成功上傳！",
 		"uploadError": "請上傳 JPG 或 JPEG 圖片檔。",

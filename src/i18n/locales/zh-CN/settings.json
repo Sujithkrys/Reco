@@ -214,6 +214,7 @@
 		"color": "颜色",
 		"gradient": "渐变",
 		"wallpaperPreview": "壁纸预览",
+		"none": "无",
 		"uploadCustom": "上传自定义",
 		"uploadSuccess": "自定义图片上传成功！",
 		"uploadError": "请上传 JPG 或 JPEG 图片文件。",
