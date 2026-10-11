@@ -1,7 +1,7 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 import { heightForImageWidth, imageLayerSize, type NaturalSize } from "../imageLayerSize";
-import { buildDuplicateRegion } from "../annotationDuplicate";
+import { duplicateRegionAbove } from "../annotationDuplicate";
 import { reorderedZIndexes } from "../layerKeyboard";
 import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
@@ -177,7 +177,7 @@ export function useAnnotationRegionCommands({
 					const source = current.find((region) => region.id === id);
 					if (!source) return current;
 					created = true;
-					return [...current, buildDuplicateRegion(source, current, newId, zIndex)];
+					return duplicateRegionAbove(source, current, newId, zIndex);
 				});
 				if (!created) return;
 				setSelectedAnnotationId(newId);
