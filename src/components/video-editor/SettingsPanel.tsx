@@ -36,6 +36,7 @@ import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
 import { ANNOTATION_COLOR_PALETTE, AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
+import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { ColorPickerPopover } from "./ColorPickerPopover";
 import { collectProjectColors } from "./projectColors";
 import CaptionListPanel from "./CaptionListPanel";
@@ -636,8 +637,9 @@ interface SettingsPanelProps {
 		id: string,
 		content: string,
 		imageFileName?: string | null,
-	) => void;
-	onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
+			naturalSize?: { width: number; height: number } | null,
+		) => void;
+		onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
 	onAnnotationShapeDataChange?: (id: string, shapeData: Partial<ShapeData>) => void;
@@ -646,7 +648,7 @@ interface SettingsPanelProps {
 	onAnnotationDelete?: (id: string) => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationImagesAdded?: (
-		images: { dataUrl: string; fileName: string }[],
+		images: AddedImage[],
 		reuseId?: string,
 	) => void;
 	onSelectAnnotation?: (id: string | null) => void;
@@ -2079,8 +2081,8 @@ export function SettingsPanel({
 				currentTimeMs={currentTimeMs}
 				onSeek={onSeek}
 				onClose={() => onSelectAnnotation?.(null)}
-				onContentChange={(content, imageFileName) =>
-					onAnnotationContentChange(selectedAnnotation.id, content, imageFileName)
+				onContentChange={(content, imageFileName, naturalSize) =>
+					onAnnotationContentChange(selectedAnnotation.id, content, imageFileName, naturalSize)
 				}
 				onTypeChange={(type) => onAnnotationTypeChange(selectedAnnotation.id, type)}
 				onStyleChange={(style) => onAnnotationStyleChange(selectedAnnotation.id, style)}

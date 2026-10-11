@@ -33,6 +33,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type CustomFont, getCustomFonts } from "@/lib/customFonts";
 import { cn } from "@/lib/utils";
 import { useScopedT } from "../../contexts/I18nContext";
+import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
+import { loadImageSize, type NaturalSize } from "./imageLayerSize";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { AnnotationColorBlock } from "./AnnotationColorBlock";
 import {
@@ -53,7 +55,11 @@ import {
 interface AnnotationSettingsPanelProps {
 	annotation: AnnotationRegion;
 	/** For image layers, imageFileName records the uploaded file's name (null clears it). */
-	onContentChange: (content: string, imageFileName?: string | null) => void;
+	onContentChange: (
+		content: string,
+		imageFileName?: string | null,
+		naturalSize?: NaturalSize | null,
+	) => void;
 	onTypeChange: (type: AnnotationType) => void;
 	onStyleChange: (style: Partial<AnnotationRegion["style"]>) => void;
 	onFigureDataChange?: (figureData: FigureData) => void;
@@ -64,7 +70,7 @@ interface AnnotationSettingsPanelProps {
 	/** Colours already used by the project's layers, offered in the colour pickers. */
 	projectColors?: string[];
 	/** Each uploaded file becomes its own image layer at the playhead. */
-	onImagesAdded?: (images: { dataUrl: string; fileName: string }[]) => void;
+	onImagesAdded?: (images: AddedImage[]) => void;
 	/** Centres the layer on the video so an off-canvas layer can be recovered. */
 	onResetPosition?: () => void;
 	currentTimeMs?: number;
@@ -170,11 +176,18 @@ export function AnnotationSettingsPanel({
 		}
 
 		const readFile = (file: File) =>
-			new Promise<{ dataUrl: string; fileName: string } | null>((resolve) => {
+			new Promise<AddedImage | null>((resolve) => {
 				const reader = new FileReader();
 				reader.onload = () => {
 					const dataUrl = reader.result as string;
-					resolve(dataUrl ? { dataUrl, fileName: file.name } : null);
+					if (!dataUrl) {
+						resolve(null);
+						return;
+					}
+					// The layer is sized to the image's own shape, so read its natural size.
+					void loadImageSize(dataUrl).then((naturalSize) =>
+						resolve({ dataUrl, fileName: file.name, naturalSize }),
+					);
 				};
 				reader.onerror = () => {
 					toast.error(t("annotations.imageUploadFailed"), {
@@ -186,12 +199,12 @@ export function AnnotationSettingsPanel({
 			});
 
 		void Promise.all(validFiles.map(readFile)).then((results) => {
-			const images = results.filter((image): image is { dataUrl: string; fileName: string } =>
+			const images = results.filter((image): image is AddedImage =>
 				Boolean(image),
 			);
 			if (images.length === 0) return;
 			if (onImagesAdded) onImagesAdded(images);
-			else onContentChange(images[0].dataUrl, images[0].fileName);
+			else onContentChange(images[0].dataUrl, images[0].fileName, images[0].naturalSize);
 			toast.success(t("annotations.imageUploadSuccess"));
 		});
 	};

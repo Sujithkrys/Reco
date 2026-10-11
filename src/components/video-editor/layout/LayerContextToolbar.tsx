@@ -25,6 +25,7 @@ import {
 	XCircle,
 } from "@phosphor-icons/react";
 import { AnnotationColorBlock } from "../AnnotationColorBlock";
+import { loadImageSize } from "../imageLayerSize";
 import { collectProjectColors } from "../projectColors";
 import {
 	type AnnotationPreviewPatch,
@@ -705,13 +706,17 @@ export function LayerContextToolbar({
 						if (!file || !IMAGE_TYPES.includes(file.type)) return;
 						const reader = new FileReader();
 						reader.onload = () => {
-							if (typeof reader.result === "string") {
+							const dataUrl = reader.result;
+							if (typeof dataUrl !== "string") return;
+							// The box keeps its width and takes the new image's height.
+							void loadImageSize(dataUrl).then((naturalSize) =>
 								annotationCommands.handleAnnotationContentChange(
 									selectedAnnotation.id,
-									reader.result,
+									dataUrl,
 									file.name,
-								);
-							}
+									naturalSize,
+								),
+							);
 						};
 						reader.readAsDataURL(file);
 					}}

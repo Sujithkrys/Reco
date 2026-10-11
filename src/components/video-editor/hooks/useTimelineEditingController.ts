@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 import type { useI18n } from "@/contexts/I18nContext";
 import type { useShortcuts } from "@/contexts/ShortcutsContext";
@@ -223,6 +223,18 @@ export function useTimelineEditingController(input: Input) {
 		setActiveEffectSection: input.setActiveEffectSection,
 		nextAudioIdRef: input.nextAudioIdRef,
 	});
+	// Image layers are sized in percent of the video rect, so they need its width / height:
+	// the source video's ratio, cropped.
+	const cropRegionRef = useRef(input.appearance.cropRegion);
+	cropRegionRef.current = input.appearance.cropRegion;
+	const getVideoRectAspect = useCallback(() => {
+		const video = input.videoPlaybackRef.current?.video;
+		if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return 16 / 9;
+		const crop = cropRegionRef.current;
+		const width = video.videoWidth * (crop?.width > 0 ? crop.width : 1);
+		const height = video.videoHeight * (crop?.height > 0 ? crop.height : 1);
+		return width / height;
+	}, [input.videoPlaybackRef]);
 	const annotationCommands = useAnnotationRegionCommands({
 		setAnnotationRegions: timeline.setAnnotationRegions,
 		selectedAnnotationId: timeline.selectedAnnotationId,
@@ -232,6 +244,7 @@ export function useTimelineEditingController(input: Input) {
 		nextAnnotationZIndexRef: input.nextAnnotationZIndexRef,
 		playheadMs: projection.timelinePlayheadTime * 1000,
 		totalMs: projection.timelineDuration * 1000,
+		getVideoRectAspect,
 	});
 	const generatedClipCommands = useGeneratedClipRegionCommands({
 		setGeneratedClipRegions: timeline.setGeneratedClipRegions,

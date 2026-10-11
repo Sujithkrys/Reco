@@ -1,5 +1,6 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
+import { heightForImageWidth, imageLayerSize, type NaturalSize } from "../imageLayerSize";
 import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
 	type AnnotationRegion,
@@ -24,12 +25,16 @@ interface UseAnnotationRegionCommandsParams {
 	/** Playhead and total timeline length, used to place image layers added from the panel. */
 	playheadMs: number;
 	totalMs: number;
-}
+		/** The video rect's width / height, to size image layers to their own ratio. */
+		getVideoRectAspect?: () => number;
+	}
 
 export interface AddedImage {
 	dataUrl: string;
-	fileName: string;
-}
+		fileName: string;
+		/** Natural pixel size, when known. */
+		naturalSize?: NaturalSize | null;
+	}
 
 const IMAGE_LAYER_DEFAULT_DURATION_MS = 1000;
 /** Diagonal offset between image layers added together, as percent of the video. */
@@ -44,7 +49,12 @@ export function useAnnotationRegionCommands({
 	nextAnnotationZIndexRef,
 	playheadMs,
 	totalMs,
-}: UseAnnotationRegionCommandsParams) {
+	getVideoRectAspect,
+	}: UseAnnotationRegionCommandsParams) {
+		const videoRectAspect = () => {
+			const aspect = getVideoRectAspect?.();
+			return aspect && Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+		};
 	const handleAnnotationAdded = useCallback(
 		(span: Span, trackIndex = 0, initialType: AnnotationType = "text") => {
 			const id = `annotation-${nextAnnotationIdRef.current++}`;
@@ -97,6 +107,7 @@ export function useAnnotationRegionCommands({
 			const zIndexes = images.map(() => nextAnnotationZIndexRef.current++);
 			setAnnotationRegions((current) => {
 				const reuse = current.find((region) => region.id === reuseId);
+				const aspect = videoRectAspect();
 				const basePosition = reuse?.position ?? DEFAULT_ANNOTATION_POSITION;
 				const nextTrack =
 					current.reduce((max, region) => Math.max(max, region.trackIndex ?? 0), -1) + 1;
@@ -104,11 +115,14 @@ export function useAnnotationRegionCommands({
 				const next = current.map((region) => {
 					if (!reuse || region.id !== reuse.id) return region;
 					reused = true;
+					// A blank layer is new to the user: size it to the image like any added layer.
+					const fitted = imageLayerSize(images[0].naturalSize, aspect);
 					return {
 						...region,
 						content: images[0].dataUrl,
 						imageContent: images[0].dataUrl,
 						imageFileName: images[0].fileName,
+						...(fitted ? { size: fitted } : {}),
 					};
 				});
 				const added: AnnotationRegion[] = [];
@@ -126,7 +140,7 @@ export function useAnnotationRegionCommands({
 							x: basePosition.x + index * IMAGE_STACK_OFFSET_PERCENT,
 							y: basePosition.y + index * IMAGE_STACK_OFFSET_PERCENT,
 						},
-						size: { ...DEFAULT_ANNOTATION_SIZE },
+						size: imageLayerSize(image.naturalSize, aspect) ?? { ...DEFAULT_ANNOTATION_SIZE },
 						style: { ...DEFAULT_ANNOTATION_STYLE },
 						zIndex: zIndexes[index],
 						trackIndex: nextTrack + added.length,
@@ -147,6 +161,7 @@ export function useAnnotationRegionCommands({
 			setAnnotationRegions,
 			setSelectedAnnotationId,
 			totalMs,
+			getVideoRectAspect,
 		],
 	);
 
@@ -183,7 +198,7 @@ export function useAnnotationRegionCommands({
 	);
 
 	const handleAnnotationContentChange = useCallback(
-		(id: string, content: string, imageFileName?: string | null) => {
+		(id: string, content: string, imageFileName?: string | null, naturalSize?: NaturalSize | null) => {
 			setAnnotationRegions((current) =>
 				current.map((region) => {
 					if (region.id !== id) return region;
@@ -196,13 +211,22 @@ export function useAnnotationRegionCommands({
 								: content
 									? region.imageFileName
 									: undefined;
-						return { ...region, content, imageContent: content, imageFileName: nextFileName };
+						// Replacing an image keeps the box width; the height follows the new image's ratio.
+						const replacedHeight =
+							content && region.content ? heightForImageWidth(region.size.width, naturalSize, videoRectAspect()) : null;
+						return {
+							...region,
+							content,
+							imageContent: content,
+							imageFileName: nextFileName,
+							...(replacedHeight ? { size: { ...region.size, height: replacedHeight } } : {}),
+						};
 					}
 					return { ...region, content };
 				}),
 			);
 		},
-		[setAnnotationRegions],
+		[getVideoRectAspect, setAnnotationRegions],
 	);
 
 	const handleAnnotationTypeChange = useCallback(
