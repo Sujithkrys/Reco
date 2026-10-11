@@ -7,6 +7,8 @@ interface ColorPickerPopoverProps {
 	onChange: (hex: string) => void;
 	presets: string[];
 	projectColors?: string[];
+	/** Hover / drag preview (a colour, or null when it ends). */
+	onPreview?: (hex: string | null) => void;
 	/** The element that opens the picker. */
 	trigger: ReactNode;
 }
@@ -17,6 +19,7 @@ export function ColorPickerPopover({
 	onChange,
 	presets,
 	projectColors,
+	onPreview,
 	trigger,
 }: ColorPickerPopoverProps) {
 	return (
@@ -28,6 +31,7 @@ export function ColorPickerPopover({
 					presets={presets}
 					projectColors={projectColors}
 					onChange={onChange}
+					onPreview={onPreview}
 				/>
 			</PopoverContent>
 		</Popover>

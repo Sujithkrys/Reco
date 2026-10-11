@@ -38,6 +38,7 @@ import { SUPPORTED_LOCALES } from "../../i18n/config";
 import { ANNOTATION_COLOR_PALETTE, AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { ColorPickerPopover } from "./ColorPickerPopover";
+import { clearWallpaperPreview, previewWallpaper } from "./wallpaperHoverPreview";
 import { collectProjectColors } from "./projectColors";
 import CaptionListPanel from "./CaptionListPanel";
 import type { CaptionRetimeSpan } from "./captionOps";
@@ -1502,11 +1503,19 @@ export function SettingsPanel({
 			ariaLabel?: string;
 			title?: string;
 			onClick?: () => void;
-			children?: React.ReactNode;
-		},
-	) => (
-		<div
+				/** The wallpaper value to preview on hover (skipped for video sources). */
+				hoverValue?: string;
+				children?: React.ReactNode;
+			},
+			) => (
+			<div
 			key={props?.key}
+			onPointerEnter={() => {
+				if (props?.hoverValue && !isVideoWallpaperSource(props.hoverValue)) {
+					previewWallpaper(props.hoverValue);
+				}
+			}}
+			onPointerLeave={() => clearWallpaperPreview()}
 			className={wallpaperTileClass(isSelected)}
 			aria-label={props?.ariaLabel}
 			title={props?.title}
@@ -1778,6 +1787,11 @@ export function SettingsPanel({
 		: null;
 	const projectColors = useMemo(() => collectProjectColors(annotationRegions), [annotationRegions]);
 
+	// A wallpaper hover preview ends when the choice changes, the tab changes or the panel goes away.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-runs on those changes on purpose
+	useEffect(() => clearWallpaperPreview(), [selected, backgroundTab]);
+	useEffect(() => clearWallpaperPreview, []);
+
 	const backgroundSettingsContent = (
 		<div className="space-y-4">
 			<section className="flex flex-col gap-2">
@@ -1894,6 +1908,7 @@ export function SettingsPanel({
 												title: isVideoWallpaperSource(imageUrl)
 													? imageUrl.split(/[\\/]/).pop()
 													: undefined,
+												hoverValue: imageUrl,
 												onClick: () => onWallpaperChange(imageUrl),
 												children: (
 													<button
@@ -1920,6 +1935,7 @@ export function SettingsPanel({
 													key: tile.key,
 													ariaLabel: tile.label,
 													title: tile.label,
+													hoverValue: tile.value,
 													onClick: () => onWallpaperChange(tile.value),
 												},
 											);
@@ -1998,6 +2014,8 @@ export function SettingsPanel({
 												<button
 													key={color}
 													type="button"
+													onPointerEnter={() => previewWallpaper(color)}
+													onPointerLeave={() => clearWallpaperPreview()}
 													onClick={() => {
 														setSelectedColor(color);
 														onWallpaperChange(color);
@@ -2012,6 +2030,7 @@ export function SettingsPanel({
 											value={selectedColor}
 											presets={visibleColorPalette}
 											projectColors={projectColors}
+											onPreview={(hex) => (hex ? previewWallpaper(hex) : clearWallpaperPreview())}
 											onChange={(hex) => {
 												setSelectedColor(hex);
 												onWallpaperChange(hex);
@@ -2045,6 +2064,8 @@ export function SettingsPanel({
 											key={g}
 											className={wallpaperTileClass(gradient === g)}
 											aria-label={`Gradient ${idx + 1}`}
+											onPointerEnter={() => previewWallpaper(g)}
+											onPointerLeave={() => clearWallpaperPreview()}
 											onClick={() => {
 												setGradient(g);
 												onWallpaperChange(g);

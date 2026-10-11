@@ -5,6 +5,7 @@ import {
 	clearAnnotationPreview,
 	useAnnotationPreview,
 } from "../annotationHoverPreview";
+import { previewedWallpaper, useWallpaperPreview } from "../wallpaperHoverPreview";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
@@ -72,6 +73,7 @@ export function EditorVideoPreview({
 	// Hover previews (colour swatches, fonts) are drawn here only; the project data,
 	// the edit history and the export keep using the real regions.
 	const annotationPreview = useAnnotationPreview();
+	const wallpaperPreview = useWallpaperPreview();
 	const previewAnnotationRegions = useMemo(
 		() => applyAnnotationPreview(timeline.annotationRegions, annotationPreview),
 		[timeline.annotationRegions, annotationPreview],
@@ -91,7 +93,7 @@ export function EditorVideoPreview({
 			currentTime={currentTime}
 			onPlayStateChange={setIsPlaying}
 			onError={setError}
-			wallpaper={appearance.wallpaper}
+			wallpaper={previewedWallpaper(appearance.wallpaper, wallpaperPreview)}
 			zoomRegions={effectiveZoomRegions}
 			selectedZoomId={timeline.selectedZoomId}
 			isPlaying={isPlaying}

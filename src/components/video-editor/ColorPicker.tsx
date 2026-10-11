@@ -275,6 +275,10 @@ export function ColorPicker({
 	const normalizedValue = normalizeHex(value, allowAlpha) ?? "";
 	const [hsva, setHsva] = useState<Hsva>(() => hexToHsva(value) ?? FALLBACK);
 	const liveRef = useRef(hsva);
+		// Closing the picker (or switching layers) drops any preview it still holds.
+		const previewRef = useRef(onPreview);
+		previewRef.current = onPreview;
+		useEffect(() => () => previewRef.current?.(null), []);
 	const [ring, setRing] = useState(false);
 	const [channelMode, setChannelMode] = useState<"rgb" | "hsl">("rgb");
 	const [recent, setRecent] = useState<string[]>(() => getRecentColors());

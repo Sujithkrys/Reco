@@ -1004,6 +1004,8 @@ export function AnnotationSettingsPanel({
 									</div>
 									<div className="flex flex-wrap gap-2">
 										<button
+											onPointerEnter={() => previewAnnotation(annotation.id, { blurColor: "" })}
+											onPointerLeave={() => clearAnnotationPreview()}
 											onClick={() => onBlurColorChange?.("")}
 											className={cn(
 												"w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all",
@@ -1019,6 +1021,8 @@ export function AnnotationSettingsPanel({
 											</div>
 										</button>
 										<button
+											onPointerEnter={() => previewAnnotation(annotation.id, { blurColor: "#000000" })}
+											onPointerLeave={() => clearAnnotationPreview()}
 											onClick={() => onBlurColorChange?.("#000000")}
 											className={cn(
 												"w-8 h-8 rounded-full border-2 transition-all bg-black",
@@ -1029,6 +1033,8 @@ export function AnnotationSettingsPanel({
 											title="Black"
 										/>
 										<button
+											onPointerEnter={() => previewAnnotation(annotation.id, { blurColor: "#FFFFFF" })}
+											onPointerLeave={() => clearAnnotationPreview()}
 											onClick={() => onBlurColorChange?.("#FFFFFF")}
 											className={cn(
 												"w-8 h-8 rounded-full border-2 transition-all bg-white",
