@@ -49,3 +49,32 @@ describe("heightForImageWidth", () => {
 		expect(heightForImageWidth(40, { width: 10, height: 10 }, Number.NaN)).toBeNull();
 	});
 });
+
+describe("box matches the picture exactly (no empty padding)", () => {
+	// On-screen shape of the box in a video rect of the given width / height ratio.
+	const boxRatio = (size: { width: number; height: number }, aspect: number) =>
+		(size.width / 100) / (size.height / 100 / aspect);
+	const images = {
+		wide: { width: 1600, height: 900 },
+		tall: { width: 900, height: 1600 },
+		square: { width: 700, height: 700 },
+		panorama: { width: 3000, height: 500 },
+	};
+
+	for (const [video, aspect] of [
+		["16:9", 16 / 9],
+		["4:3", 4 / 3],
+		["9:16", 9 / 16],
+		["21:9", 21 / 9],
+	] as const) {
+		for (const [name, image] of Object.entries(images)) {
+			it(`${name} image in a ${video} video rect`, () => {
+				const size = imageLayerSize(image, aspect)!;
+				expect(boxRatio(size, aspect)).toBeCloseTo(image.width / image.height, 6);
+				// The longer side is 30% of the video width.
+				const longPx = Math.max(size.width, (size.height * 1) / aspect);
+				expect(longPx).toBeCloseTo(30, 6);
+			});
+		}
+	}
+});

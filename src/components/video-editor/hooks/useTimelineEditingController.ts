@@ -230,6 +230,10 @@ export function useTimelineEditingController(input: Input) {
 	const cropRegionRef = useRef(input.appearance.cropRegion);
 	cropRegionRef.current = input.appearance.cropRegion;
 	const getVideoRectAspect = useCallback(() => {
+		// The rect the percentages are relative to, as drawn: it already reflects the crop, device
+		// frame and any locked source size, which a calculation from the video element can miss.
+		const drawn = document.querySelector("[data-annotation-layers]")?.getBoundingClientRect();
+		if (drawn && drawn.width > 0 && drawn.height > 0) return drawn.width / drawn.height;
 		const video = input.videoPlaybackRef.current?.video;
 		if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return 16 / 9;
 		const crop = cropRegionRef.current;
