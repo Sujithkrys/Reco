@@ -1,6 +1,7 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 import { heightForImageWidth, imageLayerSize, type NaturalSize } from "../imageLayerSize";
+import { buildDuplicateRegion } from "../annotationDuplicate";
 import { reorderedZIndexes } from "../layerKeyboard";
 import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
@@ -38,8 +39,6 @@ export interface AddedImage {
 	}
 
 const IMAGE_LAYER_DEFAULT_DURATION_MS = 1000;
-/** Offset of a duplicated layer from the original, percent of the video. */
-const DUPLICATE_OFFSET_PERCENT = 3;
 /** Diagonal offset between image layers added together, as percent of the video. */
 const IMAGE_STACK_OFFSET_PERCENT = 3;
 
@@ -178,14 +177,7 @@ export function useAnnotationRegionCommands({
 					const source = current.find((region) => region.id === id);
 					if (!source) return current;
 					created = true;
-					const copy = globalThis.structuredClone(source);
-					copy.id = newId;
-					copy.zIndex = zIndex;
-					copy.position = {
-						x: source.position.x + DUPLICATE_OFFSET_PERCENT,
-						y: source.position.y + DUPLICATE_OFFSET_PERCENT,
-					};
-					return [...current, copy];
+					return [...current, buildDuplicateRegion(source, current, newId, zIndex)];
 				});
 				if (!created) return;
 				setSelectedAnnotationId(newId);
