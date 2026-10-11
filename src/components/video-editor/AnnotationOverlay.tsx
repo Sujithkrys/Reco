@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
 import { sanitizeRect } from "./annotationCanvasBounds";
@@ -141,7 +142,12 @@ export function AnnotationOverlay({
 		handle: ResizeHandle;
 		startRect: Rect;
 		startPointer: { x: number; y: number };
+		/** The latest pointer position, so a modifier change can re-run the resize without a pointer move. */
+		lastPointer: { x: number; y: number };
 	} | null>(null);
+	// Detaches the window key listeners that follow Shift/Alt while a resize runs.
+	const stopModifierWatchRef = useRef<(() => void) | null>(null);
+	useEffect(() => () => stopModifierWatchRef.current?.(), []);
 	const [liveResize, setLiveResizeState] = useState<{ rect: Rect; fontSize: number } | null>(null);
 	// Mirrors liveResize so onResizeStop always sees the last move, even before a re-render.
 	const liveResizeRef = useRef<{ rect: Rect; fontSize: number } | null>(null);
@@ -195,6 +201,44 @@ export function AnnotationOverlay({
 		sizeScale,
 		fontsVersion,
 	]);
+
+	/**
+	 * Runs the layer resize for the current pointer and modifiers and shows the result.
+	 * react-resizable-box renders the box from its own pointer-only size, and react-rnd moves
+	 * it with its own pointer-only position, each in a synchronous commit, so the box must be
+	 * corrected in a synchronous commit too (flushSync). Left to React's normal scheduling,
+	 * the correction lands a task later and the unmodified rect is painted for a frame.
+	 */
+	const applyResize = (
+		pointer: { x: number; y: number },
+		modifiers: { shift: boolean; alt: boolean },
+	) => {
+		const session = resizeSessionRef.current;
+		if (!session) return;
+		const zoom = interactionScale > 0 ? interactionScale : 1;
+		const { rect, fontScale } = computeLayerResize({
+			handle: session.handle,
+			start: session.startRect,
+			delta: {
+				x: (pointer.x - session.startPointer.x) / zoom,
+				y: (pointer.y - session.startPointer.y) / zoom,
+			},
+			modifiers,
+			layerType: annotation.type,
+			minSize: MIN_LAYER_SIZE_PX,
+		});
+		flushSync(() => {
+			rndRef.current?.updatePosition({ x: rect.x, y: rect.y });
+			rndRef.current?.updateSize({ width: rect.width, height: rect.height });
+			setLiveResize({
+				rect,
+				fontSize:
+					annotation.type === "text"
+						? scaleTextFontSize(annotation.style.fontSize, fontScale)
+						: annotation.style.fontSize,
+			});
+		});
+	};
 
 	const screenRectToRecordingPercent = (rect: Rect) => {
 		const nextSceneX = (rect.x - sceneTransform.x) / sceneTransform.scale;
@@ -385,38 +429,40 @@ export function AnnotationOverlay({
 				const pointer = pointerOf(e);
 				resizeSessionRef.current =
 					handle && pointer
-						? { handle, startRect: { x, y, width, height }, startPointer: pointer }
+						? {
+								handle,
+								startRect: { x, y, width, height },
+								startPointer: pointer,
+								lastPointer: pointer,
+							}
 						: null;
+				// Pressing or releasing Shift/Alt mid-drag re-runs the resize at once instead of
+				// waiting for the next pointer move.
+				stopModifierWatchRef.current?.();
+				const onKey = (keyEvent: KeyboardEvent) => {
+					const active = resizeSessionRef.current;
+					if (!active || (keyEvent.key !== "Shift" && keyEvent.key !== "Alt")) return;
+					applyResize(active.lastPointer, { shift: keyEvent.shiftKey, alt: keyEvent.altKey });
+				};
+				window.addEventListener("keydown", onKey);
+				window.addEventListener("keyup", onKey);
+				stopModifierWatchRef.current = () => {
+					window.removeEventListener("keydown", onKey);
+					window.removeEventListener("keyup", onKey);
+					stopModifierWatchRef.current = null;
+				};
 			}}
 			onResize={(e) => {
 				const session = resizeSessionRef.current;
 				const pointer = pointerOf(e);
 				if (!session || !pointer) return;
-				const zoom = interactionScale > 0 ? interactionScale : 1;
-				const { rect, fontScale } = computeLayerResize({
-					handle: session.handle,
-					start: session.startRect,
-					delta: {
-						x: (pointer.x - session.startPointer.x) / zoom,
-						y: (pointer.y - session.startPointer.y) / zoom,
-					},
-					modifiers: modifiersOf(e),
-					layerType: annotation.type,
-					minSize: MIN_LAYER_SIZE_PX,
-				});
-				rndRef.current?.updatePosition({ x: rect.x, y: rect.y });
-				rndRef.current?.updateSize({ width: rect.width, height: rect.height });
-				setLiveResize({
-					rect,
-					fontSize:
-						annotation.type === "text"
-							? scaleTextFontSize(annotation.style.fontSize, fontScale)
-							: annotation.style.fontSize,
-				});
+				session.lastPointer = pointer;
+				applyResize(pointer, modifiersOf(e));
 			}}
 			onResizeStop={() => {
 				const result = liveResizeRef.current;
 				resizeSessionRef.current = null;
+				stopModifierWatchRef.current?.();
 				setLiveResize(null);
 				setTimeout(() => {
 					isDraggingRef.current = false;
