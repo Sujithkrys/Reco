@@ -2626,6 +2626,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		return (
 			<div
 				ref={previewFrameRef}
+				data-preview-frame
 				onPointerDown={handlePreviewPointerDown}
 				className="relative overflow-hidden"
 				style={{

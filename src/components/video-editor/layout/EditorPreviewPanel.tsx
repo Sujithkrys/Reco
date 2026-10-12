@@ -54,6 +54,7 @@ import type { VideoPlaybackRef } from "../VideoPlayback";
 import { ChapterManagementModal } from "../chapters/ChapterManagementModal";
 import { rippleShiftChapters } from "../chapters/chapterUtils";
 import { SilenceRemovalModal } from "../silenceRemoval/SilenceRemovalModal";
+import { isEmptyPreviewAreaTarget } from "../previewSelectionClick";
 import { clearAllTimelineSelections } from "../state/timelineSelection";
 import { EditorVideoPreview } from "./EditorVideoPreview";
 import { LayerContextToolbar } from "./LayerContextToolbar";
@@ -208,7 +209,21 @@ export function EditorPreviewPanel(props: Props) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3">
 			<div className="flex min-h-0 flex-1 flex-col">
-				<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+				<div
+					className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+					// The grey space around the canvas (beside, above and below it) clears every selection.
+					onPointerDown={(event) => {
+						if (event.button !== 0 || !isEmptyPreviewAreaTarget(event.target)) return;
+						clearAllTimelineSelections({
+							setSelectedZoomId: timeline.setSelectedZoomId,
+							setSelectedClipId: timeline.setSelectedClipId,
+							setSelectedAnnotationId: timeline.setSelectedAnnotationId,
+							setSelectedAudioId: timeline.setSelectedAudioId,
+							setSelectedCaptionId: timeline.setSelectedCaptionId,
+							setSelectedGeneratedClipId: timeline.setSelectedGeneratedClipId,
+						});
+					}}
+				>
 					<div className="flex flex-shrink-0 items-center justify-center gap-2 py-1.5">
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
