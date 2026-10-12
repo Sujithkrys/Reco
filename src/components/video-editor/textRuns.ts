@@ -172,6 +172,21 @@ export function resolveTextStyle(layer: LayerStyle, style: TextRunStyle | undefi
 	};
 }
 
+/**
+ * A text layer's runs with resolved styles, font sizes multiplied by `sizeScale` (pixels per base
+ * pixel), plus the layer's own resolved style at that scale: the input of the shared layout.
+ */
+export function styledRunsOf(
+	region: Pick<AnnotationRegion, "content" | "textRuns" | "style">,
+	sizeScale: number,
+): { runs: { text: string; style: ResolvedTextStyle }[]; base: ResolvedTextStyle } {
+	const scaled = (style: ResolvedTextStyle): ResolvedTextStyle => ({ ...style, fontSize: style.fontSize * sizeScale });
+	return {
+		runs: runsOf(region).map((run) => ({ text: run.text, style: scaled(resolveTextStyle(region.style, run.style)) })),
+		base: scaled(resolveTextStyle(region.style, undefined)),
+	};
+}
+
 /** The style a character typed at `offset` takes: the character before it, else the one after. */
 export function styleAtOffset(runs: TextRun[], offset: number): TextRunStyle | undefined {
 	let position = 0;

@@ -4,20 +4,25 @@ import {
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
+	type TextRun,
 } from "@/components/video-editor/types";
-import { layoutTextBox, wrapTextLines } from "@/components/video-editor/annotationTextLayout";
+import {
+	canvasTextMeasurer,
+	layoutRichTextBox,
+	layoutTextBox,
+	wrapTextLines,
+} from "@/components/video-editor/annotationTextLayout";
+import { styledRunsOf } from "@/components/video-editor/textRuns";
 import { renderAnnotations } from "./annotationRenderer";
 
-// Every character measures 10px, so widths are easy to reason about.
+// Every character measures 10px at the default 20px (half the font size), so widths are easy to reason about.
 const CHAR_WIDTH = 10;
+const fontPx = (font: string) => Number(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? 20);
+
+type Call = { name: string; args: unknown[]; font: string; fillStyle: string };
 
 function createRecordingContext() {
-	const calls: { name: string; args: unknown[] }[] = [];
-	const record =
-		(name: string) =>
-		(...args: unknown[]) => {
-			calls.push({ name, args });
-		};
+	const calls: Call[] = [];
 	const ctx = {
 		font: "",
 		fillStyle: "",
@@ -25,19 +30,13 @@ function createRecordingContext() {
 		lineWidth: 1,
 		textAlign: "left",
 		textBaseline: "alphabetic",
-		save: record("save"),
-		restore: record("restore"),
-		beginPath: record("beginPath"),
-		rect: record("rect"),
-		clip: record("clip"),
-		fill: record("fill"),
-		stroke: record("stroke"),
-		moveTo: record("moveTo"),
-		lineTo: record("lineTo"),
-		roundRect: record("roundRect"),
-		fillText: record("fillText"),
-		measureText: (text: string) => ({ width: text.length * CHAR_WIDTH }),
-	};
+		measureText: (text: string) => ({ width: (text.length * fontPx(ctx.font)) / 2 }),
+	} as Record<string, unknown> & { font: string; fillStyle: string };
+	for (const name of ["save", "restore", "beginPath", "rect", "clip", "fill", "stroke", "moveTo", "lineTo", "roundRect", "fillText", "fillRect"]) {
+		ctx[name] = (...args: unknown[]) => {
+			calls.push({ name, args, font: ctx.font, fillStyle: String(ctx.fillStyle) });
+		};
+	}
 	return { ctx: ctx as unknown as CanvasRenderingContext2D, calls };
 }
 
@@ -55,10 +54,11 @@ function textAnnotation(content: string, style: Partial<AnnotationRegion["style"
 	};
 }
 
-const roundRects = (calls: { name: string; args: unknown[] }[]) =>
+const roundRects = (calls: Call[]) =>
 	calls.filter((call) => call.name === "roundRect").map((call) => call.args as number[]);
-const texts = (calls: { name: string; args: unknown[] }[]) =>
+const texts = (calls: Call[]) =>
 	calls.filter((call) => call.name === "fillText").map((call) => call.args as [string, number, number]);
+const textCalls = (calls: Call[]) => calls.filter((call) => call.name === "fillText");
 
 describe("export text background", () => {
 	it("fills the whole layer box with the 4px radius", async () => {
@@ -84,9 +84,10 @@ describe("export text background", () => {
 
 		const [first, second] = texts(calls);
 		expect(texts(calls)).toHaveLength(2);
-		// Horizontally on the box centre; the two 28px lines sit evenly around its middle.
-		expect(first[1]).toBeCloseTo(250);
-		expect(second[1]).toBeCloseTo(250);
+		// Each line is centred on the box centre (drawn from its left edge: 250 - width / 2);
+		// the two 28px lines sit evenly around its middle.
+		expect(first[1]).toBeCloseTo(250 - 110 / 2);
+		expect(second[1]).toBeCloseTo(250 - 20 / 2);
 		expect(first[2]).toBeCloseTo(125 - 14);
 		expect(second[2]).toBeCloseTo(125 + 14);
 	});
@@ -121,7 +122,8 @@ describe("export text background", () => {
 		expect(roundRects(calls)).toEqual([[100, 100, 750, 375, 4]]);
 		expect(ctx.font).toContain("48px");
 		const lines = texts(calls);
-		expect(lines.map(([, x]) => x)).toEqual([475, 475]);
+		// Centred on 475: "Hello world" is 11 × 24px wide, "Hi" 2 × 24px.
+		expect(lines.map(([, x]) => x)).toEqual([475 - 132, 475 - 24]);
 		// Two 48×1.4px lines, evenly around the box middle (100 + 375/2).
 		expect(lines[0][2]).toBeCloseTo(287.5 - 33.6);
 		expect(lines[1][2]).toBeCloseTo(287.5 + 33.6);
@@ -141,6 +143,108 @@ describe("export text background", () => {
 
 		expect(calls.filter((call) => call.name === "roundRect")).toHaveLength(0);
 		expect(calls.filter((call) => call.name === "fillText")).toHaveLength(2);
+	});
+});
+
+describe("export rich text", () => {
+	// A 500x250 box at (0, 0) on a 1000x500 canvas; left-aligned text starts at 8px padding + 4px inset.
+	const rich = (runs: TextRun[], style: Partial<AnnotationRegion["style"]> = {}): AnnotationRegion => ({
+		...textAnnotation(runs.map((run) => run.text).join(""), { textAlign: "left", backgroundColor: "transparent", ...style }),
+		textRuns: runs,
+	});
+
+	it("draws mixed sizes on one line on a shared baseline", async () => {
+		const { ctx, calls } = createRecordingContext();
+		await renderAnnotations(ctx, [rich([{ text: "ab " }, { text: "CD", style: { fontSize: 40 } }])], 1000, 500, 500, 1);
+
+		const [small, large] = textCalls(calls);
+		expect(small.args[0]).toBe("ab ");
+		expect(small.font).toContain("20px");
+		expect(large.args[0]).toBe("CD");
+		expect(large.font).toContain("40px");
+		// Side by side from the line start.
+		expect(small.args[1]).toBeCloseTo(12);
+		expect(large.args[1]).toBeCloseTo(12 + 30);
+		// One 56px line (1.4 × 40) centred at 125: the large run is centred, the small run shares its
+		// baseline (baseline 0.3em below the middle when the context reports no metrics).
+		expect(large.args[2]).toBeCloseTo(125);
+		expect(small.args[2]).toBeCloseTo(125 + 40 * 0.3 - 20 * 0.3);
+	});
+
+	it("draws each run in its own font, weight and colour", async () => {
+		const { ctx, calls } = createRecordingContext();
+		await renderAnnotations(
+			ctx,
+			[
+				rich([
+					{ text: "plain " },
+					{ text: "serif", style: { fontFamily: "Georgia, serif", fontStyle: "italic", fontWeight: "normal", color: "#ff0000" } },
+				]),
+			],
+			1000,
+			500,
+			500,
+			1,
+		);
+
+		const [plain, serif] = textCalls(calls);
+		expect(plain.font).toBe(`normal bold 20px ${DEFAULT_ANNOTATION_STYLE.fontFamily}`);
+		expect(plain.fillStyle).toBe(DEFAULT_ANNOTATION_STYLE.color);
+		expect(serif.font).toBe("italic normal 20px Georgia, serif");
+		expect(serif.fillStyle).toBe("#ff0000");
+	});
+
+	it("paints a highlight behind its run only", async () => {
+		const { ctx, calls } = createRecordingContext();
+		await renderAnnotations(
+			ctx,
+			[rich([{ text: "aa " }, { text: "bb", style: { highlight: "#ffff00" } }, { text: " cc" }])],
+			1000,
+			500,
+			500,
+			1,
+		);
+
+		const highlights = calls.filter((call) => call.name === "fillRect");
+		expect(highlights).toHaveLength(1);
+		expect(highlights[0].fillStyle).toBe("#ffff00");
+		const [x, y, width, height] = highlights[0].args as number[];
+		const bb = textCalls(calls).find((call) => call.args[0] === "bb");
+		expect(x).toBeCloseTo(bb?.args[1] as number);
+		expect(width).toBeCloseTo(20);
+		// From the font ascent above the baseline to the descent below it (0.8em + 0.2em without metrics).
+		expect(y).toBeCloseTo((bb?.args[2] as number) + 20 * 0.3 - 20 * 0.8);
+		expect(height).toBeCloseTo(20);
+	});
+
+	it("breaks lines exactly where the preview layout does", async () => {
+		const { ctx, calls } = createRecordingContext();
+		const region = rich(
+			[
+				{ text: "Small words then " },
+				{ text: "LARGE WORDS", style: { fontSize: 60 } },
+				{ text: " and small words again until the box wraps" },
+			],
+			{ textAlign: "center" },
+		);
+		await renderAnnotations(ctx, [region], 1000, 500, 500, 1);
+
+		// The preview lays text out with the same function and a canvas measurer.
+		const { runs, base } = styledRunsOf(region, 1);
+		const preview = layoutRichTextBox(
+			runs,
+			base,
+			"center",
+			{ x: 0, y: 0, width: 500, height: 250, scale: 1 },
+			canvasTextMeasurer(createRecordingContext().ctx),
+		);
+		const previewLines = preview.lines.map((line) => line.pieces.map((piece) => piece.text).join(""));
+		expect(previewLines.length).toBeGreaterThan(1);
+		expect(textCalls(calls).map((call) => call.args[0]).join("|")).toBe(
+			preview.lines.flatMap((line) => line.pieces.map((piece) => piece.text)).join("|"),
+		);
+		// Every line fits the 476px text width (500 - 2×8 padding - 2×4 inset).
+		for (const line of preview.lines) expect(line.width).toBeLessThanOrEqual(476);
 	});
 });
 

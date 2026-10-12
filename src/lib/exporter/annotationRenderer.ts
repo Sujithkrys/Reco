@@ -6,10 +6,12 @@ import {
 	DEFAULT_SHAPE_DATA,
 } from "@/components/video-editor/types";
 import {
+	canvasTextMeasurer,
 	hasTextBackground,
-	layoutTextBox,
-	textLayerFont,
+	layoutRichTextBox,
+	textRunFont,
 } from "@/components/video-editor/annotationTextLayout";
+import { styledRunsOf } from "@/components/video-editor/textRuns";
 
 export interface AnnotationRenderAssets {
 	imageCache: Map<string, HTMLImageElement>;
@@ -280,52 +282,48 @@ function renderText(
 	ctx.rect(x, y, width, height);
 	ctx.clip();
 
-	const scaledFontSize = style.fontSize * scaleFactor;
-	ctx.font = textLayerFont(style, scaledFontSize);
+	// Run by run from the shared layout (the preview uses the same one), so line breaks,
+	// line heights and baselines match. One style is the single-run case of old projects.
+	const { runs, base } = styledRunsOf(annotation, scaleFactor);
+	const measurer = canvasTextMeasurer(ctx);
+	const layout = layoutRichTextBox(runs, base, style.textAlign, { x, y, width, height, scale: scaleFactor }, measurer);
 	ctx.textBaseline = "middle";
-
-	const layout = layoutTextBox(
-		(text) => ctx.measureText(text).width,
-		annotation.content || "",
-		style.textAlign,
-		{ x, y, width, height, fontSize: scaledFontSize, scale: scaleFactor },
-	);
-	const { lines, textX, background } = layout;
-	ctx.textAlign = style.textAlign === "center" || style.textAlign === "right" ? style.textAlign : "left";
+	ctx.textAlign = "left";
 
 	// The background fills the whole layer box, as in the preview.
 	if (hasTextBackground(style)) {
+		const background = layout.background;
 		ctx.fillStyle = style.backgroundColor;
 		ctx.beginPath();
 		ctx.roundRect(background.x, background.y, background.width, background.height, background.radius);
 		ctx.fill();
 	}
 
-	lines.forEach((line, index) => {
-		const currentY = layout.firstLineY + index * layout.lineHeight;
-
-		ctx.fillStyle = style.color;
-		ctx.fillText(line, textX, currentY);
-
-		if (style.textDecoration === "underline") {
-			const metrics = ctx.measureText(line);
-			let underlineX = textX;
-			const underlineY = currentY + scaledFontSize * 0.15;
-
-			if (style.textAlign === "center") {
-				underlineX = textX - metrics.width / 2;
-			} else if (style.textAlign === "right") {
-				underlineX = textX - metrics.width;
-			}
-
-			ctx.strokeStyle = style.color;
-			ctx.lineWidth = Math.max(1, scaledFontSize / 16);
-			ctx.beginPath();
-			ctx.moveTo(underlineX, underlineY);
-			ctx.lineTo(underlineX + metrics.width, underlineY);
-			ctx.stroke();
+	for (const line of layout.lines) {
+		// Highlights first, so a neighbouring highlight never covers a glyph.
+		for (const piece of line.pieces) {
+			if (!piece.style.highlight) continue;
+			const metrics = measurer.metrics(piece.style);
+			ctx.fillStyle = piece.style.highlight;
+			ctx.fillRect(piece.x, piece.baselineY - metrics.ascent, piece.width, metrics.ascent + metrics.descent);
 		}
-	});
+		for (const piece of line.pieces) {
+			const fontSize = piece.style.fontSize;
+			ctx.font = textRunFont(piece.style);
+			ctx.fillStyle = piece.style.color;
+			ctx.fillText(piece.text, piece.x, piece.middleY);
+
+			if (piece.style.textDecoration === "underline") {
+				const underlineY = piece.middleY + fontSize * 0.15;
+				ctx.strokeStyle = piece.style.color;
+				ctx.lineWidth = Math.max(1, fontSize / 16);
+				ctx.beginPath();
+				ctx.moveTo(piece.x, underlineY);
+				ctx.lineTo(piece.x + piece.width, underlineY);
+				ctx.stroke();
+			}
+		}
+	}
 
 	ctx.restore();
 }
