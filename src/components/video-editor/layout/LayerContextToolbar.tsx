@@ -349,7 +349,8 @@ export function LayerContextToolbar({
 						<ColorSwatches
 							id={id}
 							projectColors={projectColors}
-							color={textColor ?? a.style.color}
+							// Mixed colours: no current value, so any swatch applies.
+							color={textColor ?? ""}
 							onChange={(hex) => setText({ color: hex })}
 							toPatch={(hex) => ({ style: { color: hex } })}
 						/>
@@ -366,7 +367,7 @@ export function LayerContextToolbar({
 							projectColors={projectColors}
 							onClear={() => setText({ highlight: undefined })}
 							clearLabel="No highlight"
-							color={summary.highlight === MIXED || !summary.highlight ? "#FFD700" : summary.highlight}
+							color={summary.highlight === MIXED || !summary.highlight ? "" : summary.highlight}
 							onChange={(hex) => setText({ highlight: hex })}
 							toPatch={(hex) => ({ textStyle: { highlight: hex } })}
 						/>

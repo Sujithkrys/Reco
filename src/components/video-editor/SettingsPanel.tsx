@@ -98,6 +98,7 @@ import {
 	DEFAULT_ZOOM_IN_DURATION_MS,
 	DEFAULT_ZOOM_OUT_DURATION_MS,
 } from "./types";
+import type { TextStylePatch } from "./textRuns";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
 import { isZeroPadding } from "./videoPlayback/layoutUtils";
 import { supportsPreviewPlaybackRate } from "./videoPlayback/playbackRate";
@@ -644,6 +645,8 @@ interface SettingsPanelProps {
 		) => void;
 		onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
+	/** Text style keys: the text range selected on the canvas, else the whole layer. */
+	onAnnotationTextStyleChange?: (id: string, patch: TextStylePatch) => void;
 	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
 	onAnnotationShapeDataChange?: (id: string, shapeData: Partial<ShapeData>) => void;
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
@@ -1108,6 +1111,7 @@ export function SettingsPanel({
 	onAnnotationContentChange,
 	onAnnotationTypeChange,
 	onAnnotationStyleChange,
+	onAnnotationTextStyleChange,
 	onAnnotationFigureDataChange,
 	onAnnotationShapeDataChange,
 	onAnnotationBlurIntensityChange,
@@ -2126,6 +2130,11 @@ export function SettingsPanel({
 				}
 				onTypeChange={(type) => onAnnotationTypeChange(selectedAnnotation.id, type)}
 				onStyleChange={(style) => onAnnotationStyleChange(selectedAnnotation.id, style)}
+				onTextStyleChange={
+					onAnnotationTextStyleChange
+						? (patch) => onAnnotationTextStyleChange(selectedAnnotation.id, patch)
+						: undefined
+				}
 				onFigureDataChange={
 					onAnnotationFigureDataChange
 						? (figureData) =>

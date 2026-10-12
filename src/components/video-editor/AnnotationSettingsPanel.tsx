@@ -37,6 +37,8 @@ import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { loadImageSize, type NaturalSize } from "./imageLayerSize";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { AnnotationColorBlock } from "./AnnotationColorBlock";
+import { MIXED, plainTextOf, runsOf, styleSummary, type TextStylePatch } from "./textRuns";
+import { useTextSelection } from "./textSelectionStore";
 import { COLOR_PICKER_POPOVER_PROPS } from "./ColorPickerPopover";
 import {
 	type AnnotationPreviewPatch,
@@ -63,6 +65,8 @@ interface AnnotationSettingsPanelProps {
 	) => void;
 	onTypeChange: (type: AnnotationType) => void;
 	onStyleChange: (style: Partial<AnnotationRegion["style"]>) => void;
+	/** Text keys (font, size, B/I/U, colour, highlight): the selected text range, else the whole layer. */
+	onTextStyleChange?: (patch: TextStylePatch) => void;
 	onFigureDataChange?: (figureData: FigureData) => void;
 	onShapeDataChange?: (shapeData: Partial<ShapeData>) => void;
 	onBlurIntensityChange?: (intensity: number) => void;
@@ -124,6 +128,7 @@ export function AnnotationSettingsPanel({
 	onContentChange,
 	onTypeChange,
 	onStyleChange,
+	onTextStyleChange,
 	onFigureDataChange,
 	onShapeDataChange,
 	onBlurIntensityChange,
@@ -156,6 +161,31 @@ export function AnnotationSettingsPanel({
 	// Hover previews are transient: drop them when the layer changes or the panel closes.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-runs on layer change on purpose
 	useEffect(() => () => clearAnnotationPreview(), [annotation.id]);
+	// Rich text: the values of the text range selected on the canvas (or of all the text), with
+	// MIXED where they differ; text changes go to that range, or the whole layer without one.
+	const textSelection = useTextSelection();
+	const selectedRange = textSelection?.annotationId === annotation.id ? textSelection : null;
+	const textRuns = runsOf(annotation);
+	const textSummary = styleSummary(
+		textRuns,
+		annotation.style,
+		selectedRange?.start ?? 0,
+		selectedRange?.end ?? plainTextOf(textRuns).length,
+	);
+	const setTextStyle = (patch: TextStylePatch) => {
+		if (onTextStyleChange) onTextStyleChange(patch);
+		else {
+			const { highlight: _highlight, ...layerPatch } = patch;
+			onStyleChange(layerPatch as Partial<AnnotationRegion["style"]>);
+		}
+	};
+	const shownFontFamily = textSummary.fontFamily === MIXED ? "" : textSummary.fontFamily;
+	const shownFontSize = textSummary.fontSize === MIXED ? null : textSummary.fontSize;
+	const shownColor = textSummary.color === MIXED ? null : textSummary.color;
+	const shownHighlight = textSummary.highlight === MIXED ? null : (textSummary.highlight ?? "");
+	const isBold = textSummary.fontWeight === "bold";
+	const isItalic = textSummary.fontStyle === "italic";
+	const isUnderline = textSummary.textDecoration === "underline";
 	const previewWith = (toPatch: (hex: string) => AnnotationPreviewPatch) => (hex: string | null) =>
 		hex ? previewAnnotation(annotation.id, toPatch(hex)) : clearAnnotationPreview();
 	const previewFont = (fontFamily: string | null) =>
@@ -330,8 +360,13 @@ export function AnnotationSettingsPanel({
 						{/* Text Content */}
 						<TabsContent value="text" className="mt-0 space-y-4">
 							<div>
-								<label className="text-xs font-medium text-foreground mb-2 block">
+								<label className="text-xs font-medium text-foreground mb-2 flex items-center justify-between gap-2">
 									{t("annotations.textContent")}
+									{selectedRange ? (
+										<span className="rounded-full bg-[#2563EB]/15 px-2 py-0.5 text-[10px] font-medium text-[#2563EB]">
+											{t("annotations.selectedText")}
+										</span>
+									) : null}
 								</label>
 								<textarea
 									value={annotation.textContent || annotation.content}
@@ -351,10 +386,10 @@ export function AnnotationSettingsPanel({
 											{t("annotations.fontStyle")}
 										</label>
 										<Select
-											value={annotation.style.fontFamily}
+											value={shownFontFamily}
 											onValueChange={(value) => {
 												clearAnnotationPreview();
-												onStyleChange({ fontFamily: value });
+												setTextStyle({ fontFamily: value });
 											}}
 											onOpenChange={(open) => {
 												if (!open) clearAnnotationPreview();
@@ -362,7 +397,11 @@ export function AnnotationSettingsPanel({
 											>
 											<SelectTrigger className="w-full bg-foreground/5 border-foreground/10 text-foreground h-9 text-xs">
 												<SelectValue
-													placeholder={t("annotations.selectStyle")}
+													placeholder={
+														textSummary.fontFamily === MIXED
+															? t("annotations.mixed")
+															: t("annotations.selectStyle")
+													}
 												/>
 											</SelectTrigger>
 											<SelectContent className="bg-editor-surface-alt border-foreground/10 text-foreground max-h-[300px]">
@@ -405,20 +444,22 @@ export function AnnotationSettingsPanel({
 											{t("annotations.size")}
 										</label>
 										<Select
-											value={annotation.style.fontSize.toString()}
+											value={shownFontSize === null ? "" : shownFontSize.toString()}
 											onValueChange={(value) => {
 												clearAnnotationPreview();
-												onStyleChange({ fontSize: parseInt(value) });
+												setTextStyle({ fontSize: parseInt(value) });
 											}}
 											onOpenChange={(open) => {
 												if (!open) clearAnnotationPreview();
 											}}
 											>
 											<SelectTrigger className="w-full bg-foreground/5 border-foreground/10 text-foreground h-9 text-xs">
-												<SelectValue placeholder={t("annotations.size")} />
+												<SelectValue
+													placeholder={shownFontSize === null ? t("annotations.mixed") : t("annotations.size")}
+												/>
 											</SelectTrigger>
 											<SelectContent className="bg-editor-surface-alt border-foreground/10 text-foreground max-h-[200px]">
-												{fontSizeOptions(annotation.style.fontSize).map((size) => (
+												{fontSizeOptions(shownFontSize ?? annotation.style.fontSize).map((size) => (
 													<SelectItem
 														key={size}
 														value={size.toString()}
@@ -438,7 +479,7 @@ export function AnnotationSettingsPanel({
 									<AddCustomFontDialog
 										onFontAdded={(font) => {
 											setCustomFonts(getCustomFonts());
-											onStyleChange({ fontFamily: font.fontFamily });
+											setTextStyle({ fontFamily: font.fontFamily });
 										}}
 									/>
 								</div>
@@ -453,19 +494,8 @@ export function AnnotationSettingsPanel({
 											<ToggleGroupItem
 												value="bold"
 												aria-label={t("annotations.toggleBold")}
-												data-state={
-													annotation.style.fontWeight === "bold"
-														? "on"
-														: "off"
-												}
-												onClick={() =>
-													onStyleChange({
-														fontWeight:
-															annotation.style.fontWeight === "bold"
-																? "normal"
-																: "bold",
-													})
-												}
+												data-state={isBold ? "on" : "off"}
+												onClick={() => setTextStyle({ fontWeight: isBold ? "normal" : "bold" })}
 												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
 											>
 												<Bold className="h-4 w-4" />
@@ -475,19 +505,8 @@ export function AnnotationSettingsPanel({
 											<ToggleGroupItem
 												value="italic"
 												aria-label={t("annotations.toggleItalic")}
-												data-state={
-													annotation.style.fontStyle === "italic"
-														? "on"
-														: "off"
-												}
-												onClick={() =>
-													onStyleChange({
-														fontStyle:
-															annotation.style.fontStyle === "italic"
-																? "normal"
-																: "italic",
-													})
-												}
+												data-state={isItalic ? "on" : "off"}
+												onClick={() => setTextStyle({ fontStyle: isItalic ? "normal" : "italic" })}
 												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
 											>
 												<Italic className="h-4 w-4" />
@@ -497,19 +516,9 @@ export function AnnotationSettingsPanel({
 											<ToggleGroupItem
 												value="underline"
 												aria-label={t("annotations.toggleUnderline")}
-												data-state={
-													annotation.style.textDecoration === "underline"
-														? "on"
-														: "off"
-												}
+												data-state={isUnderline ? "on" : "off"}
 												onClick={() =>
-													onStyleChange({
-														textDecoration:
-															annotation.style.textDecoration ===
-															"underline"
-																? "none"
-																: "underline",
-													})
+													setTextStyle({ textDecoration: isUnderline ? "none" : "underline" })
 												}
 												className="h-8 w-8 data-[state=on]:bg-[#2563EB] data-[state=on]:text-white text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
 											>
@@ -586,21 +595,21 @@ export function AnnotationSettingsPanel({
 													<div
 														className="w-4 h-4 rounded-full border border-foreground/20"
 														style={{
-															backgroundColor: annotation.style.color,
+															background: shownColor ?? "conic-gradient(#ff0000, #00ff00, #0000ff, #ff0000)",
 														}}
 													/>
 													<span className="text-xs text-muted-foreground truncate flex-1 text-left">
-														{annotation.style.color}
+														{shownColor ?? t("annotations.mixed")}
 													</span>
 													<ChevronDown className="h-3 w-3 opacity-50" />
 												</Button>
 											</PopoverTrigger>
 											<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
 												<AnnotationColorBlock
-													color={annotation.style.color}
+													color={shownColor ?? ""}
 													colors={colorPalette}
 													projectColors={projectColors}
-													onChange={(hex) => onStyleChange({ color: hex })}
+													onChange={(hex) => setTextStyle({ color: hex })}
 													onPreview={previewWith((hex) => ({ style: { color: hex } }))}
 												/>
 											</PopoverContent>
@@ -653,6 +662,47 @@ export function AnnotationSettingsPanel({
 											</PopoverContent>
 										</Popover>
 									</div>
+								</div>
+
+								{/* Highlight: a colour behind the selected text (or all of it). */}
+								<div>
+									<label className="text-xs font-medium text-foreground mb-2 block">
+										{t("annotations.highlight")}
+									</label>
+									<Popover>
+										<PopoverTrigger asChild>
+											<Button
+												variant="outline"
+												className="w-full h-9 justify-start gap-2 bg-foreground/5 border-foreground/10 hover:bg-foreground/10 px-2"
+											>
+												<div className="w-4 h-4 rounded-full border border-foreground/20 relative overflow-hidden">
+													<div className="absolute inset-0 checkerboard-bg opacity-50" />
+													<div
+														className="absolute inset-0"
+														style={{ backgroundColor: shownHighlight || "transparent" }}
+													/>
+												</div>
+												<span className="text-xs text-muted-foreground truncate flex-1 text-left">
+													{shownHighlight === null
+														? t("annotations.mixed")
+														: shownHighlight || t("annotations.none")}
+												</span>
+												<ChevronDown className="h-3 w-3 opacity-50" />
+											</Button>
+										</PopoverTrigger>
+										<PopoverContent {...COLOR_PICKER_POPOVER_PROPS}>
+											<AnnotationColorBlock
+												// No current value when none or mixed, so any swatch (even the one shown) applies.
+												color={shownHighlight || ""}
+												colors={colorPalette}
+												projectColors={projectColors}
+												onClear={() => setTextStyle({ highlight: undefined })}
+												clearLabel={t("annotations.clearHighlight")}
+												onChange={(hex) => setTextStyle({ highlight: hex })}
+												onPreview={previewWith((hex) => ({ textStyle: { highlight: hex } }))}
+											/>
+										</PopoverContent>
+									</Popover>
 								</div>
 							</div>
 						</TabsContent>
