@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { applyTextStylePatch, TEXT_RUN_STYLE_KEYS, type TextStylePatch } from "./textRuns";
+import { textSelectionFor } from "./textSelectionStore";
 import type { AnnotationRegion, FigureData, ShapeData } from "./types";
 
 /**
@@ -16,6 +18,10 @@ export interface AnnotationPreviewPatch {
 	/** Used by the keyboard shortcuts to show held arrow / scale keys before they are committed. */
 	position?: { x: number; y: number };
 	size?: { width: number; height: number };
+	/** Text style keys (colour, font, size, ...) apply to this range only; set from the active text selection. */
+	textRange?: { start: number; end: number } | null;
+	/** Run-only text keys (highlight) to preview. */
+	textStyle?: TextStylePatch;
 }
 
 export interface AnnotationPreview {
@@ -31,7 +37,8 @@ function emit() {
 }
 
 export function previewAnnotation(id: string, patch: AnnotationPreviewPatch) {
-	current = { id, patch };
+	// A text selection on the canvas limits text style previews to that range, as the commit will.
+	current = { id, patch: { ...patch, textRange: patch.textRange ?? textSelectionFor(id) } };
 	emit();
 }
 
@@ -56,6 +63,31 @@ export function useAnnotationPreview(): AnnotationPreview | null {
 	return useSyncExternalStore(subscribe, getAnnotationPreview, getAnnotationPreview);
 }
 
+/**
+ * The style part of a preview. On a text layer the text keys go through the same patch as the
+ * commit (the selected range only, or the whole layer), the rest (box background, alignment)
+ * through the layer style.
+ */
+function previewStyle(
+	region: AnnotationRegion,
+	patch: AnnotationPreviewPatch,
+): Pick<AnnotationRegion, "style" | "textRuns"> {
+	if (region.type !== "text") return { style: { ...region.style, ...patch.style }, textRuns: region.textRuns };
+	const textPatch: TextStylePatch = { ...patch.textStyle };
+	const layerPatch: Partial<AnnotationRegion["style"]> = {};
+	for (const [key, value] of Object.entries(patch.style ?? {})) {
+		if ((TEXT_RUN_STYLE_KEYS as readonly string[]).includes(key)) {
+			(textPatch as Record<string, unknown>)[key] = value;
+		} else {
+			(layerPatch as Record<string, unknown>)[key] = value;
+		}
+	}
+	const withLayer = { ...region, style: { ...region.style, ...layerPatch } };
+	return Object.keys(textPatch).length > 0
+		? applyTextStylePatch(withLayer, textPatch, patch.textRange ?? null)
+		: { style: withLayer.style, textRuns: region.textRuns };
+}
+
 /** The regions to draw in the editor preview: the real ones with the hover patch laid over one layer. */
 export function applyAnnotationPreview(
 	regions: AnnotationRegion[],
@@ -68,7 +100,7 @@ export function applyAnnotationPreview(
 		if (region.id !== id) return region;
 		return {
 			...region,
-			...(patch.style ? { style: { ...region.style, ...patch.style } } : {}),
+			...(patch.style || patch.textStyle ? previewStyle(region, patch) : {}),
 			...(patch.shapeData && region.shapeData
 				? { shapeData: { ...region.shapeData, ...patch.shapeData } }
 				: {}),

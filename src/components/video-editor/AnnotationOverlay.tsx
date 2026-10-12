@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
@@ -10,21 +10,45 @@ import {
 	scaleTextFontSize,
 } from "./annotationResize";
 import {
+	canvasTextMeasurer,
 	hasTextBackground,
-	layoutTextBox,
+	layoutRichTextBox,
 	TEXT_BACKGROUND_RADIUS,
 	TEXT_BOX_PADDING,
 	TEXT_INSET_X_EM,
 	TEXT_INSET_Y_EM,
 	TEXT_LINE_HEIGHT,
-	textLayerFont,
 } from "./annotationTextLayout";
+import {
+	domText,
+	nextCodePoint,
+	offsetOf,
+	previousCodePoint,
+	rangeOf,
+	renderRunsInto,
+	runCss,
+	selectedOffsets,
+	selectOffsets,
+	showRememberedSelection,
+} from "./richTextDom";
+import {
+	diffText,
+	editTextRuns,
+	MIXED,
+	plainTextOf,
+	runsOf,
+	styledRunsOf,
+	styleSummary,
+	type TextStylePatch,
+} from "./textRuns";
+import { clearTextSelection, setTextSelection, useTextSelection } from "./textSelectionStore";
 import { getArrowComponent } from "./ArrowSvgs";
 import {
 	type AnnotationRegion,
 	BASE_PREVIEW_WIDTH,
 	BLUR_ANNOTATION_STRENGTH,
 	DEFAULT_SHAPE_DATA,
+	type TextRun,
 } from "./types";
 
 type Rect = {
@@ -52,6 +76,10 @@ interface AnnotationOverlayProps {
 	onSizeChange: (id: string, size: { width: number; height: number }) => void;
 	/** Text corner resizes scale the font; the new size is written through this. */
 	onStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
+	/** Text typed on the canvas: the new runs, and whether it continues the last typing burst (one undo step). */
+	onTextEdit?: (id: string, runs: TextRun[], continueBurst: boolean) => void;
+	/** Bold/italic/underline shortcuts in the canvas editor (selection-aware, like the panel). */
+	onTextStyleApply?: (id: string, patch: TextStylePatch) => void;
 	onClick: (id: string) => void;
 	zIndex: number;
 	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
@@ -82,6 +110,8 @@ function useFontsVersion(): number {
 
 /** Smallest box a resize may produce, in overlay pixels. */
 const MIN_LAYER_SIZE_PX = 10;
+/** Keystrokes closer together than this are one typing burst: one undo step. */
+const TYPING_BURST_MS = 1000;
 
 type PointerLikeEvent = (MouseEvent | TouchEvent) | { nativeEvent: MouseEvent | TouchEvent };
 
@@ -116,6 +146,8 @@ export function AnnotationOverlay({
 	onPositionChange,
 	onSizeChange,
 	onStyleChange,
+	onTextEdit,
+	onTextStyleApply,
 	onClick,
 	zIndex,
 	isSelectedBoost,
@@ -175,32 +207,238 @@ export function AnnotationOverlay({
 	const displayed = liveResize ?? pendingResize;
 	const displayRect = displayed?.rect ?? { x, y, width, height };
 	const fontsVersion = useFontsVersion();
-	const textFontSize = (displayed?.fontSize ?? annotation.style.fontSize) * sizeScale;
+	// While a corner resize runs, every run's size follows the layer's (committed rounded later).
+	const liveFontScale =
+		displayed && annotation.style.fontSize > 0 ? displayed.fontSize / annotation.style.fontSize : 1;
 	const textBoxWidth = displayRect.width;
 	const textBoxHeight = displayRect.height;
-	const textLines = useMemo(() => {
-		if (annotation.type !== "text") return [];
+	const styledText = useMemo(
+		() => styledRunsOf(annotation, sizeScale * liveFontScale),
+		[annotation, sizeScale, liveFontScale],
+	);
+	const textFontSize = styledText.base.fontSize;
+	const textLayout = useMemo(() => {
+		if (annotation.type !== "text") return null;
 		const ctx = getMeasureContext();
-		const content = annotation.content || "";
-		if (!ctx) return content.split("\n");
-		ctx.font = textLayerFont(annotation.style, textFontSize);
-		return layoutTextBox(
-			(text) => ctx.measureText(text).width,
-			content,
+		if (!ctx) return null;
+		return layoutRichTextBox(
+			styledText.runs,
+			styledText.base,
 			annotation.style.textAlign,
-			{ x: 0, y: 0, width: textBoxWidth, height: textBoxHeight, fontSize: textFontSize, scale: sizeScale },
-		).lines;
+			{ x: 0, y: 0, width: textBoxWidth, height: textBoxHeight, scale: sizeScale },
+			canvasTextMeasurer(ctx),
+		);
 		// fontsVersion re-measures once web fonts finish loading.
-	}, [
-		annotation.type,
-		annotation.content,
-		annotation.style,
-		textFontSize,
-		textBoxWidth,
-		textBoxHeight,
-		sizeScale,
-		fontsVersion,
-	]);
+	}, [annotation.type, annotation.style.textAlign, styledText, textBoxWidth, textBoxHeight, sizeScale, fontsVersion]);
+
+	// --- Rich text editing on the canvas (double-click a text layer) ---
+	const [isEditing, setIsEditing] = useState(false);
+	const editorRef = useRef<HTMLDivElement | null>(null);
+	const editPointRef = useRef<{ x: number; y: number } | null>(null);
+	// The runs last written by typing, and when: a keystroke soon after continues the same undo step.
+	const lastEditRef = useRef<{ at: number; runs: string } | null>(null);
+	const latestRef = useRef({ annotation, styledText, onTextEdit, onTextStyleApply, scale: sizeScale * liveFontScale });
+	latestRef.current = { annotation, styledText, onTextEdit, onTextStyleApply, scale: sizeScale * liveFontScale };
+	const textSelection = useTextSelection();
+	const rememberedRange =
+		textSelection && textSelection.annotationId === annotation.id ? textSelection : null;
+
+	const stopEditing = () => {
+		setIsEditing(false);
+		clearTextSelection(annotation.id);
+		showRememberedSelection(null);
+	};
+	// Leaving the layer (deselected, or another layer selected) ends editing and its selection.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only the selection flag matters
+	useEffect(() => {
+		if (!isSelected && isEditing) stopEditing();
+		if (!isSelected) clearTextSelection(annotation.id);
+	}, [isSelected]);
+	useEffect(() => {
+		if (annotation.type !== "text" && isEditing) stopEditing();
+	});
+
+	// The editor's DOM is written here, never by React, so the caret and IME stay in our hands.
+	const renderedRunsRef = useRef("");
+	const renderEditor = (runs: typeof styledText.runs) => {
+		const editor = editorRef.current;
+		if (!editor) return;
+		renderRunsInto(editor, runs);
+		renderedRunsRef.current = JSON.stringify(runs);
+	};
+	// Entering edit mode: fill the editor, focus it and select the word that was double-clicked.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per entry into edit mode
+	useLayoutEffect(() => {
+		const editor = editorRef.current;
+		if (!isEditing || !editor) return;
+		renderEditor(latestRef.current.styledText.runs);
+		editor.focus({ preventScroll: true });
+		const text = plainTextOf(runsOf(latestRef.current.annotation));
+		const point = editPointRef.current;
+		editPointRef.current = null;
+		const caretRange =
+			point && (document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null })
+				.caretRangeFromPoint?.(point.x, point.y);
+		if (caretRange && editor.contains(caretRange.startContainer)) {
+			const at = offsetOf(editor, caretRange.startContainer, caretRange.startOffset);
+			let start = at;
+			let end = at;
+			while (start > 0 && !/\s/.test(text[start - 1])) start--;
+			while (end < text.length && !/\s/.test(text[end])) end++;
+			selectOffsets(editor, start, end);
+		} else {
+			selectOffsets(editor, text.length, text.length);
+		}
+	}, [isEditing]);
+	// Runs changed from outside (panel, toolbar, undo): re-render, keeping the caret where it was.
+	useLayoutEffect(() => {
+		const editor = editorRef.current;
+		if (!isEditing || !editor) return;
+		if (renderedRunsRef.current === JSON.stringify(styledText.runs)) return;
+		const caret = document.activeElement === editor ? selectedOffsets(editor) : null;
+		renderEditor(styledText.runs);
+		if (caret) {
+			const length = plainTextOf(styledText.runs).length;
+			selectOffsets(editor, Math.min(caret.start, length), Math.min(caret.end, length));
+		}
+	});
+	// Typing, deleting, pasting and IME go through the run helpers, so styles stay attached.
+	useEffect(() => {
+		const editor = editorRef.current;
+		if (!isEditing || !editor) return;
+		const apply = (start: number, end: number, insert: string) => {
+			const { annotation: current, onTextEdit: emit } = latestRef.current;
+			if (start === end && !insert) return;
+			const runs = runsOf(current);
+			const next = editTextRuns(runs, start, end, insert, current.style);
+			const now = Date.now();
+			const last = lastEditRef.current;
+			const continueBurst = Boolean(last && now - last.at < TYPING_BURST_MS && last.runs === JSON.stringify(runs));
+			lastEditRef.current = { at: now, runs: JSON.stringify(next) };
+			// Show the edit at once; the stored runs arrive with the next render and match.
+			const shown = styledRunsOf({ ...current, content: plainTextOf(next), textRuns: next }, latestRef.current.scale);
+			renderEditor(shown.runs);
+			const caret = start + insert.length;
+			selectOffsets(editor, caret, caret);
+			emit?.(current.id, next, continueBurst);
+		};
+		const onBeforeInput = (event: InputEvent) => {
+			const type = event.inputType;
+			// An IME composition writes into the DOM itself; it is read back when it ends.
+			if (event.isComposing || type.startsWith("insertComposition")) return;
+			event.preventDefault();
+			const text = plainTextOf(runsOf(latestRef.current.annotation));
+			const selected = selectedOffsets(editor) ?? { start: text.length, end: text.length };
+			let { start, end } = selected;
+			const target = event.getTargetRanges?.()[0];
+			const targetOffsets = target
+				? {
+						start: offsetOf(editor, target.startContainer, target.startOffset),
+						end: offsetOf(editor, target.endContainer, target.endOffset),
+					}
+				: null;
+			if (type === "insertParagraph" || type === "insertLineBreak") {
+				apply(start, end, "\n");
+			} else if (type.startsWith("insert")) {
+				const data = event.data ?? event.dataTransfer?.getData("text/plain") ?? "";
+				if (type === "insertReplacementText" && targetOffsets) ({ start, end } = targetOffsets);
+				apply(start, end, data.replace(/\r\n?/g, "\n"));
+			} else if (type.startsWith("delete")) {
+				if (targetOffsets && targetOffsets.start !== targetOffsets.end) {
+					({ start, end } = targetOffsets);
+				} else if (start === end) {
+					if (type.includes("Backward")) start = previousCodePoint(text, start);
+					else end = nextCodePoint(text, end);
+				}
+				apply(Math.min(start, end), Math.max(start, end), "");
+			}
+			// Anything else (formatting, the browser's own undo) is not the editor's: bold/italic/
+			// underline are handled on keydown, undo by the app's history.
+		};
+		const onCompositionEnd = () => {
+			const before = plainTextOf(runsOf(latestRef.current.annotation));
+			const edit = diffText(before, domText(editor));
+			apply(edit.start, edit.end, edit.insert);
+		};
+		editor.addEventListener("beforeinput", onBeforeInput);
+		editor.addEventListener("compositionend", onCompositionEnd);
+		return () => {
+			editor.removeEventListener("beforeinput", onBeforeInput);
+			editor.removeEventListener("compositionend", onCompositionEnd);
+		};
+	}, [isEditing]);
+	// Remember the selected range (panel and toolbar apply to it); a caret means no selection.
+	useEffect(() => {
+		if (!isEditing) return;
+		const onSelectionChange = () => {
+			const editor = editorRef.current;
+			// Focus moved elsewhere (panel, popover): keep the remembered range.
+			if (!editor || document.activeElement !== editor) return;
+			const selected = selectedOffsets(editor);
+			if (!selected) return;
+			if (selected.start === selected.end) clearTextSelection(annotation.id);
+			else setTextSelection({ annotationId: annotation.id, ...selected });
+		};
+		document.addEventListener("selectionchange", onSelectionChange);
+		return () => document.removeEventListener("selectionchange", onSelectionChange);
+	}, [isEditing, annotation.id]);
+	// Keep the remembered range visible while the editor is not focused.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-anchored after every editor render
+	useEffect(() => {
+		const editor = editorRef.current;
+		if (!isEditing || !editor) return;
+		const update = () => {
+			const range = rememberedRange && document.activeElement !== editor ? rememberedRange : null;
+			showRememberedSelection(range ? rangeOf(editor, range.start, range.end) : null);
+		};
+		update();
+		editor.addEventListener("focus", update);
+		editor.addEventListener("blur", update);
+		return () => {
+			editor.removeEventListener("focus", update);
+			editor.removeEventListener("blur", update);
+		};
+	}, [isEditing, rememberedRange?.start, rememberedRange?.end, styledText]);
+
+	/** Ctrl/Cmd+B, I, U in the editor: toggle on the selection, or the whole layer for a caret. */
+	const toggleTextStyle = (key: "fontWeight" | "fontStyle" | "textDecoration") => {
+		const editor = editorRef.current;
+		const { annotation: current, onTextStyleApply: applyStyle } = latestRef.current;
+		if (!editor || !applyStyle) return;
+		const runs = runsOf(current);
+		const length = plainTextOf(runs).length;
+		const selected = selectedOffsets(editor);
+		const range = selected && selected.start !== selected.end ? selected : { start: 0, end: length };
+		const summary = styleSummary(runs, current.style, range.start, range.end);
+		const on = { fontWeight: "bold", fontStyle: "italic", textDecoration: "underline" } as const;
+		const off = { fontWeight: "normal", fontStyle: "normal", textDecoration: "none" } as const;
+		const isOn = summary[key] !== MIXED && summary[key] === on[key];
+		applyStyle(current.id, { [key]: isOn ? off[key] : on[key] });
+	};
+	const onEditorKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+		if (event.key === "Escape") {
+			event.preventDefault();
+			event.stopPropagation();
+			stopEditing();
+			return;
+		}
+		if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+			const key = event.key.toLowerCase();
+			const style = key === "b" ? "fontWeight" : key === "i" ? "fontStyle" : key === "u" ? "textDecoration" : null;
+			if (style) {
+				event.preventDefault();
+				event.stopPropagation();
+				toggleTextStyle(style);
+			}
+		}
+	};
+	const onTextDoubleClick = (event: React.MouseEvent) => {
+		if (annotation.type !== "text" || !isSelected || isEditing) return;
+		event.stopPropagation();
+		editPointRef.current = { x: event.clientX, y: event.clientY };
+		lastEditRef.current = null;
+		setIsEditing(true);
+	};
 
 	/**
 	 * Runs the layer resize for the current pointer and modifiers and shows the result.
@@ -276,6 +514,16 @@ export function AnnotationOverlay({
 		switch (annotation.type) {
 			case "text": {
 				const hasBackground = hasTextBackground(annotation.style);
+				// Lines and runs carry their own sizes; the block's size only sets the em insets.
+				const textBlockStyle: React.CSSProperties = {
+					flexShrink: 0,
+					width: "100%",
+					boxSizing: "border-box",
+					padding: `${TEXT_INSET_Y_EM}em ${TEXT_INSET_X_EM}em`,
+					fontSize: `${textFontSize}px`,
+					textAlign: annotation.style.textAlign,
+					lineHeight: String(TEXT_LINE_HEIGHT),
+				};
 				return (
 					// The background fills the whole box (it resizes with it); lines come
 					// from the same wrap as the export renderer (layoutTextBox).
@@ -291,29 +539,53 @@ export function AnnotationOverlay({
 							borderRadius: hasBackground ? `${TEXT_BACKGROUND_RADIUS * sizeScale}px` : undefined,
 						}}
 					>
-						<div
-							style={{
-								flexShrink: 0,
-								width: "100%",
-								boxSizing: "border-box",
-								padding: `${TEXT_INSET_Y_EM}em ${TEXT_INSET_X_EM}em`,
-								color: annotation.style.color,
-								fontSize: `${textFontSize}px`,
-								fontFamily: annotation.style.fontFamily,
-								fontWeight: annotation.style.fontWeight,
-								fontStyle: annotation.style.fontStyle,
-								textDecoration: annotation.style.textDecoration,
-								textAlign: annotation.style.textAlign,
-								lineHeight: String(TEXT_LINE_HEIGHT),
-							}}
-						>
-							{textLines.map((line, index) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: lines have no identity beyond their order.
-								<div key={index} style={{ whiteSpace: "pre" }}>
-									{line || "​"}
-								</div>
-							))}
-						</div>
+						{isEditing ? (
+							// Edit mode: the browser wraps (pre-wrap) while typing; the DOM is written by
+							// renderEditor from the runs, never by React.
+							// Its own key: React must not reuse this node for the display block, whose
+							// children it manages (the editor's are written imperatively).
+							<div
+								key="rich-text-editor"
+								ref={editorRef}
+								contentEditable
+								data-rich-text-editor
+								role="textbox"
+								aria-multiline
+								spellCheck={false}
+								onKeyDown={onEditorKeyDown}
+								onMouseDown={(event) => event.stopPropagation()}
+								onClick={(event) => event.stopPropagation()}
+								style={{
+									...textBlockStyle,
+									whiteSpace: "pre-wrap",
+									overflowWrap: "anywhere",
+									outline: "none",
+									cursor: "text",
+									userSelect: "text",
+									WebkitUserSelect: "text",
+									color: styledText.base.color,
+									caretColor: styledText.base.color,
+								}}
+							/>
+						) : (
+							<div key="rich-text-display" style={textBlockStyle}>
+								{(textLayout?.lines ?? []).map((line, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: lines have no identity beyond their order.
+									<div key={index} style={{ whiteSpace: "pre", fontSize: 0 }}>
+										{line.pieces.length > 0 ? (
+											line.pieces.map((piece, pieceIndex) => (
+												// biome-ignore lint/suspicious/noArrayIndexKey: pieces have no identity beyond their order.
+												<span key={pieceIndex} style={runCss(piece.style)}>
+													{piece.text}
+												</span>
+											))
+										) : (
+											<span style={runCss(line.style)}>{"​"}</span>
+										)}
+									</div>
+								))}
+							</div>
+						)}
 					</div>
 				);
 			}
@@ -486,7 +758,8 @@ export function AnnotationOverlay({
 				}
 			}}
 			onClick={() => {
-				if (isDraggingRef.current) return;
+				// While editing text, clicks place the caret; they must not cycle the selection.
+				if (isDraggingRef.current || isEditing) return;
 				onClick(annotation.id);
 			}}
 			// No transition on size or position: react-rnd measures the box while a
@@ -503,7 +776,8 @@ export function AnnotationOverlay({
 				boxShadow: isSelected ? "0 0 0 1px rgba(37, 99, 235, 0.35)" : "none",
 			}}
 			enableResizing={isSelected}
-			disableDragging={!isSelected}
+			// While editing text, a drag selects text instead of moving the layer.
+			disableDragging={!isSelected || isEditing}
 			resizeHandleStyles={{
 				topLeft: {
 					width: "12px",
@@ -548,6 +822,7 @@ export function AnnotationOverlay({
 			}}
 		>
 			<div
+				onDoubleClick={onTextDoubleClick}
 				className={cn(
 					"w-full h-full rounded-lg",
 					annotation.type === "text" && "bg-transparent",

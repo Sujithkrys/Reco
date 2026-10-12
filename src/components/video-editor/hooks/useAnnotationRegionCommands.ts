@@ -5,6 +5,15 @@ import { duplicateRegionAbove } from "../annotationDuplicate";
 import { reorderedZIndexes } from "../layerKeyboard";
 import type { TimelineSelectionKind } from "../state/timelineSelection";
 import {
+	applyTextStylePatch,
+	compactTextRuns,
+	plainTextOf,
+	runsForNewText,
+	runsOf,
+	type TextStylePatch,
+} from "../textRuns";
+import { textSelectionFor } from "../textSelectionStore";
+import {
 	type AnnotationRegion,
 	type AnnotationType,
 	DEFAULT_ANNOTATION_POSITION,
@@ -14,6 +23,7 @@ import {
 	DEFAULT_SHAPE_DATA,
 	type FigureData,
 	type ShapeData,
+	type TextRun,
 } from "../types";
 
 interface UseAnnotationRegionCommandsParams {
@@ -241,7 +251,11 @@ export function useAnnotationRegionCommands({
 			setAnnotationRegions((current) =>
 				current.map((region) => {
 					if (region.id !== id) return region;
-					if (region.type === "text") return { ...region, content, textContent: content };
+					if (region.type === "text") {
+						// The panel's plain textarea: keep the styles of the text that did not change.
+						const textRuns = compactTextRuns(runsForNewText(runsOf(region), content, region.style), region.style);
+						return { ...region, content, textContent: content, textRuns };
+					}
 					if (region.type === "image") {
 						// Removing the image clears its file name; a new upload replaces it.
 						const nextFileName =
@@ -312,6 +326,36 @@ export function useAnnotationRegionCommands({
 		},
 		[setAnnotationRegions],
 	);
+	/** Rich text edited on the canvas: new runs, with the plain content kept in sync. */
+	const handleAnnotationTextRunsChange = useCallback(
+		(id: string, runs: TextRun[]) => {
+			setAnnotationRegions((current) =>
+				current.map((region) => {
+					if (region.id !== id) return region;
+					const content = plainTextOf(runs);
+					return { ...region, content, textContent: content, textRuns: compactTextRuns(runs, region.style) };
+				}),
+			);
+		},
+		[setAnnotationRegions],
+	);
+
+	/**
+	 * A text style change from the panel or toolbar: the selected text range when one is active
+	 * on the canvas, otherwise the whole layer (as before rich text).
+	 */
+	const handleAnnotationTextStyleApply = useCallback(
+		(id: string, patch: TextStylePatch) => {
+			const range = textSelectionFor(id);
+			setAnnotationRegions((current) =>
+				current.map((region) =>
+					region.id === id ? { ...region, ...applyTextStylePatch(region, patch, range) } : region,
+				),
+			);
+		},
+		[setAnnotationRegions],
+	);
+
 	const handleAnnotationFigureDataChange = useCallback(
 		(id: string, figureData: FigureData) => updateRegion(id, { figureData }),
 		[updateRegion],
@@ -357,6 +401,8 @@ export function useAnnotationRegionCommands({
 		handleAnnotationContentChange,
 		handleAnnotationTypeChange,
 		handleAnnotationStyleChange,
+		handleAnnotationTextRunsChange,
+		handleAnnotationTextStyleApply,
 		handleAnnotationFigureDataChange,
 		handleAnnotationShapeDataChange,
 		handleAnnotationBlurIntensityChange,

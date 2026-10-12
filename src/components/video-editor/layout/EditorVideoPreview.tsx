@@ -24,6 +24,8 @@ type Handlers = Pick<
 	| "onAnnotationPositionChange"
 	| "onAnnotationSizeChange"
 	| "onAnnotationStyleChange"
+	| "onAnnotationTextEdit"
+	| "onAnnotationTextStyleApply"
 >;
 
 type Props = {

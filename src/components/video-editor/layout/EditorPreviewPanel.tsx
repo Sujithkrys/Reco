@@ -80,6 +80,8 @@ type Props = {
 	playback: ReturnType<typeof useEditorPlaybackControls>;
 	zoomCommands: ReturnType<typeof useZoomRegionCommands>;
 	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
+	/** Folds the next change into the current undo step (a continued typing burst). */
+	amendHistoryStep?: () => void;
 	audioCommands: ReturnType<typeof useAudioRegionCommands>;
 	clipCommands: ReturnType<typeof useClipRegionCommands>;
 	playheadEdits: ReturnType<typeof usePlayheadEditCommands>;
@@ -125,6 +127,7 @@ export function EditorPreviewPanel(props: Props) {
 		playback,
 		zoomCommands,
 		annotationCommands,
+		amendHistoryStep,
 		audioCommands,
 		clipCommands,
 		playheadEdits,
@@ -326,6 +329,13 @@ export function EditorPreviewPanel(props: Props) {
 											annotationCommands.handleAnnotationSizeChange,
 										onAnnotationStyleChange:
 											annotationCommands.handleAnnotationStyleChange,
+										// A keystroke soon after the last one joins its undo step.
+										onAnnotationTextEdit: (id, runs, continueBurst) => {
+											if (continueBurst) amendHistoryStep?.();
+											annotationCommands.handleAnnotationTextRunsChange(id, runs);
+										},
+										onAnnotationTextStyleApply:
+											annotationCommands.handleAnnotationTextStyleApply,
 									}}
 								/>
 							</div>

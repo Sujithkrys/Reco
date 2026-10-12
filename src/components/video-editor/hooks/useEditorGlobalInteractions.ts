@@ -32,16 +32,18 @@ export function useEditorGlobalInteractions({
 				target?.isContentEditable;
 			const primaryModifier = isMac ? event.metaKey : event.ctrlKey;
 			const key = event.key.toLowerCase();
+			// The canvas text editor has no undo of its own: its typing and styling are app history steps.
+			const inRichTextEditor = Boolean(target?.closest?.("[data-rich-text-editor]"));
 
 			if (matchesShortcut(event, shortcuts.undo, isMac)) {
-				if (!editable) {
+				if (!editable || inRichTextEditor) {
 					event.preventDefault();
 					handleUndo();
 				}
 				return;
 			}
 			if (matchesShortcut(event, shortcuts.redo, isMac)) {
-				if (!editable) {
+				if (!editable || inRichTextEditor) {
 					event.preventDefault();
 					handleRedo();
 				}

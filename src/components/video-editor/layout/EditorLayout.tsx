@@ -345,6 +345,7 @@ export function EditorLayout(props: Props) {
 							playback={playback}
 							zoomCommands={zoomCommands}
 							annotationCommands={annotationCommands}
+							amendHistoryStep={history.amendCurrentStep}
 							audioCommands={audioCommands}
 							clipCommands={clipCommands}
 							playheadEdits={editing.playheadEdits}

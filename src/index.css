@@ -147,6 +147,11 @@
 	}
 }
 
+/* A text layer's selected range kept visible while focus is in the panel or a colour popover. */
+::highlight(reco-text-selection) {
+	background-color: rgba(37, 99, 235, 0.35);
+}
+
 /* Smooth timeline cursor animations */
 @layer utilities {
 	.timeline-cursor-smooth {

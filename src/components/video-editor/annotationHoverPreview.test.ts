@@ -6,6 +6,7 @@ import {
 	previewAnnotation,
 } from "./annotationHoverPreview";
 import { createProjectData, normalizeProjectEditor } from "./projectPersistence";
+import { clearTextSelection, setTextSelection } from "./textSelectionStore";
 import {
 	type AnnotationRegion,
 	DEFAULT_ANNOTATION_POSITION,
@@ -95,4 +96,31 @@ describe("annotation hover preview", () => {
 		expect(saved.editor.annotationRegions?.[0].style.color).toBe("#ffffff");
 	});
 
+	it("previews a text style on the selected range only when text is selected", () => {
+		const regions = [region("a", { content: "Hello world", textContent: "Hello world" })];
+		setTextSelection({ annotationId: "a", start: 6, end: 11 });
+		previewAnnotation("a", { style: { color: "#ff0000", backgroundColor: "#000000" } });
+		const shown = applyAnnotationPreview(regions, getAnnotationPreview())[0];
+		clearTextSelection();
+
+		expect(shown.style.color).toBe("#ffffff");
+		// The box background is a layer property: it still applies to the whole layer.
+		expect(shown.style.backgroundColor).toBe("#000000");
+		expect(shown.textRuns).toEqual([{ text: "Hello " }, { text: "world", style: { color: "#ff0000" } }]);
+	});
+
+	it("previews a text style on the whole layer without a selection, like the commit", () => {
+		const regions = [
+			region("a", {
+				content: "Hello world",
+				textContent: "Hello world",
+				textRuns: [{ text: "Hello " }, { text: "world", style: { color: "#00ff00" } }],
+			}),
+		];
+		previewAnnotation("a", { style: { color: "#ff0000" } });
+		const shown = applyAnnotationPreview(regions, getAnnotationPreview())[0];
+
+		expect(shown.style.color).toBe("#ff0000");
+		expect(shown.textRuns).toBeUndefined();
+	});
 });

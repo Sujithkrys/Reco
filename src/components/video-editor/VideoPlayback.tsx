@@ -88,7 +88,9 @@ import {
 	type ZoomMotionBlurTuning,
 	type ZoomRegion,
 	type ZoomTransitionEasing,
+	type TextRun,
 } from "./types";
+import type { TextStylePatch } from "./textRuns";
 import { isAnnotationActiveAtTime } from "./videoPlayback/annotationVisibility";
 import { createClipPlayback, findPreviewClipAtTimelineTime } from "./videoPlayback/clipPlayback";
 import { DEFAULT_FOCUS } from "./videoPlayback/constants";
@@ -271,6 +273,8 @@ interface VideoPlaybackProps {
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
+	onAnnotationTextEdit?: (id: string, runs: TextRun[], continueBurst: boolean) => void;
+	onAnnotationTextStyleApply?: (id: string, patch: TextStylePatch) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
 	cursorStyle?: CursorStyle;
@@ -359,6 +363,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
 			onAnnotationStyleChange,
+			onAnnotationTextEdit,
+			onAnnotationTextStyleApply,
 			cursorTelemetry = [],
 			showCursor = false,
 			cursorStyle = DEFAULT_CURSOR_STYLE,
@@ -3056,6 +3062,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											onStyleChange={(id, style) =>
 												onAnnotationStyleChange?.(id, style)
 											}
+											onTextEdit={onAnnotationTextEdit}
+											onTextStyleApply={onAnnotationTextStyleApply}
 											onClick={handleAnnotationClick}
 											zIndex={annotation.zIndex}
 											isSelectedBoost={annotation.id === selectedAnnotationId}

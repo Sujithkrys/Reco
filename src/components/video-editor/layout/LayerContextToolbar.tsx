@@ -7,6 +7,7 @@ import {
 	Crosshair,
 	DotsThree,
 	Drop,
+	Highlighter,
 	ImageSquare,
 	LineSegment,
 	MagnifyingGlassPlus,
@@ -62,6 +63,8 @@ import {
 	DEFAULT_SHAPE_DATA,
 	type ZoomRegion,
 } from "../types";
+import { MIXED, plainTextOf, runsOf, styleSummary, type TextStylePatch } from "../textRuns";
+import { useTextSelection } from "../textSelectionStore";
 import { fitToolbarItems } from "./layerToolbarFit";
 
 const BUTTON_CLASS =
@@ -211,6 +214,8 @@ export function LayerContextToolbar({
 }: Props) {
 	const imageInputRef = useRef<HTMLInputElement>(null);
 	const projectColors = useMemo(() => collectProjectColors(annotationRegions), [annotationRegions]);
+	// A text range selected on the canvas: the text controls show and change only that range.
+	const textSelection = useTextSelection();
 	if (!target) return null;
 
 	const trimItems = (scope: "selected" | "all"): ToolbarItem[] =>
@@ -254,22 +259,37 @@ export function LayerContextToolbar({
 		const setStyle = (style: Partial<AnnotationRegion["style"]>) =>
 			annotationCommands.handleAnnotationStyleChange(id, style);
 		if (a.type === "text") {
+			// Text keys go to the selected range (or the whole layer); values shown are the range's.
+			const setText = (patch: TextStylePatch) => annotationCommands.handleAnnotationTextStyleApply(id, patch);
+			const range = textSelection?.annotationId === id ? textSelection : null;
+			const runs = runsOf(a);
+			const summary = styleSummary(runs, a.style, range?.start ?? 0, range?.end ?? plainTextOf(runs).length);
+			const isBold = summary.fontWeight === "bold";
+			const isItalic = summary.fontStyle === "italic";
+			const isUnderline = summary.textDecoration === "underline";
+			const fontSize = summary.fontSize === MIXED ? null : summary.fontSize;
+			const textColor = summary.color === MIXED ? null : summary.color;
 			items.push(
 				{
 					key: "text-style",
 					kind: "popover",
-					label: "Text style",
+					label: range ? "Text style (selected text)" : "Text style",
 					icon: <TextAa className="h-4 w-4" />,
 					popover: (
 						<div className="space-y-3">
 							<label className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
 								Size
 								<select
-									value={a.style.fontSize}
-									onChange={(event) => setStyle({ fontSize: Number(event.target.value) })}
+									value={fontSize ?? ""}
+									onChange={(event) => setText({ fontSize: Number(event.target.value) })}
 									className="h-8 rounded-md border border-foreground/10 bg-foreground/5 px-2 text-xs text-foreground"
 								>
-									{fontSizeOptions(a.style.fontSize).map((size) => (
+									{fontSize === null ? (
+										<option value="" disabled>
+											Mixed
+										</option>
+									) : null}
+									{fontSizeOptions(fontSize ?? a.style.fontSize).map((size) => (
 										<option key={size} value={size}>
 											{size}px
 										</option>
@@ -279,24 +299,22 @@ export function LayerContextToolbar({
 							<div className="grid grid-cols-3 gap-1.5">
 								<ChoiceButton
 									label="Bold"
-									active={a.style.fontWeight === "bold"}
-									onClick={() => setStyle({ fontWeight: a.style.fontWeight === "bold" ? "normal" : "bold" })}
+									active={isBold}
+									onClick={() => setText({ fontWeight: isBold ? "normal" : "bold" })}
 								>
 									<TextB className="h-4 w-4" />
 								</ChoiceButton>
 								<ChoiceButton
 									label="Italic"
-									active={a.style.fontStyle === "italic"}
-									onClick={() => setStyle({ fontStyle: a.style.fontStyle === "italic" ? "normal" : "italic" })}
+									active={isItalic}
+									onClick={() => setText({ fontStyle: isItalic ? "normal" : "italic" })}
 								>
 									<TextItalic className="h-4 w-4" />
 								</ChoiceButton>
 								<ChoiceButton
 									label="Underline"
-									active={a.style.textDecoration === "underline"}
-									onClick={() =>
-										setStyle({ textDecoration: a.style.textDecoration === "underline" ? "none" : "underline" })
-									}
+									active={isUnderline}
+									onClick={() => setText({ textDecoration: isUnderline ? "none" : "underline" })}
 								>
 									<TextUnderline className="h-4 w-4" />
 								</ChoiceButton>
@@ -325,15 +343,32 @@ export function LayerContextToolbar({
 				{
 					key: "text-color",
 					kind: "popover",
-					label: "Text colour",
+					label: range ? "Text colour (selected text)" : "Text colour",
 					icon: <Palette className="h-4 w-4" />,
 					popover: (
 						<ColorSwatches
 							id={id}
 							projectColors={projectColors}
-							color={a.style.color}
-							onChange={(hex) => setStyle({ color: hex })}
+							color={textColor ?? a.style.color}
+							onChange={(hex) => setText({ color: hex })}
 							toPatch={(hex) => ({ style: { color: hex } })}
+						/>
+					),
+				},
+				{
+					key: "text-highlight",
+					kind: "popover",
+					label: range ? "Highlight (selected text)" : "Highlight",
+					icon: <Highlighter className="h-4 w-4" />,
+					popover: (
+						<ColorSwatches
+							id={id}
+							projectColors={projectColors}
+							onClear={() => setText({ highlight: undefined })}
+							clearLabel="No highlight"
+							color={summary.highlight === MIXED || !summary.highlight ? "#FFD700" : summary.highlight}
+							onChange={(hex) => setText({ highlight: hex })}
+							toPatch={(hex) => ({ textStyle: { highlight: hex } })}
 						/>
 					),
 				},
