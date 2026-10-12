@@ -169,6 +169,37 @@ describe("normalizeProjectEditor", () => {
 		expect(editor.annotationRegions[0].shapeData).toMatchObject({ fillColor: "#ff0000" });
 	});
 
+	it("keeps rich text runs on load and leaves old text layers without runs", () => {
+		const text = (extra: object) => ({ id: "t", startMs: 0, endMs: 1000, type: "text", ...extra });
+		const editor = normalizeProjectEditor({
+			annotationRegions: [
+				text({ id: "old", content: "Hello" }),
+				text({
+					id: "rich",
+					content: "Hello world",
+					textRuns: [
+						{ text: "Hello " },
+						{ text: "", style: { color: "#ff0000" } },
+						{ text: "wor", style: { fontStyle: "italic", fontSize: 48 } },
+						// "bold" equals the default layer style, so it is not a real override.
+						{ text: "ld", style: { fontStyle: "italic", fontSize: 48, fontWeight: "bold", bogus: 1 } },
+					],
+				}),
+				text({ id: "stale", content: "Changed", textRuns: [{ text: "Old", style: { color: "#ff0000" } }] }),
+			] as never,
+		});
+
+		const [old, rich, stale] = editor.annotationRegions;
+		expect("textRuns" in old).toBe(false);
+		expect(rich.textRuns).toEqual([
+			{ text: "Hello " },
+			{ text: "world", style: { fontStyle: "italic", fontSize: 48 } },
+		]);
+		// Runs that no longer match the content fall back to the plain content.
+		expect(stale.textRuns).toBeUndefined();
+		expect(stale.content).toBe("Changed");
+	});
+
 	it("loads old audio regions with no source offset or file length", () => {
 		const editor = normalizeProjectEditor({
 			audioRegions: [

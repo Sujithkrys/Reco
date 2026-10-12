@@ -562,6 +562,29 @@ export interface AnnotationTextStyle {
 	borderRadius: number;
 }
 
+/**
+ * Per-character overrides of a text layer's style (rich text). A run's effective style is the
+ * layer style with these keys laid over it; `highlight` exists only on runs (the box background
+ * stays the layer's one `backgroundColor`).
+ */
+export interface TextRunStyle {
+	fontWeight?: AnnotationTextStyle["fontWeight"];
+	fontStyle?: AnnotationTextStyle["fontStyle"];
+	textDecoration?: AnnotationTextStyle["textDecoration"];
+	color?: string;
+	fontFamily?: string;
+	/** Pixels, like the layer's fontSize. */
+	fontSize?: number;
+	/** Colour painted behind the run's glyphs. */
+	highlight?: string;
+}
+
+/** A stretch of a text layer's content sharing one style. */
+export interface TextRun {
+	text: string;
+	style?: TextRunStyle;
+}
+
 function getDefaultAnnotationFontFamily() {
 	// Must match one of FONT_FAMILY_VALUES in AnnotationSettingsPanel.tsx
 	// ("Classic") — otherwise the Font Style dropdown has no matching option
@@ -580,6 +603,11 @@ export interface AnnotationRegion {
 	type: AnnotationType;
 	content: string; // Legacy - still used for current type
 	textContent?: string; // Separate storage for text
+	/**
+	 * Rich text: the content split into styled runs. Their text always equals `content`; absent
+	 * when the whole layer has one style (then the layer is one implicit run, as in old projects).
+	 */
+	textRuns?: TextRun[];
 	imageContent?: string; // Separate storage for image data URL
 	imageFileName?: string; // Original file name of the uploaded image, for display
 	position: AnnotationPosition;

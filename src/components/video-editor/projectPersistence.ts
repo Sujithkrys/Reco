@@ -77,6 +77,7 @@ import {
 	type ZoomRegion,
 	type ZoomTransitionEasing,
 } from "./types";
+import { sanitizeStoredTextRuns } from "./textRuns";
 import { convertLegacyWebcamRadiusToRoundness, normalizeWebcamCropRegion } from "./webcamOverlay";
 
 export const PROJECT_VERSION = 2;
@@ -573,6 +574,12 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						: rawStart + 1000;
 					const startMs = Math.max(0, Math.min(rawStart, rawEnd));
 					const endMs = Math.max(startMs + 1, rawEnd);
+					const content = typeof region.content === "string" ? region.content : "";
+					const style: AnnotationRegion["style"] = {
+						...DEFAULT_ANNOTATION_STYLE,
+						...(region.style && typeof region.style === "object" ? region.style : {}),
+					};
+					const textRuns = sanitizeStoredTextRuns(region.textRuns, content, style);
 
 					return {
 						id: region.id,
@@ -585,9 +592,10 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							region.type === "blur"
 								? region.type
 								: "text",
-						content: typeof region.content === "string" ? region.content : "",
+						content,
 						textContent:
 							typeof region.textContent === "string" ? region.textContent : undefined,
+						...(textRuns ? { textRuns } : {}),
 						imageContent:
 							typeof region.imageContent === "string"
 								? region.imageContent
@@ -630,12 +638,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 								200,
 							),
 						},
-						style: {
-							...DEFAULT_ANNOTATION_STYLE,
-							...(region.style && typeof region.style === "object"
-								? region.style
-								: {}),
-						},
+						style,
 						zIndex: isFiniteNumber(region.zIndex) ? region.zIndex : index + 1,
 						figureData: region.figureData
 							? {
