@@ -11,6 +11,7 @@ import {
 	runsForNewText,
 	runsOf,
 	scaleRunFontSizes,
+	scaleTextLayer,
 	styleSummary,
 } from "./textRuns";
 import { DEFAULT_ANNOTATION_STYLE, type TextRun } from "./types";
@@ -158,6 +159,42 @@ describe("whole-layer and range patches on a layer", () => {
 	it("highlight with no selection covers all text", () => {
 		const next = applyTextStylePatch({ content: "ab", style: layer }, { highlight: "#ffff00" }, null);
 		expect(next.textRuns).toEqual([{ text: "ab", style: { highlight: "#ffff00" } }]);
+	});
+});
+
+describe("scaling a text layer", () => {
+	it("scales the layer and every run size by the same factor, rounded and clamped to 8-400", () => {
+		const region = {
+			content: "abc",
+			style: layer,
+			textRuns: [{ text: "a" }, { text: "b", style: { fontSize: 48 } }, { text: "c", style: { fontSize: 10 } }],
+		};
+		const scaled = scaleTextLayer(region, 1.5);
+		expect(scaled.style.fontSize).toBe(48);
+		expect(scaled.textRuns).toEqual([
+			{ text: "a" },
+			{ text: "b", style: { fontSize: 72 } },
+			{ text: "c", style: { fontSize: 15 } },
+		]);
+		// Clamped at both ends: sizes that land on the limit equal the layer's and stop being overrides.
+		const tiny = scaleTextLayer(region, 0.1);
+		expect(tiny.style.fontSize).toBe(8);
+		expect(tiny.textRuns).toBeUndefined();
+		const huge = scaleTextLayer(region, 20);
+		expect(huge.style.fontSize).toBe(400);
+		expect(huge.textRuns).toEqual([{ text: "ab" }, { text: "c", style: { fontSize: 200 } }]);
+		// A run that stays apart from the layer after clamping keeps its own size.
+		expect(scaleTextLayer(region, 0.5).textRuns).toEqual([
+			{ text: "a" },
+			{ text: "b", style: { fontSize: 24 } },
+			{ text: "c", style: { fontSize: 8 } },
+		]);
+	});
+
+	it("leaves an old single-style layer without runs", () => {
+		const scaled = scaleTextLayer({ content: "Hi", style: layer }, 2);
+		expect(scaled.style.fontSize).toBe(64);
+		expect(scaled.textRuns).toBeUndefined();
 	});
 });
 

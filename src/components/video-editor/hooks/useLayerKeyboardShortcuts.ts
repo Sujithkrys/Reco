@@ -90,8 +90,9 @@ export function useLayerKeyboardShortcuts({
 		// Position, size and font change together: one undo step.
 		commands.handleAnnotationPositionChange(pending.id, result.position);
 		commands.handleAnnotationSizeChange(pending.id, result.size);
-		if (pending.type === "text" && result.fontSize !== pending.base.fontSize) {
-			commands.handleAnnotationStyleChange(pending.id, { fontSize: result.fontSize });
+		// Every text size (layer and runs) by the same factor, so mixed sizes keep their ratio.
+		if (pending.type === "text" && pending.adjustment.scale !== 1) {
+			commands.handleAnnotationTextScale(pending.id, pending.adjustment.scale);
 		}
 		// Drop the preview a frame later, once the committed values are on screen.
 		requestAnimationFrame(() => clearAnnotationPreview());
@@ -122,7 +123,7 @@ export function useLayerKeyboardShortcuts({
 			const patch: AnnotationPreviewPatch = {
 				position: shown.position,
 				size: shown.size,
-				...(pending.type === "text" ? { style: { fontSize: shown.fontSize } } : {}),
+				...(pending.type === "text" ? { textScale: pending.adjustment.scale } : {}),
 			};
 			previewAnnotation(pending.id, patch);
 			if (timerRef.current !== null) window.clearTimeout(timerRef.current);

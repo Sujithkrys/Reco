@@ -1,3 +1,4 @@
+import { scaleTextFontSize } from "./annotationResize";
 import type { AnnotationRegion, AnnotationTextStyle, TextRun, TextRunStyle } from "./types";
 
 /**
@@ -314,6 +315,19 @@ export function sanitizeStoredTextRuns(raw: unknown, content: string, layer: Lay
 	}
 	if (plainTextOf(runs) !== content) return undefined;
 	return compactTextRuns(runs, layer);
+}
+
+/**
+ * Scale a text layer's font: the layer size and every run size by the same factor (each a whole
+ * number between 8 and 400 px). Used by corner resizes and Ctrl +/- so mixed sizes keep their ratio.
+ */
+export function scaleTextLayer(
+	region: Pick<AnnotationRegion, "style" | "content" | "textRuns">,
+	factor: number,
+): Pick<AnnotationRegion, "style" | "textRuns"> {
+	const style = { ...region.style, fontSize: scaleTextFontSize(region.style.fontSize, factor) };
+	const runs = scaleRunFontSizes(runsOf(region), (size) => scaleTextFontSize(size, factor));
+	return { style, textRuns: compactTextRuns(runs, style) };
 }
 
 /** Layer keys a whole-layer change writes to the layer style (highlight lives only on runs). */

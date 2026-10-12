@@ -10,6 +10,7 @@ import {
 	plainTextOf,
 	runsForNewText,
 	runsOf,
+	scaleTextLayer,
 	type TextStylePatch,
 } from "../textRuns";
 import { textSelectionFor } from "../textSelectionStore";
@@ -356,6 +357,18 @@ export function useAnnotationRegionCommands({
 		[setAnnotationRegions],
 	);
 
+	/** Corner resize / Ctrl +/-: the layer's font and every run's font by the same factor. */
+	const handleAnnotationTextScale = useCallback(
+		(id: string, factor: number) => {
+			setAnnotationRegions((current) =>
+				current.map((region) =>
+					region.id === id && region.type === "text" ? { ...region, ...scaleTextLayer(region, factor) } : region,
+				),
+			);
+		},
+		[setAnnotationRegions],
+	);
+
 	const handleAnnotationFigureDataChange = useCallback(
 		(id: string, figureData: FigureData) => updateRegion(id, { figureData }),
 		[updateRegion],
@@ -403,6 +416,7 @@ export function useAnnotationRegionCommands({
 		handleAnnotationStyleChange,
 		handleAnnotationTextRunsChange,
 		handleAnnotationTextStyleApply,
+		handleAnnotationTextScale,
 		handleAnnotationFigureDataChange,
 		handleAnnotationShapeDataChange,
 		handleAnnotationBlurIntensityChange,

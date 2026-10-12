@@ -275,6 +275,7 @@ interface VideoPlaybackProps {
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onAnnotationTextEdit?: (id: string, runs: TextRun[], continueBurst: boolean) => void;
 	onAnnotationTextStyleApply?: (id: string, patch: TextStylePatch) => void;
+	onAnnotationTextScale?: (id: string, factor: number) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
 	cursorStyle?: CursorStyle;
@@ -365,6 +366,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onAnnotationStyleChange,
 			onAnnotationTextEdit,
 			onAnnotationTextStyleApply,
+			onAnnotationTextScale,
 			cursorTelemetry = [],
 			showCursor = false,
 			cursorStyle = DEFAULT_CURSOR_STYLE,
@@ -3064,6 +3066,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											}
 											onTextEdit={onAnnotationTextEdit}
 											onTextStyleApply={onAnnotationTextStyleApply}
+											onTextScale={onAnnotationTextScale}
 											onClick={handleAnnotationClick}
 											zIndex={annotation.zIndex}
 											isSelectedBoost={annotation.id === selectedAnnotationId}

@@ -336,6 +336,7 @@ export function EditorPreviewPanel(props: Props) {
 										},
 										onAnnotationTextStyleApply:
 											annotationCommands.handleAnnotationTextStyleApply,
+										onAnnotationTextScale: annotationCommands.handleAnnotationTextScale,
 									}}
 								/>
 							</div>

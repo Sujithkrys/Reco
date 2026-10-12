@@ -7,7 +7,6 @@ import {
 	computeLayerResize,
 	handleFromRndDirection,
 	type ResizeHandle,
-	scaleTextFontSize,
 } from "./annotationResize";
 import {
 	canvasTextMeasurer,
@@ -37,6 +36,7 @@ import {
 	MIXED,
 	plainTextOf,
 	runsOf,
+	scaleTextLayer,
 	styledRunsOf,
 	styleSummary,
 	type TextStylePatch,
@@ -76,6 +76,8 @@ interface AnnotationOverlayProps {
 	onSizeChange: (id: string, size: { width: number; height: number }) => void;
 	/** Text corner resizes scale the font; the new size is written through this. */
 	onStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
+	/** A text corner resize: every font size of the layer (layer and runs) times this factor. */
+	onTextScale?: (id: string, factor: number) => void;
 	/** Text typed on the canvas: the new runs, and whether it continues the last typing burst (one undo step). */
 	onTextEdit?: (id: string, runs: TextRun[], continueBurst: boolean) => void;
 	/** Bold/italic/underline shortcuts in the canvas editor (selection-aware, like the panel). */
@@ -148,6 +150,7 @@ export function AnnotationOverlay({
 	onStyleChange,
 	onTextEdit,
 	onTextStyleApply,
+	onTextScale,
 	onClick,
 	zIndex,
 	isSelectedBoost,
@@ -180,18 +183,18 @@ export function AnnotationOverlay({
 	// Detaches the window key listeners that follow Shift/Alt while a resize runs.
 	const stopModifierWatchRef = useRef<(() => void) | null>(null);
 	useEffect(() => () => stopModifierWatchRef.current?.(), []);
-	const [liveResize, setLiveResizeState] = useState<{ rect: Rect; fontSize: number } | null>(null);
+	// fontScale: the factor every text size is multiplied by (a corner resize of a text layer).
+	type ResizeResult = { rect: Rect; fontScale: number };
+	const [liveResize, setLiveResizeState] = useState<ResizeResult | null>(null);
 	// Mirrors liveResize so onResizeStop always sees the last move, even before a re-render.
-	const liveResizeRef = useRef<{ rect: Rect; fontSize: number } | null>(null);
-	const setLiveResize = (value: { rect: Rect; fontSize: number } | null) => {
+	const liveResizeRef = useRef<ResizeResult | null>(null);
+	const setLiveResize = (value: ResizeResult | null) => {
 		liveResizeRef.current = value;
 		setLiveResizeState(value);
 	};
 	// The committed result, shown until the stored position/size catch up so the
 	// box never snaps back for a frame after the drag ends.
-	const [pendingResize, setPendingResize] = useState<{ rect: Rect; fontSize: number } | null>(
-		null,
-	);
+	const [pendingResize, setPendingResize] = useState<ResizeResult | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: any change to the stored rect or font supersedes the pending one
 	useEffect(() => {
 		setPendingResize(null);
@@ -201,15 +204,15 @@ export function AnnotationOverlay({
 		annotation.size.width,
 		annotation.size.height,
 		annotation.style.fontSize,
+		annotation.textRuns,
 		safeRecordingRect.width,
 		safeRecordingRect.height,
 	]);
 	const displayed = liveResize ?? pendingResize;
 	const displayRect = displayed?.rect ?? { x, y, width, height };
 	const fontsVersion = useFontsVersion();
-	// While a corner resize runs, every run's size follows the layer's (committed rounded later).
-	const liveFontScale =
-		displayed && annotation.style.fontSize > 0 ? displayed.fontSize / annotation.style.fontSize : 1;
+	// While a corner resize runs, every run's size follows the factor (committed rounded later).
+	const liveFontScale = displayed?.fontScale ?? 1;
 	const textBoxWidth = displayRect.width;
 	const textBoxHeight = displayRect.height;
 	const styledText = useMemo(
@@ -468,13 +471,7 @@ export function AnnotationOverlay({
 		flushSync(() => {
 			rndRef.current?.updatePosition({ x: rect.x, y: rect.y });
 			rndRef.current?.updateSize({ width: rect.width, height: rect.height });
-			setLiveResize({
-				rect,
-				fontSize:
-					annotation.type === "text"
-						? scaleTextFontSize(annotation.style.fontSize, fontScale)
-						: annotation.style.fontSize,
-			});
+			setLiveResize({ rect, fontScale: annotation.type === "text" ? fontScale : 1 });
 		});
 	};
 
@@ -743,18 +740,25 @@ export function AnnotationOverlay({
 				// Position, size and font change together: one undo step.
 				const next = screenRectToRecordingPercent(result.rect);
 				const close = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+				// Every text size (layer and runs) scales by the same factor, rounded to whole pixels.
+				const scaled = annotation.type === "text" ? scaleTextLayer(annotation, result.fontScale) : null;
+				const fontChanged =
+					scaled !== null &&
+					(scaled.style.fontSize !== annotation.style.fontSize ||
+						JSON.stringify(scaled.textRuns) !== JSON.stringify(annotation.textRuns));
 				const unchanged =
 					close(next.position.x, annotation.position.x) &&
 					close(next.position.y, annotation.position.y) &&
 					close(next.size.width, annotation.size.width) &&
 					close(next.size.height, annotation.size.height) &&
-					result.fontSize === annotation.style.fontSize;
+					!fontChanged;
 				if (unchanged) return;
 				setPendingResize(result);
 				onPositionChange(annotation.id, next.position);
 				onSizeChange(annotation.id, next.size);
-				if (annotation.type === "text" && result.fontSize !== annotation.style.fontSize) {
-					onStyleChange?.(annotation.id, { fontSize: result.fontSize });
+				if (fontChanged) {
+					if (onTextScale) onTextScale(annotation.id, result.fontScale);
+					else onStyleChange?.(annotation.id, { fontSize: scaled.style.fontSize });
 				}
 			}}
 			onClick={() => {

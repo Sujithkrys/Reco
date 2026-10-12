@@ -109,6 +109,21 @@ describe("annotation hover preview", () => {
 		expect(shown.textRuns).toEqual([{ text: "Hello " }, { text: "world", style: { color: "#ff0000" } }]);
 	});
 
+	it("previews a held Ctrl +/- by scaling every text size", () => {
+		const regions = [
+			region("a", {
+				content: "ab",
+				textContent: "ab",
+				style: { ...DEFAULT_ANNOTATION_STYLE, fontSize: 32 },
+				textRuns: [{ text: "a" }, { text: "b", style: { fontSize: 48 } }],
+			}),
+		];
+		previewAnnotation("a", { textScale: 1.25 });
+		const shown = applyAnnotationPreview(regions, getAnnotationPreview())[0];
+		expect(shown.style.fontSize).toBe(40);
+		expect(shown.textRuns).toEqual([{ text: "a" }, { text: "b", style: { fontSize: 60 } }]);
+	});
+
 	it("previews a text style on the whole layer without a selection, like the commit", () => {
 		const regions = [
 			region("a", {

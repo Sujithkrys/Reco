@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { applyTextStylePatch, TEXT_RUN_STYLE_KEYS, type TextStylePatch } from "./textRuns";
+import { applyTextStylePatch, scaleTextLayer, TEXT_RUN_STYLE_KEYS, type TextStylePatch } from "./textRuns";
 import { textSelectionFor } from "./textSelectionStore";
 import type { AnnotationRegion, FigureData, ShapeData } from "./types";
 
@@ -22,6 +22,8 @@ export interface AnnotationPreviewPatch {
 	textRange?: { start: number; end: number } | null;
 	/** Run-only text keys (highlight) to preview. */
 	textStyle?: TextStylePatch;
+	/** Held Ctrl +/-: every font size of a text layer times this factor. */
+	textScale?: number;
 }
 
 export interface AnnotationPreview {
@@ -98,9 +100,10 @@ export function applyAnnotationPreview(
 	if (!regions.some((region) => region.id === id)) return regions;
 	return regions.map((region) => {
 		if (region.id !== id) return region;
+		const styled = patch.style || patch.textStyle ? { ...region, ...previewStyle(region, patch) } : region;
 		return {
-			...region,
-			...(patch.style || patch.textStyle ? previewStyle(region, patch) : {}),
+			...styled,
+			...(patch.textScale !== undefined && region.type === "text" ? scaleTextLayer(styled, patch.textScale) : {}),
 			...(patch.shapeData && region.shapeData
 				? { shapeData: { ...region.shapeData, ...patch.shapeData } }
 				: {}),
