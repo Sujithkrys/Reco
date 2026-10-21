@@ -60,3 +60,22 @@ function subscribe(listener: () => void) {
 export function useTextSelection(): TextSelection | null {
 	return useSyncExternalStore(subscribe, getTextSelection, getTextSelection);
 }
+
+/**
+ * The selection of a plain textarea as a text range in the layer: character offsets into the same
+ * text the canvas editor uses, ordered and clamped to the text. A caret (nothing selected) is null.
+ */
+export function textSelectionFromTextarea(
+	annotationId: string,
+	value: string,
+	selectionStart: number | null,
+	selectionEnd: number | null,
+): TextSelection | null {
+	if (selectionStart === null || selectionEnd === null) return null;
+	const clampOffset = (offset: number) => Math.min(value.length, Math.max(0, Math.floor(offset)));
+	const a = clampOffset(selectionStart);
+	const b = clampOffset(selectionEnd);
+	const start = Math.min(a, b);
+	const end = Math.max(a, b);
+	return start === end ? null : { annotationId, start, end };
+}

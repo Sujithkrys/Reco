@@ -38,7 +38,12 @@ import { loadImageSize, type NaturalSize } from "./imageLayerSize";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { AnnotationColorBlock } from "./AnnotationColorBlock";
 import { MIXED, plainTextOf, runsOf, styleSummary, type TextStylePatch } from "./textRuns";
-import { useTextSelection } from "./textSelectionStore";
+import {
+	clearTextSelection,
+	setTextSelection,
+	textSelectionFromTextarea,
+	useTextSelection,
+} from "./textSelectionStore";
 import { COLOR_PICKER_POPOVER_PROPS } from "./ColorPickerPopover";
 import {
 	type AnnotationPreviewPatch,
@@ -172,7 +177,13 @@ export function AnnotationSettingsPanel({
 		selectedRange?.start ?? 0,
 		selectedRange?.end ?? plainTextOf(textRuns).length,
 	);
-	const setTextStyle = (patch: TextStylePatch) => {
+	const syncTextareaSelection = (box: HTMLTextAreaElement) =>
+		setTextSelection(
+			textSelectionFromTextarea(annotation.id, box.value, box.selectionStart, box.selectionEnd),
+		);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: clears for the layer that was left
+		useEffect(() => () => clearTextSelection(annotation.id), [annotation.id]);
+		const setTextStyle = (patch: TextStylePatch) => {
 		if (onTextStyleChange) onTextStyleChange(patch);
 		else {
 			const { highlight: _highlight, ...layerPatch } = patch;
@@ -371,6 +382,11 @@ export function AnnotationSettingsPanel({
 								<textarea
 									value={annotation.textContent || annotation.content}
 									onChange={(e) => onContentChange(e.target.value)}
+									// What is selected in this box is the range the style buttons change, like on the canvas. It is
+									// kept when focus moves to the toolbar or a popover, and cleared when the layer changes.
+									onSelect={(e) => syncTextareaSelection(e.currentTarget)}
+									onKeyUp={(e) => syncTextareaSelection(e.currentTarget)}
+									onMouseUp={(e) => syncTextareaSelection(e.currentTarget)}
 									placeholder={t("annotations.textPlaceholder")}
 									rows={5}
 									className="w-full px-3 py-2 bg-foreground/5 border border-foreground/10 rounded-lg text-foreground text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent resize-none"
