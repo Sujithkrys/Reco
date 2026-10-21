@@ -285,7 +285,10 @@ export function useTimelineEditingController(input: Input) {
 		handleUndo: input.handleUndo,
 		handleRedo: input.handleRedo,
 		startPlayback: playback.startPlayback,
-	});
+				playheadSeconds: projection.timelinePlayheadTime,
+				durationSeconds: projection.timelineDuration,
+				seekTo: playback.handleSeek,
+			});
 
 	return {
 		cursor,
