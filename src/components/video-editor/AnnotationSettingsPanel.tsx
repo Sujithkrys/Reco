@@ -4,6 +4,9 @@ import {
 	AlignRight,
 	TextB as Bold,
 	CaretDown as ChevronDown,
+	CaretLeft,
+	CaretRight,
+	CaretUp,
 	ImageSquare as ImageIcon,
 	Info,
 	TextItalic as Italic,
@@ -37,6 +40,7 @@ import type { AddedImage } from "./hooks/useAnnotationRegionCommands";
 import { loadImageSize, type NaturalSize } from "./imageLayerSize";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { AnnotationColorBlock } from "./AnnotationColorBlock";
+import { useMovePad } from "./hooks/useMovePad";
 import { MIXED, plainTextOf, runsOf, styleSummary, type TextStylePatch } from "./textRuns";
 import {
 	clearTextSelection,
@@ -83,6 +87,8 @@ interface AnnotationSettingsPanelProps {
 	onImagesAdded?: (images: AddedImage[]) => void;
 	/** Centres the layer on the video so an off-canvas layer can be recovered. */
 	onResetPosition?: () => void;
+		/** Moves the selected layer to this position (the move pad). */
+		onPositionChange?: (position: { x: number; y: number }) => void;
 	currentTimeMs?: number;
 	onSeek?: (seconds: number) => void;
 	onClose?: () => void;
@@ -140,7 +146,8 @@ export function AnnotationSettingsPanel({
 	onBlurColorChange,
 	onDelete,
 	onResetPosition,
-	onImagesAdded,
+		onPositionChange,
+		onImagesAdded,
 	projectColors,
 	currentTimeMs,
 	onSeek,
@@ -177,7 +184,8 @@ export function AnnotationSettingsPanel({
 		selectedRange?.start ?? 0,
 		selectedRange?.end ?? plainTextOf(textRuns).length,
 	);
-	const syncTextareaSelection = (box: HTMLTextAreaElement) =>
+	const movePad = useMovePad(annotation, onPositionChange);
+		const syncTextareaSelection = (box: HTMLTextAreaElement) =>
 		setTextSelection(
 			textSelectionFromTextarea(annotation.id, box.value, box.selectionStart, box.selectionEnd),
 		);
@@ -1170,8 +1178,52 @@ export function AnnotationSettingsPanel({
 						</TabsContent>
 					</Tabs>
 
+					{onPositionChange && (
+						<div className="mt-6 flex items-center justify-between gap-3">
+							<span className="text-xs font-medium text-foreground">{t("annotations.movePad", "Move")}</span>
+							<div className="grid grid-cols-3 gap-1">
+								{(
+									[
+										["up", 1, 0, -1, <CaretUp key="u" className="h-4 w-4" />],
+										["left", 0, -1, 0, <CaretLeft key="l" className="h-4 w-4" />],
+										["right", 2, 1, 0, <CaretRight key="r" className="h-4 w-4" />],
+										["down", 1, 0, 1, <ChevronDown key="d" className="h-4 w-4" />],
+									] as const
+								).map(([name, column, dx, dy, icon]) => (
+									<button
+										key={name}
+										type="button"
+										aria-label={t(`annotations.move${name[0].toUpperCase()}${name.slice(1)}`, `Move ${name}`)}
+										title={t(`annotations.move${name[0].toUpperCase()}${name.slice(1)}`, `Move ${name}`)}
+										style={{
+											gridColumn: column + 1,
+											gridRow: name === "up" ? 1 : name === "down" ? 3 : 2,
+										}}
+										onPointerDown={(event) => {
+											if (event.button !== 0) return;
+											event.currentTarget.setPointerCapture(event.pointerId);
+											movePad.press({ dx, dy } as { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }, event.shiftKey);
+										}}
+										onPointerUp={movePad.release}
+										onPointerCancel={movePad.release}
+										onKeyDown={(event) => {
+											if ((event.key === "Enter" || event.key === " ") && !event.repeat) {
+												event.preventDefault();
+												movePad.press({ dx, dy } as { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }, event.shiftKey);
+											}
+										}}
+										onKeyUp={movePad.release}
+										className="flex h-7 w-7 items-center justify-center rounded-md border border-foreground/10 bg-foreground/5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground active:bg-[#2563EB] active:text-white"
+									>
+										{icon}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
 					{onResetPosition && (
-						<Button
+					<Button
 							type="button"
 							variant="outline"
 							size="sm"

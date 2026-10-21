@@ -53,7 +53,12 @@
 		"imageUploadError": "請上傳 JPG、PNG、GIF 或 WebP 圖片檔案。",
 		"blurStrength": "模糊強度: {{strength}}",
 		"solidColor": "純色 (審查)",
-		"borderRadius": "邊框半徑"
+		"borderRadius": "邊框半徑",
+		"movePad": "移動",
+		"moveUp": "上移",
+		"moveDown": "下移",
+		"moveLeft": "左移",
+		"moveRight": "右移"
 	},
 
 	"fontStyles": {
@@ -121,7 +126,11 @@
 		"layerDuplicate": "複製",
 		"layerDeselect": "取消選取",
 		"layerOrder": "下移 / 上移一層",
-		"layerScale": "縮小 / 放大"
+		"layerScale": "縮小 / 放大",
+		"playbackTitle": "播放",
+		"playbackToggle": "播放 / 暫停，取消選取",
+		"playbackSeek": "跳轉 1 秒（Shift 5 秒）",
+		"playbackFrame": "逐格移動"
 	},
 	"actions": {
 		"saveAgain": "再次保存",

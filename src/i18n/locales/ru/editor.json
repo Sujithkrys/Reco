@@ -53,7 +53,12 @@
 		"imageUploadError": "Загрузите файл JPG, PNG, GIF, или WebP.",
 		"blurStrength": "Сила размытия: {{strength}}",
 		"solidColor": "Сплошной цвет (цензура)",
-		"borderRadius": "Скругление углов"
+		"borderRadius": "Скругление углов",
+		"movePad": "Перемещение",
+		"moveUp": "Вверх",
+		"moveDown": "Вниз",
+		"moveLeft": "Влево",
+		"moveRight": "Вправо"
 	},
 
 	"fontStyles": {
@@ -121,7 +126,11 @@
 		"layerDuplicate": "Дублировать",
 		"layerDeselect": "Снять выделение",
 		"layerOrder": "Назад / вперёд",
-		"layerScale": "Меньше / больше"
+		"layerScale": "Меньше / больше",
+		"playbackTitle": "Воспроизведение",
+		"playbackToggle": "Воспроизвести / пауза, снять выделение",
+		"playbackSeek": "Перемотка на 1 с (Shift 5 с)",
+		"playbackFrame": "Шаг на один кадр"
 	},
 	"actions": {
 		"saveAgain": "Сохранить ещё раз",

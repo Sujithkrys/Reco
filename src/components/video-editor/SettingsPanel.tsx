@@ -2171,6 +2171,11 @@ export function SettingsPanel({
 								)
 						: undefined
 				}
+				onPositionChange={
+					onAnnotationPositionChange
+						? (position) => onAnnotationPositionChange(selectedAnnotation.id, position)
+						: undefined
+				}
 				onResetPosition={
 					onAnnotationPositionChange
 						? () =>

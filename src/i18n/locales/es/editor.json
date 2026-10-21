@@ -53,7 +53,12 @@
 		"imageUploadError": "Por favor sube un archivo de imagen JPG, PNG, GIF o WebP.",
 		"blurStrength": "Fuerza del Desenfoque: {{strength}}",
 		"solidColor": "Color Sólido (Censura)",
-		"borderRadius": "Radio del Borde"
+		"borderRadius": "Radio del Borde",
+		"movePad": "Mover",
+		"moveUp": "Mover arriba",
+		"moveDown": "Mover abajo",
+		"moveLeft": "Mover a la izquierda",
+		"moveRight": "Mover a la derecha"
 	},
 
 	"fontStyles": {
@@ -121,7 +126,11 @@
 		"layerDuplicate": "Duplicar",
 		"layerDeselect": "Deseleccionar",
 		"layerOrder": "Enviar atrás / adelante",
-		"layerScale": "Más pequeña / más grande"
+		"layerScale": "Más pequeña / más grande",
+		"playbackTitle": "Reproducción",
+		"playbackToggle": "Reproducir / pausar, deseleccionar",
+		"playbackSeek": "Saltar 1 s (Mayús 5 s)",
+		"playbackFrame": "Avanzar un fotograma"
 	},
 	"actions": {
 		"saveAgain": "Guardar de nuevo",

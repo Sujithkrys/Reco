@@ -53,7 +53,12 @@
 		"imageUploadError": "Veuillez importer une image JPG, PNG, GIF ou WebP.",
 		"blurStrength": "Intensité du flou : {{strength}}",
 		"solidColor": "Couleur unie (censure)",
-		"borderRadius": "Rayon de bordure"
+		"borderRadius": "Rayon de bordure",
+		"movePad": "Déplacer",
+		"moveUp": "Déplacer vers le haut",
+		"moveDown": "Déplacer vers le bas",
+		"moveLeft": "Déplacer vers la gauche",
+		"moveRight": "Déplacer vers la droite"
 	},
 
 	"fontStyles": {
@@ -121,7 +126,11 @@
 		"layerDuplicate": "Dupliquer",
 		"layerDeselect": "Désélectionner",
 		"layerOrder": "Reculer / avancer",
-		"layerScale": "Plus petit / plus grand"
+		"layerScale": "Plus petit / plus grand",
+		"playbackTitle": "Lecture",
+		"playbackToggle": "Lecture / pause, désélectionner",
+		"playbackSeek": "Avancer de 1 s (Maj 5 s)",
+		"playbackFrame": "Image par image"
 	},
 	"actions": {
 		"saveAgain": "Enregistrer à nouveau",
