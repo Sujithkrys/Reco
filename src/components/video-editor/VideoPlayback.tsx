@@ -3068,6 +3068,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											onTextStyleApply={onAnnotationTextStyleApply}
 											onTextScale={onAnnotationTextScale}
 											onClick={handleAnnotationClick}
+											onSelect={(id) => onSelectAnnotation?.(id)}
 											zIndex={annotation.zIndex}
 											isSelectedBoost={annotation.id === selectedAnnotationId}
 										/>

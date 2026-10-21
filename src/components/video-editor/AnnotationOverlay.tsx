@@ -83,6 +83,8 @@ interface AnnotationOverlayProps {
 	/** Bold/italic/underline shortcuts in the canvas editor (selection-aware, like the panel). */
 	onTextStyleApply?: (id: string, patch: TextStylePatch) => void;
 	onClick: (id: string) => void;
+		/** Selects the layer without cycling to another one (a tap on a text layer, which also starts editing). */
+		onSelect?: (id: string) => void;
 	zIndex: number;
 	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
 }
@@ -112,6 +114,8 @@ function useFontsVersion(): number {
 
 /** Smallest box a resize may produce, in overlay pixels. */
 const MIN_LAYER_SIZE_PX = 10;
+/** A press that moves farther than this is a drag, not a tap. */
+const TAP_MOVE_TOLERANCE_PX = 4;
 /** Keystrokes closer together than this are one typing burst: one undo step. */
 const TYPING_BURST_MS = 1000;
 
@@ -152,7 +156,8 @@ export function AnnotationOverlay({
 	onTextStyleApply,
 	onTextScale,
 	onClick,
-	zIndex,
+		onSelect,
+		zIndex,
 	isSelectedBoost,
 }: AnnotationOverlayProps) {
 	const safeRecordingRect =
@@ -238,6 +243,10 @@ export function AnnotationOverlay({
 	const [isEditing, setIsEditing] = useState(false);
 	const editorRef = useRef<HTMLDivElement | null>(null);
 	const editPointRef = useRef<{ x: number; y: number } | null>(null);
+		// A tap puts the caret at the tap point; a double-click selects the word there.
+		const editSelectsWordRef = useRef(false);
+		// Where the pointer went down, to tell a tap from a drag.
+		const pressStartRef = useRef<{ x: number; y: number } | null>(null);
 	// The runs last written by typing, and when: a keystroke soon after continues the same undo step.
 	const lastEditRef = useRef<{ at: number; runs: string } | null>(null);
 	const latestRef = useRef({ annotation, styledText, onTextEdit, onTextStyleApply, scale: sizeScale * liveFontScale });
@@ -286,8 +295,10 @@ export function AnnotationOverlay({
 			const at = offsetOf(editor, caretRange.startContainer, caretRange.startOffset);
 			let start = at;
 			let end = at;
-			while (start > 0 && !/\s/.test(text[start - 1])) start--;
-			while (end < text.length && !/\s/.test(text[end])) end++;
+			if (editSelectsWordRef.current) {
+				while (start > 0 && !/\s/.test(text[start - 1])) start--;
+				while (end < text.length && !/\s/.test(text[end])) end++;
+			}
 			selectOffsets(editor, start, end);
 		} else {
 			selectOffsets(editor, text.length, text.length);
@@ -439,9 +450,24 @@ export function AnnotationOverlay({
 		if (annotation.type !== "text" || !isSelected || isEditing) return;
 		event.stopPropagation();
 		editPointRef.current = { x: event.clientX, y: event.clientY };
-		lastEditRef.current = null;
-		setIsEditing(true);
-	};
+			editSelectsWordRef.current = true;
+			lastEditRef.current = null;
+			setIsEditing(true);
+		};
+		/** A tap (a click that did not move) on a text layer: select it, start editing, caret at the tap. */
+		const onTextTap = (event: React.MouseEvent) => {
+			const start = pressStartRef.current;
+			pressStartRef.current = null;
+			if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_MOVE_TOLERANCE_PX) {
+				return;
+			}
+			(onSelect ?? onClick)(annotation.id);
+			if (isEditing) return;
+			editPointRef.current = { x: event.clientX, y: event.clientY };
+			editSelectsWordRef.current = false;
+			lastEditRef.current = null;
+			setIsEditing(true);
+		};
 
 	/**
 	 * Runs the layer resize for the current pointer and modifiers and shows the result.
@@ -761,9 +787,16 @@ export function AnnotationOverlay({
 					else onStyleChange?.(annotation.id, { fontSize: scaled.style.fontSize });
 				}
 			}}
-			onClick={() => {
+			onMouseDown={(event: MouseEvent) => {
+				pressStartRef.current = { x: event.clientX, y: event.clientY };
+			}}
+			onClick={(event: React.MouseEvent) => {
 				// While editing text, clicks place the caret; they must not cycle the selection.
 				if (isDraggingRef.current || isEditing) return;
+				if (annotation.type === "text") {
+					onTextTap(event);
+					return;
+				}
 				onClick(annotation.id);
 			}}
 			// No transition on size or position: react-rnd measures the box while a
