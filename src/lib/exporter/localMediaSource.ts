@@ -129,6 +129,33 @@ async function createReadableMediaResourceFile(resource: string): Promise<File> 
 	return new File([blob], filename, { type: blob.type || inferMimeType(filename) });
 }
 
+const EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+	"video/mp4": "mp4",
+	"video/webm": "webm",
+	"video/quicktime": "mov",
+	"video/x-matroska": "mkv",
+	"audio/webm": "webm",
+	"audio/mpeg": "mp3",
+	"audio/wav": "wav",
+	"audio/mp4": "m4a",
+	"audio/ogg": "ogg",
+};
+
+/**
+ * WebDemuxer mounts its source as a worker file and splits the file's name, so a plain Blob
+ * (a web recording, or media restored from IndexedDB) fails with "reading 'split'". Give it a
+ * named File; the File wraps the same bytes, nothing is copied.
+ */
+export function toNamedMediaFile(blob: Blob, fallbackName = "media"): File {
+	if (blob instanceof File && blob.name) {
+		return blob;
+	}
+	const extension = EXTENSION_BY_MIME_TYPE[blob.type.split(";")[0].trim().toLowerCase()];
+	return new File([blob], extension ? `${fallbackName}.${extension}` : fallbackName, {
+		type: blob.type,
+	});
+}
+
 export async function createFallbackDemuxerSource(resource: string): Promise<string | File> {
 	// Local media already has a random-access transport: WebDemuxer issues bounded
 	// byte-range requests against this URL. Converting it to a File would copy the
@@ -137,8 +164,9 @@ export async function createFallbackDemuxerSource(resource: string): Promise<str
 		return resolveMediaResourceUrl(resource);
 	}
 
-	if (webBlobMap.has(resource)) {
-		return webBlobMap.get(resource) as File;
+	const webBlob = webBlobMap.get(resource);
+	if (webBlob) {
+		return toNamedMediaFile(webBlob);
 	}
 
 	return createReadableMediaResourceFile(resource);

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createFallbackDemuxerSource, resolveMediaElementSource } from "./localMediaSource";
+import { webBlobMap } from "@/lib/webElectronAPI";
+import {
+	createFallbackDemuxerSource,
+	resolveMediaElementSource,
+	toNamedMediaFile,
+} from "./localMediaSource";
 
 const readLocalFile = vi.fn();
 const getLocalMediaUrl = vi.fn(async (filePath: string) => ({
@@ -82,5 +87,43 @@ describe("resolveMediaElementSource", () => {
 		} finally {
 			vi.unstubAllGlobals();
 		}
+	});
+});
+
+describe("createFallbackDemuxerSource for web blobs", () => {
+	it("gives a recorded or restored Blob (no name) to the demuxer as a named File", async () => {
+		// WebDemuxer splits the mounted file's name: an unnamed Blob made every web export fail
+		// with "Cannot read properties of undefined (reading 'split')".
+		const recording = new Blob([new Uint8Array([1, 2, 3])], { type: "video/webm;codecs=vp8,opus" });
+		expect((recording as Partial<File>).name).toBeUndefined();
+		webBlobMap.set("blob:http://localhost/recording", recording);
+
+		try {
+			const source = await createFallbackDemuxerSource("blob:http://localhost/recording");
+
+			expect(source).toBeInstanceOf(File);
+			const file = source as File;
+			expect(file.name).toBe("media.webm");
+			expect(file.name.split("/")).toEqual(["media.webm"]);
+			expect(file.type).toBe("video/webm;codecs=vp8,opus");
+			expect(new Uint8Array(await file.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+		} finally {
+			webBlobMap.delete("blob:http://localhost/recording");
+		}
+	});
+
+	it("passes an imported File through unchanged", async () => {
+		const imported = new File([new Uint8Array([4])], "clip.mp4", { type: "video/mp4" });
+		webBlobMap.set("blob:http://localhost/imported", imported);
+
+		try {
+			expect(await createFallbackDemuxerSource("blob:http://localhost/imported")).toBe(imported);
+		} finally {
+			webBlobMap.delete("blob:http://localhost/imported");
+		}
+	});
+
+	it("names a Blob of unknown type without an extension", () => {
+		expect(toNamedMediaFile(new Blob([new Uint8Array([1])])).name).toBe("media");
 	});
 });
