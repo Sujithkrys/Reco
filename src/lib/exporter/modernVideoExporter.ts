@@ -374,6 +374,8 @@ export class ModernVideoExporter {
 	private sourceVideoInfo: DecodedVideoInfo | null = null;
 	private mediaSourceRetryAttempted = false;
 	private runtimeDiagnostics: ExportRuntimeDiagnostics = {};
+	/** The export step running now, named as the failure stage in the error report. */
+	private currentStage: string | null = null;
 
 	constructor(config: VideoExporterConfig) {
 		this.config = config;
@@ -398,6 +400,7 @@ export class ModernVideoExporter {
 				this.nativeStaticLayoutSkipReasons = [];
 				this.nativeStaticLayoutBackgroundSkipReason = null;
 				this.sourceVideoInfo = null;
+				this.currentStage = "Starting the encoder";
 				this.totalExportStartTimeMs = this.getNowMs();
 				const backendPreference = nativeFailure
 					? "webcodecs"
@@ -507,6 +510,7 @@ export class ModernVideoExporter {
 				});
 
 				if (shouldTryNativeStaticLayout && !useNativeEncoder) {
+					this.currentStage = "Reading the source video";
 					const nativeVideoInfo = await this.loadNativeStaticLayoutVideoInfo();
 					if (nativeVideoInfo) {
 						triedNativeStaticLayoutWithProbe = true;
@@ -515,6 +519,7 @@ export class ModernVideoExporter {
 							this.getNativeStaticLayoutEffectiveDuration(nativeVideoInfo);
 						this.effectiveDurationSec = effectiveDuration;
 						const totalFrames = Math.ceil(effectiveDuration * this.config.frameRate);
+						this.currentStage = `${NATIVE_EXPORT_ENGINE_NAME} static-layout export`;
 						const staticLayoutResult = await this.tryExportNativeStaticLayout(
 							nativeVideoInfo,
 							nativeAudioPlan,
@@ -535,6 +540,7 @@ export class ModernVideoExporter {
 						this.config.maxPendingFrames ?? this.backpressureProfile.maxPendingFrames,
 				});
 				stageStartedAt = this.getNowMs();
+				this.currentStage = "Reading the source video";
 				const videoInfo = await this.streamingDecoder.loadMetadata(this.config.videoUrl, {
 					useFallbackMediaSource,
 				});
@@ -564,6 +570,7 @@ export class ModernVideoExporter {
 					!useNativeEncoder &&
 					!triedNativeStaticLayoutWithProbe
 				) {
+					this.currentStage = `${NATIVE_EXPORT_ENGINE_NAME} static-layout export`;
 					const staticLayoutResult = await this.tryExportNativeStaticLayout(
 						videoInfo,
 						nativeAudioPlan,
@@ -577,6 +584,7 @@ export class ModernVideoExporter {
 				}
 
 				if (shouldDeferNativeEncoderStart && !useNativeEncoder) {
+					this.currentStage = "Starting the encoder";
 					stageStartedAt = this.getNowMs();
 					useNativeEncoder = await this.tryStartNativeVideoExport();
 					this.nativeSessionStartTimeMs = this.getNowMs() - stageStartedAt;
@@ -602,6 +610,7 @@ export class ModernVideoExporter {
 				}
 
 				stageStartedAt = this.getNowMs();
+				this.currentStage = "Starting the frame renderer (layers, wallpaper, captions)";
 				this.renderer = new ModernFrameRenderer({
 					timelineEffects: this.config.clipRegions !== undefined,
 					width: this.config.width,
@@ -665,6 +674,7 @@ export class ModernVideoExporter {
 				console.log(`[VideoExporter] Using ${this.renderBackend} render backend`);
 
 				if (!useNativeEncoder) {
+					this.currentStage = "Starting the MP4 muxer";
 					const hasAudio = nativeAudioPlan.audioMode !== "none";
 					this.muxer = new VideoMuxer(
 						this.config,
@@ -688,6 +698,7 @@ export class ModernVideoExporter {
 				this.lastProgressSampleFrame = 0;
 				this.displayedRenderFps = 0;
 				const decodeLoopStartedAt = this.getNowMs();
+				this.currentStage = "Rendering and encoding frames";
 
 				await this.streamingDecoder.decodeAll(
 					this.config.frameRate,
@@ -761,6 +772,7 @@ export class ModernVideoExporter {
 
 				if (useNativeEncoder) {
 					inNativeStage = true;
+					this.currentStage = `Finishing the ${NATIVE_EXPORT_ENGINE_NAME} export`;
 					stageStartedAt = this.getNowMs();
 					this.reportFinalizingProgress(totalFrames, 99);
 					if (this.nativeH264Encoder) {
@@ -788,6 +800,7 @@ export class ModernVideoExporter {
 				}
 
 				stageStartedAt = this.getNowMs();
+				this.currentStage = "Finishing video encoding";
 				if (this.encoder && this.encoder.state === "configured") {
 					this.reportFinalizingProgress(totalFrames, 97);
 					await this.measureFinalizationStage("encoderFlushMs", async () => {
@@ -822,6 +835,7 @@ export class ModernVideoExporter {
 						(this.config.audioRegions ?? []).length > 0 ||
 						(this.config.sourceAudioFallbackPaths ?? []).length > 0
 					) {
+						this.currentStage = "Processing audio";
 						this.audioProcessor = new AudioProcessor();
 						this.audioProcessor.setOnProgress((progress) => {
 							this.reportFinalizingProgress(totalFrames, 99, progress);
@@ -851,6 +865,7 @@ export class ModernVideoExporter {
 				}
 
 				this.reportFinalizingProgress(totalFrames, 99);
+				this.currentStage = "Writing the MP4 file";
 				const muxerResult = await this.measureFinalizationStage(
 					"muxerFinalizeMs",
 					async () =>
@@ -869,6 +884,7 @@ export class ModernVideoExporter {
 							? "[VideoExporter] Using FFmpeg audio muxing for pitch-preserving speed edits."
 							: "[VideoExporter] Browser AAC encoding is unavailable; falling back to FFmpeg audio muxing.",
 					);
+					this.currentStage = "Muxing audio with FFmpeg";
 					const muxedResult = await this.finalizeExportWithFfmpegAudio(
 						muxerResult,
 						nativeAudioPlan,
@@ -1125,7 +1141,11 @@ export class ModernVideoExporter {
 		const lines = [
 			`${LIGHTNING_PIPELINE_NAME} export failed.`,
 			...(failureCode ? [`Failure code: ${failureCode}`] : []),
-			...(isVideoDecodeFailure ? ["Failure stage: Input video decoding"] : []),
+			...(isVideoDecodeFailure
+				? ["Failure stage: Input video decoding"]
+				: this.currentStage
+					? [`Failure stage: ${this.currentStage}`]
+					: []),
 			`Reason: ${message}`,
 			stackInfo,
 			`Platform: ${this.getPlatformLabel()}`,

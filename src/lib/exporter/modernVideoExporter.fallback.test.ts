@@ -364,6 +364,43 @@ describe("ModernVideoExporter native fallback routing", () => {
 		expect(mocks.muxerFinalize).toHaveBeenCalledTimes(1);
 	});
 
+	it("names the failed step when the demuxer rejects with a plain string", async () => {
+		vi.stubGlobal("navigator", { platform: "Win32" });
+		const exporter = new ModernVideoExporter({
+			videoUrl: "blob:http://localhost/recording",
+			width: 1280,
+			height: 720,
+			frameRate: 30,
+			bitrate: 8_000_000,
+			wallpaper: "#000000",
+			backendPreference: "webcodecs",
+		} as never) as unknown as {
+			export: () => Promise<{ success: boolean; error?: string }>;
+			initializeEncoder: () => Promise<unknown>;
+		};
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.spyOn(exporter, "initializeEncoder").mockResolvedValue({
+			codec: "avc1.640033",
+			hardwareAcceleration: "prefer-hardware",
+		});
+		// WebDemuxer's worker rejects with the message string, not an Error.
+		mocks.streamingDecoderLoadMetadata.mockRejectedValue(
+			"Cannot read properties of undefined (reading 'split')",
+		);
+
+		try {
+			const result = await exporter.export();
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain("Failure stage: Reading the source video");
+			expect(result.error).toContain(
+				"Reason: Cannot read properties of undefined (reading 'split')",
+			);
+		} finally {
+			mocks.streamingDecoderLoadMetadata.mockImplementation(async () => mocks.videoInfo);
+		}
+	});
+
 	it("builds actionable diagnostics for input decoder failures", () => {
 		vi.stubGlobal("navigator", {
 			platform: "Win32",
