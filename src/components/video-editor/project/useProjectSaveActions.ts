@@ -1,6 +1,7 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { createProjectData, type EditorProjectData } from "../projectPersistence";
+import { shouldCaptureThumbnail } from "./thumbnailPolicy";
 import type { useProjectState } from "../state/useProjectState";
 import { cloneStructured, getErrorMessage } from "../videoEditorUtils";
 import { useAuth } from "@/lib/auth";
@@ -73,6 +74,7 @@ export function useProjectSaveActions({
 	const { requireAuth } = useAuth();
 	const autosaveTimeoutRef = useRef<number | null>(null);
 	const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+		const thumbnailCapturedAtRef = useRef<Map<string, number>>(new Map());
 	const clearPendingAutosave = useCallback(() => {
 		if (autosaveTimeoutRef.current !== null) {
 			window.clearTimeout(autosaveTimeoutRef.current);
@@ -136,6 +138,8 @@ export function useProjectSaveActions({
 							const thumbnail = captureThumbnail
 								? await captureProjectThumbnail()
 								: undefined;
+							// Remember when this project last got a preview, so autosave refreshes it only now and then.
+							if (thumbnail) thumbnailCapturedAtRef.current.set(targetPath, Date.now());
 							const result = await window.electronAPI.saveProjectFile(
 								projectData,
 								fileNameBase,
@@ -225,11 +229,18 @@ export function useProjectSaveActions({
 		autosaveTimeoutRef.current = window.setTimeout(() => {
 			autosaveTimeoutRef.current = null;
 			if (autosavePausedForStorage) return;
+			// Autosave is the only save a signed-out user has, so it must also give the project its
+			// preview: the first autosave of a project (new, imported or old without one) captures one,
+			// later ones refresh it every couple of minutes.
+			const capture = shouldCaptureThumbnail(
+				thumbnailCapturedAtRef.current.get(currentProjectPath),
+				Date.now(),
+			);
 			void saveProject(false, {
 				silent: true,
 				remountPreviewAfterSave: false,
-				refreshLibraryAfterSave: false,
-				captureThumbnail: false,
+				refreshLibraryAfterSave: capture,
+				captureThumbnail: capture,
 			});
 		}, PROJECT_AUTOSAVE_DELAY_MS);
 		return clearPendingAutosave;

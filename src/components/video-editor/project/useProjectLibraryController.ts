@@ -2,6 +2,7 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { FrameRenderer } from "@/lib/exporter/frameRenderer";
 import { toFileUrl } from "../projectPersistence";
+import { resolveBackgroundForLayout } from "../videoPlayback/layoutUtils";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useProjectState } from "../state/useProjectState";
 import type { useTimelineState } from "../state/useTimelineState";
@@ -61,8 +62,9 @@ export function useProjectLibraryController({
 		padding,
 		resolvedWebcamVideoUrl,
 		shadowIntensity,
-		wallpaper,
-		webcam,
+				wallpaper,
+				backgroundEnabled,
+				webcam,
 		zoomInDurationMs,
 		zoomInEasing,
 		zoomInOverlapMs,
@@ -111,8 +113,9 @@ export function useProjectLibraryController({
 			}
 		}
 
-		const canvas = document.createElement("canvas");
-		const targetWidth = 320;
+		const background = resolveBackgroundForLayout({ wallpaper, padding, backgroundEnabled });
+				const canvas = document.createElement("canvas");
+				const targetWidth = 320;
 		const targetHeight = 180;
 		canvas.width = targetWidth;
 		canvas.height = targetHeight;
@@ -145,9 +148,10 @@ export function useProjectLibraryController({
 				frameRenderer = new FrameRenderer({
 					timelineEffects: true,
 					width: targetWidth,
-					height: targetHeight,
-					wallpaper,
-					zoomRegions,
+											height: targetHeight,
+											// The same background switch handling as the preview and the export.
+											wallpaper: background.wallpaper,
+											zoomRegions,
 					showShadow: shadowIntensity > 0,
 					shadowIntensity,
 					backgroundBlur,
@@ -163,10 +167,10 @@ export function useProjectLibraryController({
 					zoomOutEasing,
 					connectedZoomEasing,
 					borderRadius,
-					padding,
-					cropRegion,
-					webcam,
-					webcamUrl:
+											padding: background.padding,
+											cropRegion,
+											webcam,
+											webcamUrl:
 						resolvedWebcamVideoUrl ??
 						(webcam.sourcePath ? toFileUrl(webcam.sourcePath) : null),
 					videoWidth: previewVideo.videoWidth,

@@ -222,3 +222,41 @@ describe("web project media persistence", () => {
 		expect(mediaKeys()).toHaveLength(2);
 	});
 });
+
+describe("project thumbnails", () => {
+	const empty = { version: 1, videoPath: "", editor: {} };
+
+	it("stores a thumbnail with the project and returns it for the dashboard card", async () => {
+		await api.saveProjectFile(empty, "Demo", "p1", "data:image/jpeg;base64,AAAA");
+
+		expect(record("p1").thumbnail_url).toBe("data:image/jpeg;base64,AAAA");
+		await expect(api.getProjectThumbnail("p1")).resolves.toEqual({
+			success: true,
+			data: "data:image/jpeg;base64,AAAA",
+		});
+	});
+
+	it("keeps the thumbnail when a later save does not capture one", async () => {
+		await api.saveProjectFile(empty, "Demo", "p1", "data:image/jpeg;base64,AAAA");
+		await api.saveProjectFile(empty, "Demo", "p1");
+
+		expect(record("p1").thumbnail_url).toBe("data:image/jpeg;base64,AAAA");
+	});
+
+	it("gives an old project without a thumbnail one the next time it is saved with one", async () => {
+		await api.saveProjectFile(empty, "Old project", "p2");
+		expect(record("p2").thumbnail_url).toBeNull();
+		await expect(api.getProjectThumbnail("p2")).resolves.toMatchObject({ success: false, data: null });
+
+		await api.saveProjectFile(empty, "Old project", "p2", "data:image/jpeg;base64,BBBB");
+
+		expect(record("p2").thumbnail_url).toBe("data:image/jpeg;base64,BBBB");
+	});
+
+	it("refreshes the thumbnail when a new one is captured", async () => {
+		await api.saveProjectFile(empty, "Demo", "p3", "data:image/jpeg;base64,AAAA");
+		await api.saveProjectFile(empty, "Demo", "p3", "data:image/jpeg;base64,CCCC");
+
+		expect(record("p3").thumbnail_url).toBe("data:image/jpeg;base64,CCCC");
+	});
+});
