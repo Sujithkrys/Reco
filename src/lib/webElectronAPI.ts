@@ -681,10 +681,12 @@ export const webElectronAPI: unknown = {
 	muxExportedVideoAudio: async () => ({
 		success: false,
 		tempPath: null,
+		error: "FFmpeg audio muxing is not available in the web app.",
 	}),
 	muxExportedVideoAudioFromPath: async () => ({
 		success: false,
 		tempPath: null,
+		error: "FFmpeg audio muxing is not available in the web app.",
 	}),
 	probeNativeVideoMetadata: async (_path: string) => ({
 		success: false,

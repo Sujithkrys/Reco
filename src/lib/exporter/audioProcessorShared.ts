@@ -143,4 +143,47 @@ export async function isAacAudioEncodingSupported(
 	}
 }
 
+/**
+ * Whether this build can mux edited audio with FFmpeg. The desktop app can; the web app's
+ * electronAPI only has stubs that always fail, so there edits are mixed in the browser.
+ */
+export function isFfmpegAudioMuxAvailable(): boolean {
+	if (typeof window === "undefined") return false;
+	const api = window.electronAPI;
+	return Boolean(api) && !api.isWebMode && typeof api.muxExportedVideoAudio === "function";
+}
+
+/**
+ * Where edited audio is mixed: FFmpeg keeps AAC priming exact on clip timelines and keeps
+ * pitch on speed edits, and covers a browser without AAC; without FFmpeg (the web app) the
+ * browser renders those edits itself, and a browser without AAC cannot export audio at all.
+ */
+export function resolveAudioMuxRoute(input: {
+	hasAudio: boolean;
+	ffmpegAvailable: boolean;
+	browserAacSupported: boolean;
+	prefersFfmpeg: boolean;
+}): "none" | "browser" | "ffmpeg" | "unsupported" {
+	if (!input.hasAudio) return "none";
+	if (input.ffmpegAvailable && (input.prefersFfmpeg || !input.browserAacSupported)) return "ffmpeg";
+	return input.browserAacSupported ? "browser" : "unsupported";
+}
+
+/** The reason an FFmpeg audio mux failed, with whatever FFmpeg or the mixer reported. */
+export function describeFfmpegAudioMuxFailure(result: unknown): string {
+	const fields = (result ?? {}) as { error?: unknown; message?: unknown; stderr?: unknown };
+	const details = [fields.error, fields.message]
+		.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+		.filter((value, index, all) => all.indexOf(value) === index);
+	if (typeof fields.stderr === "string" && fields.stderr.trim()) {
+		details.push(`FFmpeg output: ${fields.stderr.trim().slice(-600)}`);
+	}
+	return details.length > 0
+		? `Failed to mux exported audio with FFmpeg: ${details.join("; ")}`
+		: "Failed to mux exported audio with FFmpeg (the mux returned no error message)";
+}
+
+export const AAC_UNSUPPORTED_EXPORT_ERROR =
+	"This browser cannot encode AAC audio for the MP4, and FFmpeg audio muxing is not available in the web app. Export in a current Chrome or Edge, or mute the clip and remove audio layers.";
+
 export type TrimLikeRegion = TrimRegion | ClipRegion;

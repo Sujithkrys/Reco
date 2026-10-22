@@ -50,6 +50,12 @@ import {
 } from "@/lib/wallpapers";
 import { AudioProcessor, isAacAudioEncodingSupported } from "./audioEncoder";
 import {
+	AAC_UNSUPPORTED_EXPORT_ERROR,
+	describeFfmpegAudioMuxFailure,
+	isFfmpegAudioMuxAvailable,
+	resolveAudioMuxRoute,
+} from "./audioProcessorShared";
+import {
 	normalizeLightningRuntimePlatform,
 	shouldPreferNativeAutoBackend,
 	shouldPreferNativeStaticLayoutBeforeBreeze,
@@ -550,13 +556,20 @@ export class ModernVideoExporter {
 				const shouldUsePitchPreservingFfmpegAudio =
 					nativeAudioPlan.audioMode === "edited-track" &&
 					nativeAudioPlan.strategy === "filtergraph-fast-path";
-				const shouldUseFfmpegAudioFallback =
-					!useNativeEncoder &&
-					nativeAudioPlan.audioMode !== "none" &&
+				const audioMuxRoute = resolveAudioMuxRoute({
+					hasAudio: !useNativeEncoder && nativeAudioPlan.audioMode !== "none",
+					ffmpegAvailable: isFfmpegAudioMuxAvailable(),
+					browserAacSupported: await isAacAudioEncodingSupported(),
 					// The PCM/FFmpeg path preserves AAC priming; WebCodecs AAC can shift clip cuts.
-					(requiresClipTimelineRendering(this.config.clipRegions) ||
-						shouldUsePitchPreservingFfmpegAudio ||
-						!(await isAacAudioEncodingSupported()));
+					prefersFfmpeg:
+						requiresClipTimelineRendering(this.config.clipRegions) ||
+						shouldUsePitchPreservingFfmpegAudio,
+				});
+				if (audioMuxRoute === "unsupported") {
+					this.currentStage = "Preparing audio";
+					throw new Error(AAC_UNSUPPORTED_EXPORT_ERROR);
+				}
+				const shouldUseFfmpegAudioFallback = audioMuxRoute === "ffmpeg";
 				const effectiveDuration = this.streamingDecoder.getEffectiveDuration(
 					this.config.trimRegions,
 					this.config.speedRegions,
@@ -882,7 +895,9 @@ export class ModernVideoExporter {
 					console.warn(
 						shouldUsePitchPreservingFfmpegAudio
 							? "[VideoExporter] Using FFmpeg audio muxing for pitch-preserving speed edits."
-							: "[VideoExporter] Browser AAC encoding is unavailable; falling back to FFmpeg audio muxing.",
+							: requiresClipTimelineRendering(this.config.clipRegions)
+								? "[VideoExporter] Using FFmpeg audio muxing for the edited clip timeline."
+								: "[VideoExporter] Browser AAC encoding is unavailable; falling back to FFmpeg audio muxing.",
 					);
 					this.currentStage = "Muxing audio with FFmpeg";
 					const muxedResult = await this.finalizeExportWithFfmpegAudio(
@@ -891,11 +906,8 @@ export class ModernVideoExporter {
 					);
 					this.finalizationTimeMs = this.getNowMs() - stageStartedAt;
 					if (!muxedResult.success || (!muxedResult.blob && !muxedResult.tempFilePath)) {
-						return {
-							success: false,
-							error: muxedResult.error || "Failed to mux audio with FFmpeg",
-							metrics: this.buildExportMetrics(),
-						};
+						// Through the full report, so the stage and diagnostics come with the reason.
+						throw new Error(muxedResult.error || "Failed to mux audio with FFmpeg");
 					}
 
 					return {
@@ -3125,10 +3137,7 @@ export class ModernVideoExporter {
 				this.finalizationStageMs.ffmpegAudioMuxBreakdown = result.metrics;
 			}
 			if (!result.success || !result.tempPath) {
-				return {
-					success: false,
-					error: result.error || "Failed to mux exported audio with FFmpeg",
-				};
+				return { success: false, error: describeFfmpegAudioMuxFailure(result) };
 			}
 			return { success: true, tempFilePath: result.tempPath };
 		}
@@ -3153,10 +3162,7 @@ export class ModernVideoExporter {
 		}
 
 		if (!result.success || !result.tempPath) {
-			return {
-				success: false,
-				error: result.error || "Failed to mux exported audio with FFmpeg",
-			};
+			return { success: false, error: describeFfmpegAudioMuxFailure(result) };
 		}
 
 		// Returning a temp path (instead of buffering the muxed bytes back into

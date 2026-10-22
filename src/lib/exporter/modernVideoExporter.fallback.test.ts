@@ -364,6 +364,88 @@ describe("ModernVideoExporter native fallback routing", () => {
 		expect(mocks.muxerFinalize).toHaveBeenCalledTimes(1);
 	});
 
+	it("keeps a split clip's audio in the browser on the web, where FFmpeg muxing is a stub", async () => {
+		vi.stubGlobal("navigator", { platform: "Win32" });
+		const muxExportedVideoAudio = vi.fn(async () => ({ success: false, tempPath: null }));
+		vi.stubGlobal("window", {
+			electronAPI: {
+				isWebMode: true,
+				muxExportedVideoAudio,
+				muxExportedVideoAudioFromPath: muxExportedVideoAudio,
+			},
+		});
+		vi.stubGlobal("AudioEncoder", { isConfigSupported: async () => ({ supported: true }) });
+		const { AudioProcessor } = await import("./audioEncoder");
+		const processAudio = vi.spyOn(AudioProcessor.prototype, "process").mockResolvedValue();
+		const exporter = new ModernVideoExporter({
+			videoUrl: "blob:http://localhost/recording",
+			width: 1280,
+			height: 720,
+			frameRate: 30,
+			bitrate: 8_000_000,
+			wallpaper: "#000000",
+			backendPreference: "webcodecs",
+			// A split: two clips, the second reading from 2 s in.
+			clipRegions: [
+				{ id: "a", startMs: 0, endMs: 2000, speed: 1 },
+				{ id: "b", startMs: 2000, endMs: 4000, sourceStartMs: 2000, speed: 1 },
+			],
+			audioRegions: [
+				{ id: "music", startMs: 0, endMs: 3000, audioPath: "blob:http://localhost/tone", volume: 1 },
+			],
+		} as never) as unknown as {
+			export: () => Promise<{ success: boolean; error?: string }>;
+			initializeEncoder: () => Promise<unknown>;
+		};
+		vi.spyOn(exporter, "initializeEncoder").mockResolvedValue({
+			codec: "avc1.640033",
+			hardwareAcceleration: "prefer-hardware",
+		});
+
+		try {
+			const result = await exporter.export();
+
+			expect(result.error).toBeUndefined();
+			expect(result.success).toBe(true);
+			expect(muxExportedVideoAudio).not.toHaveBeenCalled();
+			expect(processAudio).toHaveBeenCalledTimes(1);
+		} finally {
+			processAudio.mockRestore();
+		}
+	});
+
+	it("fails with a clear reason on the web when the browser cannot encode AAC", async () => {
+		vi.stubGlobal("navigator", { platform: "Win32" });
+		vi.stubGlobal("window", { electronAPI: { isWebMode: true, muxExportedVideoAudio: vi.fn() } });
+		vi.stubGlobal("AudioEncoder", { isConfigSupported: async () => ({ supported: false }) });
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const exporter = new ModernVideoExporter({
+			videoUrl: "blob:http://localhost/recording",
+			width: 1280,
+			height: 720,
+			frameRate: 30,
+			bitrate: 8_000_000,
+			wallpaper: "#000000",
+			backendPreference: "webcodecs",
+			audioRegions: [
+				{ id: "music", startMs: 0, endMs: 1000, audioPath: "blob:http://localhost/tone", volume: 1 },
+			],
+		} as never) as unknown as {
+			export: () => Promise<{ success: boolean; error?: string }>;
+			initializeEncoder: () => Promise<unknown>;
+		};
+		vi.spyOn(exporter, "initializeEncoder").mockResolvedValue({
+			codec: "avc1.640033",
+			hardwareAcceleration: "prefer-hardware",
+		});
+
+		const result = await exporter.export();
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("cannot encode AAC audio");
+		expect(result.error).toContain("Failure stage: Preparing audio");
+	});
+
 	it("names the failed step when the demuxer rejects with a plain string", async () => {
 		vi.stubGlobal("navigator", { platform: "Win32" });
 		const exporter = new ModernVideoExporter({

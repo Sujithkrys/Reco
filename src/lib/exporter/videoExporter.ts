@@ -19,6 +19,12 @@ import type {
 } from "@/components/video-editor/types";
 import { getEffectiveVideoStreamDurationSeconds } from "@/lib/mediaTiming";
 import { AudioProcessor, isAacAudioEncodingSupported } from "./audioEncoder";
+import {
+	AAC_UNSUPPORTED_EXPORT_ERROR,
+	describeFfmpegAudioMuxFailure,
+	isFfmpegAudioMuxAvailable,
+	resolveAudioMuxRoute,
+} from "./audioProcessorShared";
 import { buildEditedTrackSourceSegments, classifyEditedTrackStrategy } from "./editedTrackStrategy";
 import {
 	advanceFinalizationProgress,
@@ -201,12 +207,18 @@ export class VideoExporter {
 			const shouldUsePitchPreservingFfmpegAudio =
 				audioPlan.audioMode === "edited-track" &&
 				audioPlan.strategy === "filtergraph-fast-path";
-			const shouldUseFfmpegAudioFallback =
-				!useNativeEncoder &&
-				audioPlan.audioMode !== "none" &&
-				(requiresClipTimelineRendering(this.config.clipRegions) ||
-					shouldUsePitchPreservingFfmpegAudio ||
-					!(await isAacAudioEncodingSupported()));
+			const audioMuxRoute = resolveAudioMuxRoute({
+				hasAudio: !useNativeEncoder && audioPlan.audioMode !== "none",
+				ffmpegAvailable: isFfmpegAudioMuxAvailable(),
+				browserAacSupported: await isAacAudioEncodingSupported(),
+				prefersFfmpeg:
+					requiresClipTimelineRendering(this.config.clipRegions) ||
+					shouldUsePitchPreservingFfmpegAudio,
+			});
+			if (audioMuxRoute === "unsupported") {
+				throw new Error(AAC_UNSUPPORTED_EXPORT_ERROR);
+			}
+			const shouldUseFfmpegAudioFallback = audioMuxRoute === "ffmpeg";
 
 			if (!useNativeEncoder) {
 				await this.initializeEncoder();
@@ -436,7 +448,9 @@ export class VideoExporter {
 				console.warn(
 					shouldUsePitchPreservingFfmpegAudio
 						? "[VideoExporter] Using FFmpeg audio muxing for pitch-preserving speed edits."
-						: "[VideoExporter] Browser AAC encoding is unavailable; falling back to FFmpeg audio muxing.",
+						: requiresClipTimelineRendering(this.config.clipRegions)
+							? "[VideoExporter] Using FFmpeg audio muxing for the edited clip timeline."
+							: "[VideoExporter] Browser AAC encoding is unavailable; falling back to FFmpeg audio muxing.",
 				);
 				const result = await this.finalizeExportWithFfmpegAudio(
 					muxerResult,
@@ -1020,10 +1034,7 @@ export class VideoExporter {
 				this.finalizationStageMs.ffmpegAudioMuxBreakdown = result.metrics;
 			}
 			if (!result.success || !result.tempPath) {
-				return {
-					success: false,
-					error: result.error || "Failed to mux exported audio with FFmpeg",
-				};
+				return { success: false, error: describeFfmpegAudioMuxFailure(result) };
 			}
 			return { success: true, tempFilePath: result.tempPath };
 		}
@@ -1049,7 +1060,7 @@ export class VideoExporter {
 		if (!result.success || !result.tempPath) {
 			return {
 				success: false,
-				error: result.error || "Failed to mux exported audio with FFmpeg",
+				error: describeFfmpegAudioMuxFailure(result),
 				metrics: this.buildExportMetrics(),
 			};
 		}
