@@ -1,5 +1,6 @@
 import type { RowDefinition } from "dnd-timeline";
 import { useRow } from "dnd-timeline";
+import { getTimelineRowSizeClassName, TIMELINE_ROW_GAP_PX } from "./timelineLayout";
 
 interface RowProps extends RowDefinition {
 	children: React.ReactNode;
@@ -33,10 +34,8 @@ export default function Row({
 
 	return (
 		<div
-			className={`bg-transparent relative transition-all duration-200 ${
-				isThin ? 'h-1.5 hover:min-h-[26px] flex-none' : 'flex-1 min-h-[26px]'
-			}`}
-			style={{ ...rowWrapperStyle, marginBottom: 2 }}
+			className={`bg-transparent relative ${getTimelineRowSizeClassName(Boolean(isThin))}`}
+			style={{ ...rowWrapperStyle, marginBottom: TIMELINE_ROW_GAP_PX }}
 		>
 			{label && !isThin && (
 				<div
