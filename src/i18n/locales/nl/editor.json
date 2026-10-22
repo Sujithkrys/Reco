@@ -131,7 +131,8 @@
 		"playbackTitle": "Afspelen",
 		"playbackToggle": "Afspelen / pauzeren, selectie opheffen",
 		"playbackSeek": "1 s verder (Shift 5 s)",
-		"playbackFrame": "Eén beeld verder"
+		"playbackFrame": "Eén beeld verder",
+		"redoAlt": "Opnieuw (alternatief)"
 	},
 	"actions": {
 		"saveAgain": "Opnieuw opslaan",

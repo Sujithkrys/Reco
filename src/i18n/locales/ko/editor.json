@@ -131,7 +131,8 @@
 		"playbackTitle": "재생",
 		"playbackToggle": "재생 / 일시정지, 선택 해제",
 		"playbackSeek": "1초 이동 (Shift 5초)",
-		"playbackFrame": "한 프레임 이동"
+		"playbackFrame": "한 프레임 이동",
+		"redoAlt": "다시 실행 (대체)"
 	},
 	"actions": {
 		"saveAgain": "다시 저장",

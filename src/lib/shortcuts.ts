@@ -123,6 +123,18 @@ export function matchesShortcut(
 	return true;
 }
 
+/**
+ * Redo: the configured binding, plus Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y whatever the binding is, so
+ * every usual redo key works on Windows and Mac (Cmd+Shift+Z, Cmd+Y).
+ */
+export function matchesRedo(e: KeyboardEvent, binding: ShortcutBinding, isMacPlatform: boolean): boolean {
+	if (matchesShortcut(e, binding, isMacPlatform)) return true;
+	const primaryMod = isMacPlatform ? e.metaKey : e.ctrlKey;
+	if (!primaryMod || e.altKey) return false;
+	const key = e.key.toLowerCase();
+	return (key === "z" && e.shiftKey) || (key === "y" && !e.shiftKey);
+}
+
 const KEY_LABELS: Record<string, string> = {
 	" ": "Space",
 	delete: "Del",

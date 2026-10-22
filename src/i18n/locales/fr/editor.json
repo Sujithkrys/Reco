@@ -130,7 +130,8 @@
 		"playbackTitle": "Lecture",
 		"playbackToggle": "Lecture / pause, désélectionner",
 		"playbackSeek": "Avancer de 1 s (Maj 5 s)",
-		"playbackFrame": "Image par image"
+		"playbackFrame": "Image par image",
+		"redoAlt": "Rétablir (alternative)"
 	},
 	"actions": {
 		"saveAgain": "Enregistrer à nouveau",

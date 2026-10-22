@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useRef } from "react";
 import type { useShortcuts } from "@/contexts/ShortcutsContext";
-import { matchesShortcut } from "@/lib/shortcuts";
+import { matchesRedo, matchesShortcut } from "@/lib/shortcuts";
 import { isEditableTarget } from "../layerKeyboard";
 import { mapPlaybackKey, seekTargetSeconds } from "../playbackKeys";
 import { clearAllTimelineSelections } from "../state/timelineSelection";
@@ -66,7 +66,7 @@ export function useEditorGlobalInteractions({
 				}
 				return;
 			}
-			if (matchesShortcut(event, shortcuts.redo, isMac)) {
+			if (matchesRedo(event, shortcuts.redo, isMac)) {
 				if (!editable || inRichTextEditor) {
 					event.preventDefault();
 					handleRedo();

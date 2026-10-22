@@ -130,7 +130,8 @@
 		"playbackTitle": "Reprodução",
 		"playbackToggle": "Reproduzir / pausar, desmarcar",
 		"playbackSeek": "Avançar 1 s (Shift 5 s)",
-		"playbackFrame": "Avançar um quadro"
+		"playbackFrame": "Avançar um quadro",
+		"redoAlt": "Refazer (alternativa)"
 	},
 	"actions": {
 		"saveAgain": "Salvar novamente",

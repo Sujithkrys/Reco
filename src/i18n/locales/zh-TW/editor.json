@@ -130,7 +130,8 @@
 		"playbackTitle": "播放",
 		"playbackToggle": "播放 / 暫停，取消選取",
 		"playbackSeek": "跳轉 1 秒（Shift 5 秒）",
-		"playbackFrame": "逐格移動"
+		"playbackFrame": "逐格移動",
+		"redoAlt": "重做（備用）"
 	},
 	"actions": {
 		"saveAgain": "再次保存",

@@ -130,7 +130,8 @@
 		"playbackTitle": "Воспроизведение",
 		"playbackToggle": "Воспроизвести / пауза, снять выделение",
 		"playbackSeek": "Перемотка на 1 с (Shift 5 с)",
-		"playbackFrame": "Шаг на один кадр"
+		"playbackFrame": "Шаг на один кадр",
+		"redoAlt": "Повторить (альтернатива)"
 	},
 	"actions": {
 		"saveAgain": "Сохранить ещё раз",

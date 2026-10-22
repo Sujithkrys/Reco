@@ -130,7 +130,8 @@
 		"playbackTitle": "Playback",
 		"playbackToggle": "Play / pause, deselect",
 		"playbackSeek": "Seek 1 s (Shift 5 s)",
-		"playbackFrame": "Step one frame"
+		"playbackFrame": "Step one frame",
+		"redoAlt": "Redo (alternative)"
 	},
 	"actions": {
 		"saveAgain": "Save Again",

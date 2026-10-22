@@ -129,7 +129,8 @@
 		"playbackTitle": "Wiedergabe",
 		"playbackToggle": "Wiedergabe / Pause, Auswahl aufheben",
 		"playbackSeek": "1 s springen (Umschalt 5 s)",
-		"playbackFrame": "Ein Bild weiter"
+		"playbackFrame": "Ein Bild weiter",
+		"redoAlt": "Wiederholen (alternativ)"
 	},
 	"actions": {
 		"saveAgain": "Erneut speichern",

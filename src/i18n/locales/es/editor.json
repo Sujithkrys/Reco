@@ -130,7 +130,8 @@
 		"playbackTitle": "Reproducción",
 		"playbackToggle": "Reproducir / pausar, deseleccionar",
 		"playbackSeek": "Saltar 1 s (Mayús 5 s)",
-		"playbackFrame": "Avanzar un fotograma"
+		"playbackFrame": "Avanzar un fotograma",
+		"redoAlt": "Rehacer (alternativa)"
 	},
 	"actions": {
 		"saveAgain": "Guardar de nuevo",

@@ -76,8 +76,14 @@ export function KeyboardShortcutsHelp() {
 								</kbd>
 								</div>
 								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-muted-foreground">{t("keyboardShortcuts.redoAlt")}</span>
+									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
+										{isMac ? "⌘ + Y" : "Ctrl + Y"}
+									</kbd>
+								</div>
 								<div className="pt-1 border-t border-foreground/5 mt-1">
-									<div className="text-[10px] font-semibold text-foreground">{t("keyboardShortcuts.playbackTitle")}</div>
+								<div className="text-[10px] font-semibold text-foreground">{t("keyboardShortcuts.playbackTitle")}</div>
 									<div className="flex items-center justify-between mt-1.5">
 									<span className="text-muted-foreground">{t("keyboardShortcuts.playbackToggle")}</span>
 									<kbd className="px-1 py-0.5 bg-foreground/5 border border-foreground/10 rounded text-[#2563EB] font-mono">
