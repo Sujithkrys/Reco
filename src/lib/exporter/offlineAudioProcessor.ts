@@ -170,8 +170,10 @@ export class OfflineAudioProcessor extends AudioMediaProcessor {
 		}
 		if (clipRegions) outputDurationMs = getTimelineDurationMs(clipRegions, sourceDurationMs);
 
-		// Extend for audio regions that might exceed the video timeline
-		for (const { region } of regionEntries) {
+		// A clip timeline is the export's length, as in the editor: audio dragged past its end
+		// is cut there, not left playing over no video. Without clips it may extend the output.
+		const timelineBoundsOutput = Boolean(clipRegions && clipRegions.length > 0);
+		for (const { region } of timelineBoundsOutput ? [] : regionEntries) {
 			const regionEndOutput = clipRegions
 				? region.endMs
 				: this.sourceTimeToOutputTime(region.endMs, slices);

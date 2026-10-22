@@ -132,6 +132,22 @@ describe("clip audio timeline", () => {
 		expect(starts).toHaveLength(1);
 		expect(starts[0]).toHaveBeenCalledWith(0);
 	});
+	it("cuts audio dragged past the end of the clip timeline at that end", async () => {
+		const processor = new TestAudioProcessor();
+		const pastEnd = { id: "m", startMs: 2500, endMs: 7000, volume: 1, audioPath: "/tmp/music.wav" };
+		const prepared = await processor.prepare(
+			"file:///tmp/source.mp4",
+			[],
+			[],
+			[pastEnd] as never,
+			[],
+			undefined,
+			undefined,
+			[{ id: "a", startMs: 0, endMs: 4000, sourceStartMs: 0, speed: 1 }],
+		);
+		expect(prepared.regionEntries).toHaveLength(1);
+		expect(prepared.outputDurationMs).toBe(4000);
+	});
 	it("an explicitly empty clip list schedules no source audio", async () => {
 		const processor = new TestAudioProcessor();
 		const prepared = await processor.prepare(
