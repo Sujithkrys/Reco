@@ -219,19 +219,24 @@ export class AudioProcessor extends AudioTranscodeProcessor {
 				return;
 			}
 
-			const audioStream =
-				typeof readEndSec === "number"
-					? demuxer.read("audio", 0, readEndSec)
-					: demuxer.read("audio");
+			// Open a read only for a codec the MP4 can take as is: a stream left unread (Opus, in
+			// every WebM recording) jams the demuxer, so the transcode below found "no audio
+			// track" and the clip's own audio was dropped.
+			if (this.isPassthroughAudioCodec(audioConfig.codec)) {
+				const audioStream =
+					typeof readEndSec === "number"
+						? demuxer.read("audio", 0, readEndSec)
+						: demuxer.read("audio");
 
-			const copiedSourceAudio = await this.passthroughAudioStream(
-				audioStream as ReadableStream<EncodedAudioChunk>,
-				audioConfig,
-				muxer,
-			);
+				const copiedSourceAudio = await this.passthroughAudioStream(
+					audioStream as ReadableStream<EncodedAudioChunk>,
+					audioConfig,
+					muxer,
+				);
 
-			if (copiedSourceAudio) {
-				return;
+				if (copiedSourceAudio) {
+					return;
+				}
 			}
 		}
 

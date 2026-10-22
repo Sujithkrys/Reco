@@ -208,6 +208,47 @@ describe("AudioProcessor offline render preparation", () => {
 		expect(renderAndMuxOfflineAudio).toHaveBeenCalled();
 	});
 
+	it("transcodes a clip's own Opus audio instead of dropping it", async () => {
+		// Like web-demuxer: while a read stream is open, the next request fails ("Unknown Error").
+		let openStreams = 0;
+		const demuxer = {
+			getDecoderConfig: vi.fn(async () => {
+				if (openStreams > 0) throw new Error("Unknown Error");
+				return { codec: "opus", sampleRate: 48_000, numberOfChannels: 2 };
+			}),
+			read: vi.fn(() => {
+				openStreams++;
+				return new ReadableStream({ cancel: () => void openStreams-- });
+			}),
+		};
+		vi.stubGlobal("AudioDecoder", { isConfigSupported: async () => ({ supported: true }) });
+		const processor = new AudioProcessor() as unknown as {
+			transcodeAudioStream: (...args: unknown[]) => Promise<void>;
+		};
+		const transcode = vi.spyOn(processor, "transcodeAudioStream").mockResolvedValue();
+
+		try {
+			await (processor as unknown as AudioProcessor).process(
+				demuxer as never,
+				{} as never,
+				"blob:http://localhost/recording",
+				[],
+				[],
+				undefined,
+				[],
+				[],
+				undefined,
+				undefined,
+				[{ id: "clip", startMs: 0, endMs: 4000, speed: 1 }],
+			);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+
+		expect(transcode).toHaveBeenCalledTimes(1);
+		expect(transcode.mock.calls[0]?.[1]).toMatchObject({ codec: "opus" });
+	});
+
 	it("soft-limits mixed peaks before encoding or WAV conversion", () => {
 		const samples = new Float32Array([
 			-1.6,
