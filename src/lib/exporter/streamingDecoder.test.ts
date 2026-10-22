@@ -114,6 +114,15 @@ const {
 	mockDemuxerRead: vi.fn(),
 }));
 
+const { mockMeasureMediaDurationSec } = vi.hoisted(() => ({
+	mockMeasureMediaDurationSec: vi.fn(async (_source: unknown): Promise<number | null> => null),
+}));
+
+vi.mock("./mediaDurationProbe", async (importOriginal) => ({
+	...(await importOriginal<typeof import("./mediaDurationProbe")>()),
+	measureMediaDurationSec: mockMeasureMediaDurationSec,
+}));
+
 vi.mock("web-demuxer", () => ({
 	WebDemuxer: class MockWebDemuxer {
 		load = mockDemuxerLoad;
@@ -351,6 +360,48 @@ describe("StreamingVideoDecoder local media loading", () => {
 			"http://127.0.0.1:4321/video?path=%2Ftmp%2Fretry.mp4",
 		);
 		expect(window.electronAPI.readLocalFile).not.toHaveBeenCalled();
+	});
+
+	// A MediaRecorder WebM imported as is: FFmpeg's "no value" for duration, in the header and the stream.
+	const noDurationWebmInfo = {
+		duration: -9223372036854.775,
+		start_time: 0,
+		streams: [
+			{
+				codec_type_string: "video",
+				width: 640,
+				height: 360,
+				avg_frame_rate: "30/1",
+				codec_string: "vp8",
+				start_time: 0,
+				duration: -9223372036854.775,
+			},
+		],
+	};
+
+	it("measures a WebM with no duration in its header instead of exporting no frames", async () => {
+		mockDemuxerGetMediaInfo.mockResolvedValueOnce(noDurationWebmInfo as never);
+		mockMeasureMediaDurationSec.mockResolvedValueOnce(2.5);
+		const decoder = new StreamingVideoDecoder();
+
+		const info = await decoder.loadMetadata("http://127.0.0.1:43123/video?path=%2Ftmp%2Fraw.webm");
+
+		expect(mockMeasureMediaDurationSec).toHaveBeenCalledWith(
+			"http://127.0.0.1:43123/video?path=%2Ftmp%2Fraw.webm",
+		);
+		expect(info.duration).toBe(2.5);
+		expect(info.streamDuration).toBe(2.5);
+		expect(decoder.getEffectiveDuration()).toBe(2.5);
+	});
+
+	it("fails with a clear message when such a WebM cannot be measured", async () => {
+		mockDemuxerGetMediaInfo.mockResolvedValueOnce(noDurationWebmInfo as never);
+		mockMeasureMediaDurationSec.mockResolvedValueOnce(null);
+		const decoder = new StreamingVideoDecoder();
+
+		await expect(
+			decoder.loadMetadata("http://127.0.0.1:43123/video?path=%2Ftmp%2Fraw.webm"),
+		).rejects.toThrow("no duration in its header");
 	});
 });
 

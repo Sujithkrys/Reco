@@ -8,6 +8,11 @@ import {
 } from "@/components/video-editor/types";
 import { getEffectiveVideoStreamDurationSeconds } from "@/lib/mediaTiming";
 import { createFallbackDemuxerSource, resolveMediaResourceUrl } from "./localMediaSource";
+import {
+	isKnownMediaDuration,
+	measureMediaDurationSec,
+	UNKNOWN_SOURCE_DURATION_ERROR,
+} from "./mediaDurationProbe";
 import { decodeVideoStream } from "./streamingDecodePipeline";
 import {
 	buildClipDecodeRuns,
@@ -99,7 +104,9 @@ export class StreamingVideoDecoder {
 
 		// Relative URL so it resolves correctly in both dev (http) and packaged (file://) builds
 		const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
+		let loadedSource: string | File = resourceUrl;
 		const loadMediaInfo = async (source: string | File) => {
+			loadedSource = source;
 			this.demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
 			await this.demuxer.load(source);
 			return this.demuxer.getMediaInfo();
@@ -151,16 +158,28 @@ export class StreamingVideoDecoder {
 			frameRate = videoStream.avg_frame_rate;
 		}
 
+		let duration = mediaInfo.duration;
+		let streamDuration = isKnownMediaDuration(videoStream?.duration)
+			? videoStream.duration
+			: undefined;
+		if (!isKnownMediaDuration(duration) && streamDuration === undefined) {
+			// A MediaRecorder WebM has no duration in its header (FFmpeg reports a huge negative
+			// "no value"): measured from its packets, or the export would render no frames.
+			const measured = await measureMediaDurationSec(loadedSource);
+			if (measured === null) {
+				throw new Error(UNKNOWN_SOURCE_DURATION_ERROR);
+			}
+			duration = measured;
+			streamDuration = measured;
+		}
+
 		this.metadata = {
 			width: videoStream?.width || 1920,
 			height: videoStream?.height || 1080,
-			duration: mediaInfo.duration,
+			duration,
 			mediaStartTime,
 			streamStartTime,
-			streamDuration:
-				typeof videoStream?.duration === "number" && Number.isFinite(videoStream.duration)
-					? videoStream.duration
-					: undefined,
+			streamDuration,
 			frameRate,
 			codec: videoStream?.codec_string || "unknown",
 			hasAudio: !!audioStream,
