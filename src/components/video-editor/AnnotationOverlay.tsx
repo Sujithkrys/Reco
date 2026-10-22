@@ -1,3 +1,4 @@
+import { decideTextClick } from "./textClickDecision";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Rnd } from "react-rnd";
@@ -114,8 +115,7 @@ function useFontsVersion(): number {
 
 /** Smallest box a resize may produce, in overlay pixels. */
 const MIN_LAYER_SIZE_PX = 10;
-/** A press that moves farther than this is a drag, not a tap. */
-const TAP_MOVE_TOLERANCE_PX = 4;
+// (the tap tolerance lives in textClickDecision.ts)
 /** Keystrokes closer together than this are one typing burst: one undo step. */
 const TYPING_BURST_MS = 1000;
 
@@ -255,7 +255,10 @@ export function AnnotationOverlay({
 	const rememberedRange =
 		textSelection && textSelection.annotationId === annotation.id ? textSelection : null;
 
+	// Set when editing ends: the next single click only selects (it does not re-enter edit mode).
+	const justLeftEditingRef = useRef(false);
 	const stopEditing = () => {
+		if (isEditing) justLeftEditingRef.current = true;
 		setIsEditing(false);
 		clearTextSelection(annotation.id);
 		showRememberedSelection(null);
@@ -264,7 +267,10 @@ export function AnnotationOverlay({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only the selection flag matters
 	useEffect(() => {
 		if (!isSelected && isEditing) stopEditing();
-		if (!isSelected) clearTextSelection(annotation.id);
+		if (!isSelected) {
+			clearTextSelection(annotation.id);
+			justLeftEditingRef.current = false;
+		}
 	}, [isSelected]);
 	useEffect(() => {
 		if (annotation.type !== "text" && isEditing) stopEditing();
@@ -447,22 +453,44 @@ export function AnnotationOverlay({
 		}
 	};
 	const onTextDoubleClick = (event: React.MouseEvent) => {
-		if (annotation.type !== "text" || !isSelected || isEditing) return;
+		if (annotation.type !== "text") return;
+		const editor = editorRef.current;
+		if (isEditing && editor) {
+			// The second click of a double-click that started editing: select the word under it.
+			const range = (document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null })
+				.caretRangeFromPoint?.(event.clientX, event.clientY);
+			if (!range || !editor.contains(range.startContainer)) return;
+			const text = plainTextOf(runsOf(latestRef.current.annotation));
+			const at = offsetOf(editor, range.startContainer, range.startOffset);
+			let start = at;
+			let end = at;
+			while (start > 0 && !/\s/.test(text[start - 1])) start--;
+			while (end < text.length && !/\s/.test(text[end])) end++;
+			selectOffsets(editor, start, end);
+			return;
+		}
+		if (!isSelected) return;
 		event.stopPropagation();
+		justLeftEditingRef.current = false;
 		editPointRef.current = { x: event.clientX, y: event.clientY };
-			editSelectsWordRef.current = true;
-			lastEditRef.current = null;
-			setIsEditing(true);
-		};
+		editSelectsWordRef.current = true;
+		lastEditRef.current = null;
+		setIsEditing(true);
+	};
 		/** A tap (a click that did not move) on a text layer: select it, start editing, caret at the tap. */
 		const onTextTap = (event: React.MouseEvent) => {
 			const start = pressStartRef.current;
 			pressStartRef.current = null;
-			if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_MOVE_TOLERANCE_PX) {
-				return;
-			}
+			const action = decideTextClick({
+				movedPx: start ? Math.hypot(event.clientX - start.x, event.clientY - start.y) : 0,
+				isSelected,
+				isEditing,
+				justLeftEditing: justLeftEditingRef.current,
+			});
+			if (action === "ignore") return;
 			(onSelect ?? onClick)(annotation.id);
-			if (isEditing) return;
+			justLeftEditingRef.current = false;
+			if (action === "select") return;
 			editPointRef.current = { x: event.clientX, y: event.clientY };
 			editSelectsWordRef.current = false;
 			lastEditRef.current = null;
@@ -814,7 +842,10 @@ export function AnnotationOverlay({
 			}}
 			enableResizing={isSelected}
 			// While editing text, a drag selects text instead of moving the layer.
-			disableDragging={!isSelected || isEditing}
+			disableDragging={!isSelected}
+			// While editing, dragging from the box's border or padding still moves the layer; a press on
+			// the text itself places the caret or selects text.
+			cancel={isEditing ? "[data-rich-text-editor]" : undefined}
 			resizeHandleStyles={{
 				topLeft: {
 					width: "12px",
